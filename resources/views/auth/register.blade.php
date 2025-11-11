@@ -1,52 +1,189 @@
-<x-guest-layout>
-    <form method="POST" action="{{ route('register') }}">
-        @csrf
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ config('app.name', 'SLSU') }} - Register</title>
 
-        <!-- Name -->
-        <div>
-            <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
-            <x-input-error :messages="$errors->get('name')" class="mt-2" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#0C3B2E',
+                        'primary-light': '#6D9773',
+                        'accent-yellow': '#FFBA00',
+                        'accent-brown': '#B46617',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Glassmorphism Card */
+        .login-card {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        /* Glass Button */
+        .glass-button {
+            width: 100%;
+            padding: 0.9rem;
+            font-weight: 600;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-button:hover {
+            background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
+            border-color: transparent;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(12, 59, 46, 0.4);
+        }
+
+        .input-icon-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1.25rem;
+            height: 1.25rem;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Adjust input fields to match login page size */
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 0.75rem 0.75rem 2.5rem; /* leave space for icon */
+            border: 2px solid rgba(109, 151, 115, 0.3);
+            border-radius: 1rem;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+        .form-input:focus {
+            border-color: #6D9773;
+            outline: none;
+            box-shadow: 0 0 0 1px #6D9773;
+        }
+    </style>
+</head>
+<body class="antialiased font-sans">
+
+<div class="login-container relative min-h-screen flex items-center justify-center overflow-hidden">
+
+    <!-- Background Image -->
+    <img src="{{ asset('automated.png') }}" alt="Background"
+         class="absolute top-0 left-0 w-full h-full object-cover z-0">
+
+    <!-- Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-br from-primary-dark/70 to-primary-light/60 z-10"></div>
+
+    <!-- Register Card -->
+    <div class="login-card relative z-20 w-full max-w-md lg:max-w-3xl p-0">
+        <div class="grid lg:grid-cols-2">
+
+            <!-- Left Side -->
+            <div class="p-8 md:p-10 text-center bg-primary-dark/70 text-white flex flex-col justify-center items-center">
+                <div class="inline-block p-4 mb-4 rounded-full bg-gradient-to-br from-primary-light to-primary-dark shadow-lg">
+                    <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo" class="w-16 h-16 object-contain rounded-full">
+                </div>
+                <h1 class="text-3xl font-extrabold mb-2">Join Us!</h1>
+                <p class="text-sm font-light opacity-80 max-w-xs">
+                    Create your account to access the Automated Scheduling Portal of South Luzon State University Tiaong Campus.
+                </p>
+            </div>
+
+            <!-- Right Side (Form) -->
+            <div class="p-8 md:p-10 space-y-6 bg-white/10 backdrop-blur-lg">
+                <h2 class="text-xl font-bold text-primary-dark mb-4">Register an Account</h2>
+
+                @if (session('status'))
+                    <div class="mb-4 p-3 bg-teal-100 border border-teal-400 text-teal-800 rounded-lg text-sm">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('register') }}" class="flex flex-col gap-5">
+                    @csrf
+
+                    <!-- Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-primary-dark mb-2">Full Name</label>
+                        <input id="name" class="form-input" type="text" name="name" placeholder="Enter your full name" required autofocus>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-primary-dark mb-2">Email</label>
+                        <div class="input-icon-wrapper">
+                            <svg class="input-icon text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <input id="email" class="form-input pl-10" type="email" name="email" placeholder="Enter your email" required>
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-primary-dark mb-2">Password</label>
+                        <div class="input-icon-wrapper">
+                            <svg class="input-icon text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <input id="password" class="form-input pl-10" type="password" name="password" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div>
+                        <label for="password_confirmation" class="block text-sm font-medium text-primary-dark mb-2">Confirm Password</label>
+                        <input id="password_confirmation" class="form-input" type="password" name="password_confirmation" placeholder="Confirm your password" required>
+                    </div>
+
+                    <!-- Glass Button -->
+                    <button type="submit" class="glass-button">
+                        Register
+                    </button>
+
+                    <!-- Login link -->
+                    <p class="text-sm text-gray-800 text-center mt-2">
+                        Already have an account? <a href="{{ route('login') }}" class="text-accent-brown font-medium hover:text-accent-brown/80">Sign In</a>
+                    </p>
+                </form>
+            </div>
         </div>
+    </div>
 
-        <!-- Email Address -->
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
+    <!-- Footer -->
+    <p class="absolute bottom-4 text-center text-xs text-white/80 z-20">
+        © {{ date('Y') }} South Luzon State University - Tiaong Campus
+    </p>
+</div>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input id="password_confirmation" class="block mt-1 w-full"
-                            type="password"
-                            name="password_confirmation" required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
-                {{ __('Already registered?') }}
-            </a>
-
-            <x-primary-button class="ms-4">
-                {{ __('Register') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+</body>
+</html>
