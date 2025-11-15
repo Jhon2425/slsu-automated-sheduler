@@ -78,7 +78,7 @@
         /* Adjust input fields to match login page size */
         .form-input {
             width: 100%;
-            padding: 0.75rem 0.75rem 0.75rem 2.5rem; /* leave space for icon */
+            padding: 0.75rem 0.75rem 0.75rem 1rem; /* leave space for icon */
             border: 2px solid rgba(109, 151, 115, 0.3);
             border-radius: 1rem;
             background-color: rgba(255, 255, 255, 0.7);
