@@ -55,9 +55,11 @@
 
         .glass-button:hover {
             background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
-            border-color: transparent;
+            border: none !important;
+            overflow: hidden;
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(12, 59, 46, 0.4);
+            color: white !important;
         }
 
         .input-icon-wrapper {
@@ -162,8 +164,21 @@
                     <!-- Confirm Password -->
                     <div>
                         <label for="password_confirmation" class="block text-sm font-medium text-primary-dark mb-2">Confirm Password</label>
-                        <input id="password_confirmation" class="form-input" type="password" name="password_confirmation" placeholder="Confirm your password" required>
-                    </div>
+
+                        <div class="input-icon-wrapper">
+                            <svg class="input-icon text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+
+                            <input id="password_confirmation"
+                                    class="form-input pl-10"
+                                    type="password"
+                                    name="password_confirmation"
+                                    placeholder="Confirm your password"
+                                    required>
+                        </div>
+                    </div>    
 
                     <!-- Glass Button -->
                     <button type="submit" class="glass-button">

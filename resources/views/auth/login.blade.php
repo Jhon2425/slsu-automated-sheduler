@@ -55,9 +55,11 @@
 
         .glass-button:hover {
             background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
-            border-color: transparent;
+            border: none !important;
+            overflow: hidden;
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(12, 59, 46, 0.4);
+            color: white !important;
         }
 
         .input-icon-wrapper {
@@ -155,7 +157,7 @@
                     </div>
 
                     <!-- Glass Button -->
-                    <button type="submit" class="glass-button">
+                    <button type="submit" class="glass-button matte-signin">
                         Sign In
                     </button>
                 </form>
