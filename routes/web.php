@@ -1,31 +1,50 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\FacultyController;
+use App\Http\Controllers\Admin\ScheduleController;
+use App\Http\Controllers\Faculty\FacultyDashboardController;
 
-Route::get('/', function () {
-    return view('welcome');
+// Guest routes
+Route::middleware('guest')->group(function () {
+    // Welcome page
+    Route::get('/', function () {
+        return view('welcome'); // ← show a welcome.blade.php page
+    })->name('welcome');
+    
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+    
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
+// Authenticated routes
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    
+    // Profile routes
+Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/settings', function() { return view('settings'); })->name('settings');
+
+    // Admin routes
+    Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        
+        // Faculty management
+        Route::resource('faculties', FacultyController::class);
+        
+        // Schedule management
+        Route::get('/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
+        Route::post('/schedules/generate', [ScheduleController::class, 'generate'])->name('schedules.generate');
+        Route::get('/schedules/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('schedules.download');
+    });
+    
+    // Faculty routes
+    Route::prefix('faculty')->middleware('faculty')->name('faculty.')->group(function () {
+        Route::get('/dashboard', [FacultyDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/schedule/download-pdf', [FacultyDashboardController::class, 'downloadPDF'])->name('schedule.download');
+    });
 });
-// Faculty routes
-Route::resource('faculty', FacultyController::class);
-
-// Schedule routes  
-Route::get('schedules/generate', [ScheduleController::class, 'generate'])->name('schedules.generate');
-
-// Conflict routes
-Route::post('conflicts/{id}/resolve', [ConflictController::class, 'resolve'])->name('conflicts.resolve');
-
-// Report routes
-Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
-require __DIR__.'/auth.php';

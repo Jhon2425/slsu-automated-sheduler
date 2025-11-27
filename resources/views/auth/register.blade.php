@@ -8,7 +8,6 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script>
         tailwind.config = {
             theme: {
@@ -75,10 +74,9 @@
             z-index: 10;
         }
 
-        /* Adjust input fields to match login page size */
         .form-input {
             width: 100%;
-            padding: 0.75rem 0.75rem 0.75rem 2.5rem; /* leave space for icon */
+            padding: 0.75rem 0.75rem 0.75rem 2.5rem;
             border: 2px solid rgba(109, 151, 115, 0.3);
             border-radius: 1rem;
             background-color: rgba(255, 255, 255, 0.7);
@@ -128,6 +126,9 @@
 
                 <form method="POST" action="{{ route('register') }}" class="flex flex-col gap-5">
                     @csrf
+
+                    <!-- Hidden Role Field -->
+                    <input type="hidden" name="role" value="{{ request('role') ?? 'faculty' }}">
 
                     <!-- Name -->
                     <div>
