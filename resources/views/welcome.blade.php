@@ -118,14 +118,23 @@
             box-shadow: 0 6px 18px rgba(0,0,0,0.18);
         }
 
+<<<<<<< HEAD
                 :root { --hover-color: #FFBA00; }
 
         .btn-glass:hover {
+=======
+        /* Hover color gold */
+        :root { --hover-color: #FFBA00; }
+
+        .btn-glass:hover,
+        .modal .role-btn:hover {
+>>>>>>> main
             background: var(--hover-color);
             color: #0C3B2E !important;
             transform: translateY(-4px);
             box-shadow: 0 18px 40px rgba(0,0,0,0.18);
         }
+<<<<<<< HEAD
         .modal .role-btn:hover {
             background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
             border: none !important;
@@ -138,6 +147,12 @@
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
+=======
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Modal */
+>>>>>>> main
         .modal-overlay { position: fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:50; }
         .modal-backdrop { position:absolute; inset:0; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); }
 
@@ -237,9 +252,9 @@
 
     <!-- Role Modal -->
     <div x-show="showRoleModal"
-         x-transition.opacity.duration.250ms
-         x-cloak
-         class="modal-overlay">
+        x-transition.opacity.duration.250ms
+        x-cloak
+        class="modal-overlay">
 
         <div class="modal-backdrop" @click="showRoleModal = false"></div>
 
@@ -247,6 +262,7 @@
             <h2>Select Your Role</h2>
             <p>Choose your role before registering.</p>
 
+            <!-- Directly link to registration with role -->
             <a href="{{ route('register', ['role' => 'admin']) }}" class="role-btn">Admin</a>
             <a href="{{ route('register', ['role' => 'faculty']) }}" class="role-btn">Faculty</a>
 
