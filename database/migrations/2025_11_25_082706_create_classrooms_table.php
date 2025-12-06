@@ -18,11 +18,10 @@ return new class extends Migration
 
         // Seed sample classrooms
         DB::table('classrooms')->insert([
-            ['room_name' => 'Room 101', 'capacity' => 40, 'type' => 'Lecture', 'created_at' => now(), 'updated_at' => now()],
-            ['room_name' => 'Room 102', 'capacity' => 35, 'type' => 'Lecture', 'created_at' => now(), 'updated_at' => now()],
-            ['room_name' => 'Lab 201', 'capacity' => 30, 'type' => 'Laboratory', 'created_at' => now(), 'updated_at' => now()],
-            ['room_name' => 'Lab 202', 'capacity' => 25, 'type' => 'Laboratory', 'created_at' => now(), 'updated_at' => now()],
-            ['room_name' => 'Room 301', 'capacity' => 50, 'type' => 'Both', 'created_at' => now(), 'updated_at' => now()],
+            ['room_name' => 'Classroom 101', 'capacity' => 40, 'type' => 'Lecture', 'created_at' => now(), 'updated_at' => now()],
+            ['room_name' => 'Classroom 102', 'capacity' => 35, 'type' => 'Lecture', 'created_at' => now(), 'updated_at' => now()],
+            ['room_name' => 'Computer Lab 201', 'capacity' => 30, 'type' => 'Laboratory', 'created_at' => now(), 'updated_at' => now()],
+            ['room_name' => 'Computer Lab 202', 'capacity' => 25, 'type' => 'Laboratory', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 
