@@ -531,10 +531,10 @@
                         <!-- Links -->
                         <div class="mt-6 space-y-2">
                             <p class="text-sm text-gray-800 text-center">
-                                Already have an account? <a href="{{ route('login') }}" class="text-accent-brown font-medium hover:text-accent-brown/80 transition">Sign In</a>
+                                Already have an account? <a href="{{ route('login') }}" class="text-[#FFBA00] font-medium transition">Sign In</a>
                             </p>
                             <p class="text-sm text-gray-800 text-center">
-                                <a href="{{ route('welcome') }}" class="text-primary-light font-medium hover:text-primary-light/80 transition">← Back to role selection</a>
+                                <a href="{{ route('welcome') }}" class="text-[#OC3B2E] font-medium transition">← Back to role selection</a>
                             </p>
                         </div>
                     </form>
