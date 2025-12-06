@@ -80,32 +80,25 @@
             padding: 0.9rem;
             font-weight: 600;
             border-radius: 0.75rem;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            
+            /* full gradient background - changed #1 */ 
             background: rgba(255, 255, 255, 0.15);
+            
+            /* remove white border + glass effect - changed #2 */
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(12px);
+
             color: white;
-            backdrop-filter: blur(10px);
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .glass-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .glass-button:hover::before {
-            left: 100%;
+            cursor: pointer;
         }
 
         .glass-button:hover:not(:disabled) {
-            background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
+           background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
+            border: none;
+            backdrop-filter: none;
+
+            opacity: 1;
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(12, 59, 46, 0.4);
         }
@@ -115,24 +108,20 @@
             cursor: not-allowed;
         }
 
-        .secondary-button {
-            background: rgba(109, 151, 115, 0.2);
-            border: 1px solid rgba(109, 151, 115, 0.4);
-        }
-
-        .secondary-button:hover:not(:disabled) {
-            background: rgba(109, 151, 115, 0.3);
-            transform: translateY(-2px);
-        }
-
         .form-input {
             width: 100%;
             padding: 0.75rem;
-            border: 2px solid rgba(109, 151, 115, 0.3);
+            border: 2px solid rgba(109, 151, 115, 0.7);
             border-radius: 1rem;
             background-color: rgba(255, 255, 255, 0.7);
             transition: all 0.3s ease;
+            color: #ffffffff;
         }
+
+        .form-input::placeholder {
+            color: rgba(12, 59, 46, 0.6);  /* soft green-gray */
+        }
+
 
         .form-input:focus {
             border-color: #6D9773;
@@ -142,13 +131,15 @@
         }
 
         .form-input.filled {
-            border-color: #6D9773;
-            background-color: rgba(109, 151, 115, 0.1);
+            border-color:  #FFBA00;
+            background-color: rgba(78, 255, 165, 0.08);
+            box-shadow: 0 0 12px #FFBA00;
         }
 
         .form-input.error {
             border-color: #ef4444;
-            background-color: rgba(239, 68, 68, 0.1);
+            box-shadow: none;
+            background-color: rgba(255, 0, 0, 0.08);
         }
 
         .progress-bar {
@@ -240,10 +231,21 @@
         .input-icon {
             position: absolute;
             right: 12px;
-            top: 50%;
+            top: 68%;
             transform: translateY(-50%);
             opacity: 0;
             transition: all 0.3s ease;
+        }
+
+        #name + .input-icon,
+        #email + .input-icon,
+        #password + .input-icon,
+        #password_confirmation + .input-icon {
+            top: 68%;
+        }
+
+        #faculty_id + .input-icon {
+            top: 52%;
         }
 
         .input-icon.show {
@@ -306,6 +308,20 @@
         .input-wrapper:hover .tooltip {
             opacity: 1;
         }
+
+        #password,
+        #password_confirmation {
+        padding-top: 1rem;      /* adjust this value */
+        padding-bottom: 1rem;   /* adjust this value */
+        line-height: 1.4;          /* helps center dots vertically */
+}
+
+
+        .input-icon svg {
+            stroke: #4EFFA5 !important;  /* bright neon green */
+            filter: drop-shadow(0 0 6px rgba(78, 255, 165, 0.9));
+            stroke-width: 2.8 !important;
+            opacity: 1 !important;
     </style>
 </head>
 <body class="antialiased font-sans">
@@ -477,7 +493,7 @@
 
                         <!-- Navigation Buttons -->
                         <div class="flex gap-3 mt-8">
-                            <button type="button" id="prev-btn" class="glass-button secondary-button hidden">
+                            <button type="button" id="prev-btn" class="glass-button hidden">
                                 <span class="flex items-center justify-center gap-2 relative z-10">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>

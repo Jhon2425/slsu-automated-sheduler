@@ -75,15 +75,25 @@
             padding: 0.9rem;
             font-weight: 600;
             border-radius: 0.75rem;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            
+            /* full gradient background - changed #1 */ 
             background: rgba(255, 255, 255, 0.15);
+            
+            /* remove white border + glass effect - changed #2 */
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(12px);
+
             color: white;
-            backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .glass-button:hover:not(:disabled) {
             background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
+            border: none;
+            backdrop-filter: none;
+
+            opacity: 1;
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(12, 59, 46, 0.4);
         }
@@ -91,16 +101,6 @@
         .glass-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        .secondary-button {
-            background: rgba(109, 151, 115, 0.2);
-            border: 1px solid rgba(109, 151, 115, 0.4);
-        }
-
-        .secondary-button:hover:not(:disabled) {
-            background: rgba(109, 151, 115, 0.3);
-            transform: translateY(-2px);
         }
 
         .form-input {
@@ -372,7 +372,7 @@
 
                         <!-- Navigation Buttons -->
                         <div class="flex gap-3 mt-8">
-                            <button type="button" id="prev-btn" class="glass-button secondary-button hidden">
+                            <button type="button" id="prev-btn" class="glass-button hidden">
                                 <span class="flex items-center justify-center gap-2">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
