@@ -28,7 +28,6 @@
     </script>
 
     <style>
-        /* Glassmorphism Card */
         .login-card {
             background: rgba(255, 255, 255, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.25);
@@ -39,7 +38,6 @@
             overflow: hidden;
         }
 
-        /* Glass Button */
         .glass-button {
             width: 100%;
             padding: 0.9rem;
@@ -56,10 +54,8 @@
         .glass-button:hover {
             background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
             border: none !important;
-            overflow: hidden;
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(12, 59, 46, 0.4);
-            color: white !important;
         }
 
         .input-icon-wrapper {
@@ -78,6 +74,7 @@
         }
     </style>
 </head>
+
 <body class="antialiased font-sans">
 
 <div class="login-container relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -93,10 +90,10 @@
     <div class="login-card relative z-20 w-full max-w-md lg:max-w-3xl p-0">
         <div class="grid lg:grid-cols-2">
 
-            <!-- Left Side -->
+            <!-- Left Section -->
             <div class="p-8 md:p-10 text-center bg-primary-dark/70 text-white flex flex-col justify-center items-center">
-               <div class="inline-block p-4 mb-4 rounded-full bg-gradient-to-br from-primary-light to-primary-dark shadow-lg">
-                    <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo" class="w-16 h-16 object-contain rounded-full">
+                <div class="inline-block p-4 mb-4 rounded-full bg-gradient-to-br from-primary-light to-primary-dark shadow-lg">
+                    <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo" class="w-16 h-16 rounded-full object-contain">
                 </div>
 
                 <h1 class="text-3xl font-extrabold mb-2">Welcome Back!</h1>
@@ -105,7 +102,7 @@
                 </p>
             </div>
 
-            <!-- Right Side (Form) -->
+            <!-- Right Section -->
             <div class="p-8 md:p-10 space-y-6 bg-white/10 backdrop-blur-lg">
                 <h2 class="text-xl font-bold text-primary-dark mb-4">Sign In to Your Account</h2>
 
@@ -126,7 +123,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            <input id="email" class="w-full p-3 pl-10 border-2 border-primary-light/30 rounded-xl focus:border-primary-light focus:ring-1 focus:ring-primary-light bg-white/70" type="email" name="email" placeholder="Enter your email or username" required autofocus>
+                            <input id="email" name="email" type="email" required autofocus
+                                   class="w-full p-3 pl-10 border-2 border-primary-light/30 rounded-xl focus:border-primary-light focus:ring-1 focus:ring-primary-light bg-white/70"
+                                   placeholder="Enter your email or username">
                         </div>
                     </div>
 
@@ -138,29 +137,40 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
-                            <input id="password" class="w-full p-3 pl-10 border-2 border-primary-light/30 rounded-xl focus:border-primary-light focus:ring-1 focus:ring-primary-light bg-white/70" type="password" name="password" placeholder="Enter your password" required>
+                            <input id="password" name="password" type="password" required
+                                   class="w-full p-3 pl-10 border-2 border-primary-light/30 rounded-xl focus:border-primary-light focus:ring-1 focus:ring-primary-light bg-white/70"
+                                   placeholder="Enter your password">
                         </div>
                     </div>
 
-                    <!-- Remember + Forgot -->
+                    <!-- Remember / Forgot -->
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                         <label class="flex items-center">
-                            <input type="checkbox" class="w-4 h-4 rounded-md text-primary-dark focus:ring-primary-dark accent-primary-dark cursor-pointer">
+                            <input type="checkbox" class="w-4 h-4 rounded-md text-primary-dark focus:ring-primary-dark cursor-pointer">
                             <span class="ml-2 text-sm text-gray-800 font-semibold">Remember me</span>
                         </label>
 
                         @if (Route::has('password.request'))
-                            <a class="text-sm font-medium text-accent-brown hover:text-accent-brown/80 transition-colors" href="{{ route('password.request') }}">
+                            <a href="{{ route('password.request') }}"
+                               class="text-sm font-medium text-accent-brown hover:text-accent-brown/80 transition">
                                 Forgot password?
                             </a>
                         @endif
                     </div>
 
-                    <!-- Glass Button -->
-                    <button type="submit" class="glass-button matte-signin">
-                        Sign In
-                    </button>
+                    <!-- Sign In Button -->
+                    <button type="submit" class="glass-button">Sign In</button>
+
+                    <!-- Sign Up Link -->
+                    <div class="mt-4 text-center">
+                        <span class="text-sm text-white/80">Don't have an account?</span>
+                        <a href="{{ route('register') }}"
+                           class="text-sm font-semibold text-accent-yellow hover:text-white underline ml-1 transition">
+                            Sign Up
+                        </a>
+                    </div>
                 </form>
+
             </div>
         </div>
     </div>
@@ -169,6 +179,7 @@
     <p class="absolute bottom-4 text-center text-xs text-white/80 z-20">
         © {{ date('Y') }} South Luzon State University - Tiaong Campus
     </p>
+
 </div>
 
 </body>
