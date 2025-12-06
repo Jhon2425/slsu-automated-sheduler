@@ -77,7 +77,11 @@
 
         .glass-button {
             width: 100%;
-            padding: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 58px;
+            padding: 0 1rem;
             font-weight: 600;
             border-radius: 0.75rem;
             
@@ -91,6 +95,11 @@
             color: white;
             transition: all 0.3s ease;
             cursor: pointer;
+        }
+
+        .glass-button span {
+            line-height: 1.1;
+            text-align: center;
         }
 
         .glass-button:hover:not(:disabled) {
@@ -311,8 +320,8 @@
 
         #password,
         #password_confirmation {
-        padding-top: 1rem;      /* adjust this value */
-        padding-bottom: 1rem;   /* adjust this value */
+        padding-top: 0.85rem;      /* adjust this value */
+        padding-bottom: 0.95rem;   /* adjust this value */
         line-height: 1.4;          /* helps center dots vertically */
 }
 
