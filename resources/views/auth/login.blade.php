@@ -148,8 +148,12 @@
 
         .glass-button:hover {
             background: linear-gradient(135deg, #0C3B2E 0%, #6D9773 100%);
+<<<<<<< HEAD
             border: none;
             outline: none;
+=======
+            border-color: rgba(255, 255, 255, 0.6);
+>>>>>>> main
             transform: translateY(-3px);
             box-shadow: 0 15px 35px rgba(12, 59, 46, 0.5),
                         0 5px 15px rgba(0, 0, 0, 0.3);

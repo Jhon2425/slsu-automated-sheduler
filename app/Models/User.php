@@ -12,23 +12,12 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'role_id',
-        'program',
-        'department',
+        'name', 'email', 'password', 'role_id', 'program', 'faculty_id'
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-    ];
+    protected $casts = ['email_verified_at' => 'datetime', 'password' => 'hashed'];
 
     public function role()
     {
@@ -44,15 +33,27 @@ class User extends Authenticatable
     {
         return $this->role->name === 'faculty';
     }
-    public function enrollments()
-{
-    return $this->hasMany(FacultyEnrollment::class, 'faculty_id');
-}
 
-public function programs()
-{
-    return $this->belongsToMany(Program::class, 'faculty_enrollments', 'faculty_id', 'program_id')
-                ->withPivot('enrollment_status', 'course_subject', 'year_section', 'no_of_students', 'units', 'no_of_hours', 'action_type')
-                ->withTimestamps();
-}
+    public function enrollments()
+    {
+        return $this->hasMany(FacultyEnrollment::class, 'faculty_id');
+    }
+
+    public function programs()
+    {
+        return $this->belongsToMany(
+            Program::class,
+            'faculty_enrollments',
+            'faculty_id',
+            'program_id'
+        )->withPivot(
+            'enrollment_status', 'course_subject', 'year_section',
+            'no_of_students', 'units', 'no_of_hours', 'action_type'
+        )->withTimestamps();
+    }
+
+    public function createdProgram()
+    {
+        return $this->hasOne(Program::class, 'admin_id');
+    }
 }
