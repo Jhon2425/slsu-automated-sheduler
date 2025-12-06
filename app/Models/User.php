@@ -16,6 +16,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        'program',
+        'department',
     ];
 
     protected $hidden = [
@@ -42,4 +44,15 @@ class User extends Authenticatable
     {
         return $this->role->name === 'faculty';
     }
+    public function enrollments()
+{
+    return $this->hasMany(FacultyEnrollment::class, 'faculty_id');
+}
+
+public function programs()
+{
+    return $this->belongsToMany(Program::class, 'faculty_enrollments', 'faculty_id', 'program_id')
+                ->withPivot('enrollment_status', 'course_subject', 'year_section', 'no_of_students', 'units', 'no_of_hours', 'action_type')
+                ->withTimestamps();
+}
 }
