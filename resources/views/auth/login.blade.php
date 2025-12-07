@@ -148,12 +148,8 @@
 
         .glass-button:hover {
             background: linear-gradient(135deg, #0C3B2E 0%, #6D9773 100%);
-<<<<<<< HEAD
             border: none;
             outline: none;
-=======
-            border-color: rgba(255, 255, 255, 0.6);
->>>>>>> main
             transform: translateY(-3px);
             box-shadow: 0 15px 35px rgba(12, 59, 46, 0.5),
                         0 5px 15px rgba(0, 0, 0, 0.3);
@@ -295,7 +291,7 @@
         }
 
         .animated-link:hover::after {
-            width: 100%;
+            width: none;
         }
 
         /* Card sections animation */
@@ -347,6 +343,12 @@
         .footer-text {
             animation: fadeIn 1s ease-out 0.8s backwards;
         }
+
+        /* Don't have an account to white font color*/
+        .text-white-fix {
+            color: white;
+        }
+
     </style>
 </head>
 <body class="antialiased font-sans">
@@ -486,9 +488,9 @@
 
                     <!-- Don't have account -->
                     <div class="text-center" style="animation: fadeInUp 0.6s ease-out 0.5s backwards;">
-                        <p class="text-sm text-gray-700">
+                        <p class="text-sm text-white-fix">
                             Don't have an account? 
-                            <a href="{{ route('register') }}" class="animated-link font-semibold text-primary-dark hover:text-primary-light transition-colors ml-1">
+                            <a href="{{ route('register') }}" class="animated-link font-semibold text-[#FFBA00] transition-colors ml-1">
                                 Register
                             </a>
                         </p>

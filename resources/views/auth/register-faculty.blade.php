@@ -95,6 +95,25 @@
             color: white;
             transition: all 0.3s ease;
             cursor: pointer;
+
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Shimmer effect */
+        .glass-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .glass-button:hover::before {
+            left: 100%;
         }
 
         .glass-button span {
@@ -103,7 +122,7 @@
         }
 
         .glass-button:hover:not(:disabled) {
-           background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
+            background: linear-gradient(90deg, #0C3B2E 0%, #6D9773 100%);
             border: none;
             backdrop-filter: none;
 
@@ -257,6 +276,13 @@
             top: 52%;
         }
 
+        .input-icon svg {
+            stroke: #4EFFA5 !important;  /* bright neon green */
+            filter: drop-shadow(0 0 6px rgba(78, 255, 165, 0.9));
+            stroke-width: 2.8 !important;
+            opacity: 1 !important;
+        }
+
         .input-icon.show {
             opacity: 1;
             animation: bounceIn 0.5s;
@@ -323,14 +349,7 @@
         padding-top: 0.85rem;      /* adjust this value */
         padding-bottom: 0.95rem;   /* adjust this value */
         line-height: 1.4;          /* helps center dots vertically */
-}
-
-
-        .input-icon svg {
-            stroke: #4EFFA5 !important;  /* bright neon green */
-            filter: drop-shadow(0 0 6px rgba(78, 255, 165, 0.9));
-            stroke-width: 2.8 !important;
-            opacity: 1 !important;
+        }
     </style>
 </head>
 <body class="antialiased font-sans">
@@ -529,12 +548,9 @@
                         </div>
 
                         <!-- Links -->
-                        <div class="mt-6 space-y-2">
-                            <p class="text-sm text-gray-800 text-center">
+                        <div class="mt-12 space-y-2">
+                            <p class="text-sm text-white text-center">
                                 Already have an account? <a href="{{ route('login') }}" class="text-[#FFBA00] font-medium transition">Sign In</a>
-                            </p>
-                            <p class="text-sm text-gray-800 text-center">
-                                <a href="{{ route('welcome') }}" class="text-[#OC3B2E] font-medium transition">← Back to role selection</a>
                             </p>
                         </div>
                     </form>

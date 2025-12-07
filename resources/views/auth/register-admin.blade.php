@@ -72,7 +72,11 @@
 
         .glass-button {
             width: 100%;
-            padding: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 58px;
+            padding: 0 1rem;
             font-weight: 600;
             border-radius: 0.75rem;
             
@@ -86,6 +90,31 @@
             color: white;
             transition: all 0.3s ease;
             cursor: pointer;
+
+            position: relative;
+            overflow: hidden;
+        }
+
+
+        /* Shimmer effect */
+        .glass-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+        
+        .glass-button:hover::before {
+            left: 100%;
+        }
+
+        .glass-button span {
+            line-height: 1.1;
+            text-align: center;
         }
 
         .glass-button:hover:not(:disabled) {
@@ -106,10 +135,15 @@
         .form-input {
             width: 100%;
             padding: 0.75rem;
-            border: 2px solid rgba(109, 151, 115, 0.3);
+            border: 2px solid rgba(109, 151, 115, 0.7);
             border-radius: 1rem;
             background-color: rgba(255, 255, 255, 0.7);
             transition: all 0.3s ease;
+            color: #ffffffff;
+        }
+
+        .form-input::placeholder {
+            color: rgba(12, 59, 46, 0.6);  /* soft green-gray */
         }
 
         .form-input:focus {
@@ -120,8 +154,15 @@
         }
 
         .form-input.filled {
-            border-color: #6D9773;
-            background-color: rgba(109, 151, 115, 0.1);
+            border-color:  #FFBA00;
+            background-color: rgba(78, 255, 165, 0.08);
+            box-shadow: 0 0 12px #FFBA00;
+        }
+
+        .form-input.error {
+            border-color: #ef4444;
+            box-shadow: none;
+            background-color: rgba(255, 0, 0, 0.08);
         }
 
         .progress-bar {
@@ -196,15 +237,32 @@
             position: relative;
         }
 
-        .input-icon {
+         .input-icon {
             position: absolute;
             right: 12px;
-            top: 50%;
+            top: 68%;
             transform: translateY(-50%);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: all 0.3s ease;
         }
 
+        #name + .input-icon,
+        #email + .input-icon,
+        #password + .input-icon,
+        #password_confirmation + .input-icon {
+            top: 68%;
+        }
+
+        #faculty_id + .input-icon {
+            top: 52%;
+        }
+
+        .input-icon svg {
+            stroke: #4EFFA5 !important;  /* bright neon green */
+            filter: drop-shadow(0 0 6px rgba(78, 255, 165, 0.9));
+            stroke-width: 2.8 !important;
+            opacity: 1 !important;
+        }
         .input-icon.show {
             opacity: 1;
         }
@@ -274,7 +332,7 @@
                 </div>
 
                 <!-- Right Side (Form) -->
-                <div class="p-8 md:p-10 bg-white/10 backdrop-blur-lg rounded-r-2xl relative overflow-hidden">
+                <div class="p-8 md:p-10 bg-white/10 backdrop-blur-lg rounded-r-2xl relative overflow-hidden min-h-[600px] flex flex-col justify-between">
                     @if ($errors->any())
                         <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-800 rounded-lg text-sm">
                             <ul class="list-disc list-inside">
@@ -399,14 +457,15 @@
                         </div>
 
                         <!-- Links -->
-                        <div class="mt-6 space-y-2">
-                            <p class="text-sm text-gray-800 text-center">
-                                Already have an account? <a href="{{ route('login') }}" class="text-accent-brown font-medium hover:text-accent-brown/80 transition">Sign In</a>
-                            </p>
-                            <p class="text-sm text-gray-800 text-center">
-                                <a href="{{ route('welcome') }}" class="text-primary-light font-medium hover:text-primary-light/80 transition">← Back to role selection</a>
+                        <div class="mt-12 space-y-2">
+                            <p class="text-sm text-white text-center">
+                                Already have an account? <a href="{{ route('login') }}" class="text-[#FFBA00] font-medium transition">Sign In</a>
                             </p>
                         </div>
+                    </form>
+                </div>
+            </div>
+        </div>
                     </form>
                 </div>
             </div>
