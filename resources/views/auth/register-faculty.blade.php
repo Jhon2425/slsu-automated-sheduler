@@ -539,9 +539,6 @@
                             </button>
                             <button type="submit" id="submit-btn" class="glass-button hidden">
                                 <span class="flex items-center justify-center gap-2 relative z-10">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
                                     Complete Registration
                                 </span>
                             </button>
