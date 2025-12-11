@@ -3,10 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\ProgramController;
 use App\Http\Controllers\Admin\SubjectController;
+use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Faculty\FacultyDashboardController;
 use App\Http\Controllers\ProfileController;
 
@@ -40,11 +40,22 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-        // Faculty CRUD
-        Route::resource('faculties', FacultyController::class);
+        // Faculty Management
+        Route::get('/faculty', [FacultyController::class, 'index'])->name('faculty.index');
+        
+        // Faculty Subject Assignment (AJAX endpoints)
+        Route::get('/faculty/{user}/subjects', [FacultyController::class, 'getSubjects'])->name('faculty.subjects');
+        Route::post('/faculty/{user}/assign-subjects', [FacultyController::class, 'assignSubjects'])->name('faculty.assign-subjects');
 
-        // Subject Management
-        Route::resource('subjects', SubjectController::class)->except(['show', 'create', 'edit']);
+        // Subject Management (both route names for compatibility)
+        Route::resource('subjects', SubjectController::class)->except(['show']);
+        // Alias routes for backward compatibility
+        Route::get('/manage-subjects', [SubjectController::class, 'index'])->name('manage-subjects.index');
+        Route::post('/manage-subjects', [SubjectController::class, 'store'])->name('manage-subjects.store');
+        Route::get('/manage-subjects/create', [SubjectController::class, 'create'])->name('manage-subjects.create');
+        Route::put('/manage-subjects/{subject}', [SubjectController::class, 'update'])->name('manage-subjects.update');
+        Route::delete('/manage-subjects/{subject}', [SubjectController::class, 'destroy'])->name('manage-subjects.destroy');
+        Route::get('/manage-subjects/{subject}/edit', [SubjectController::class, 'edit'])->name('manage-subjects.edit');
 
         // Program management
         Route::get('programs', [ProgramController::class, 'index'])->name('programs.index');

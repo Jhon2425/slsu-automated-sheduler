@@ -15,7 +15,7 @@
                     <h1 class="text-4xl font-bold text-white flex items-center">
                         <i class="fas fa-user-graduate mr-3 floating"></i>Faculty Management
                     </h1>
-                    <p class="mt-2 text-white/90 text-lg">Monitor faculty enrollments and manage schedules</p>
+                    <p class="mt-2 text-white/90 text-lg">Monitor faculty enrollments and assign subjects</p>
                 </div>
 
                 <!-- Quick Stats Mini Cards -->
@@ -149,7 +149,7 @@
                                 </div>
                                 Faculty Members
                             </h3>
-                            <p class="text-sm text-white/80 mt-1">Manage enrollments and assign schedules</p>
+                            <p class="text-sm text-white/80 mt-1">Manage enrollments and assign subjects</p>
                         </div>
                         <div class="text-white/70 text-sm">
                             <i class="fas fa-users mr-2"></i>
@@ -185,11 +185,14 @@
                             </thead>
                             <tbody class="divide-y divide-white/10">
                                 @foreach($faculties as $index => $faculty)
-                                    <tr class="table-row hover:bg-white/5 transition-all duration-300" style="animation: tableRowFadeIn 0.5s ease-out {{ $index * 0.05 }}s both;">
+                                    <tr class="table-row hover:bg-white/5 transition-all duration-300 {{ $faculty->active_count > 0 ? 'cursor-pointer' : '' }}" 
+                                        style="animation: tableRowFadeIn 0.5s ease-out {{ $index * 0.05 }}s both;"
+                                        @if($faculty->active_count > 0)
+                                            onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '{{ $faculty->faculty_id ?? '#'.$faculty->id }}')"
+                                        @endif>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="text-sm font-bold text-white/90 px-3 py-1 rounded-full inline-flex items-center" style="background: rgba(109, 151, 115, 0.2);">
                                                 <i class="fas fa-id-badge mr-2 text-xs"></i> 
-                                                {{-- show the faculty_id saved on users table; fallback to numeric id --}}
                                                 {{ $faculty->faculty_id ?? '#'.$faculty->id }}
                                             </span>
                                         </td>
@@ -236,7 +239,7 @@
                                                 </span>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4">
+                                        <td class="px-6 py-4" onclick="event.stopPropagation()">
                                             @if($faculty->enrollments->where('enrollment_status', 'pending')->count() > 0)
                                                 <div class="flex justify-center gap-2 flex-wrap">
                                                     @foreach($faculty->enrollments->where('enrollment_status', 'pending') as $enrollment)
@@ -301,6 +304,59 @@
         </div>
     </div>
 
+    <!-- Subject Assignment Modal -->
+    <div id="subjectModal" class="modal-overlay" style="display: none;" onclick="closeSubjectModal()">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center">
+                        <i class="fas fa-book mr-3"></i>Assign Subjects
+                    </h2>
+                    <p class="text-white/70 text-sm mt-1">
+                        <span id="modalFacultyName"></span> (<span id="modalFacultyId"></span>)
+                    </p>
+                </div>
+                <button onclick="closeSubjectModal()" class="text-white/70 hover:text-white transition-colors">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div id="subjectLoading" class="text-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-white/70 mb-4"></i>
+                    <p class="text-white/70">Loading subjects...</p>
+                </div>
+
+                <div id="subjectContent" style="display: none;">
+                    <form id="assignSubjectsForm" method="POST">
+                        @csrf
+                        <div id="subjectsList" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                            <!-- Subjects will be loaded here -->
+                        </div>
+
+                        <div class="mt-6 flex justify-end gap-3">
+                            <button type="button" onclick="closeSubjectModal()" 
+                                    class="px-6 py-3 rounded-xl text-white font-medium transition-all duration-300"
+                                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);">
+                                <i class="fas fa-times mr-2"></i>Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="px-6 py-3 rounded-xl text-white font-medium transition-all duration-300 shadow-lg hover:shadow-xl"
+                                    style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
+                                <i class="fas fa-check mr-2"></i>Assign Selected Subjects
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="subjectError" style="display: none;" class="text-center py-12">
+                    <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
+                    <p class="text-white/70">Failed to load subjects. Please try again.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <style>
         /* Glass Card Effect */
         .glass-card {
@@ -334,6 +390,91 @@
         .glass-item:hover {
             background: rgba(255, 255, 255, 0.15);
             border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .modal-header {
+            padding: 2rem;
+            background: rgba(109, 151, 115, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        /* Subject Item Styles */
+        .subject-item {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .subject-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(109, 151, 115, 0.5);
+            transform: translateX(5px);
+        }
+
+        .subject-item input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+            accent-color: #6D9773;
+        }
+
+        /* Scrollbar Styles */
+        #subjectsList::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #subjectsList::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        #subjectsList::-webkit-scrollbar-thumb {
+            background: rgba(109, 151, 115, 0.5);
+            border-radius: 4px;
+        }
+
+        #subjectsList::-webkit-scrollbar-thumb:hover {
+            background: rgba(109, 151, 115, 0.7);
         }
 
         /* Stat Card Animation */
@@ -381,6 +522,17 @@
         @keyframes progressSlide {
             from { width: 0; }
             to { width: 70%; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Icon Container Animation */
@@ -609,4 +761,159 @@
             animation: bounceSlow 2s ease-in-out infinite;
         }
     </style>
+
+    <script>
+        let currentFacultyId = null;
+
+        function openSubjectModal(facultyId, facultyName, facultyIdLabel) {
+            currentFacultyId = facultyId;
+            document.getElementById('modalFacultyName').textContent = facultyName;
+            document.getElementById('modalFacultyId').textContent = facultyIdLabel;
+            document.getElementById('subjectModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Reset states
+            document.getElementById('subjectLoading').style.display = 'block';
+            document.getElementById('subjectContent').style.display = 'none';
+            document.getElementById('subjectError').style.display = 'none';
+            
+            // Fetch subjects
+            fetchSubjects(facultyId);
+        }
+
+        function closeSubjectModal() {
+            document.getElementById('subjectModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            currentFacultyId = null;
+        }
+
+        async function fetchSubjects(facultyId) {
+            try {
+                console.log('Fetching subjects for faculty:', facultyId);
+                
+                const response = await fetch(`/admin/faculty/${facultyId}/subjects`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received data:', data);
+                
+                if (data.success === false) {
+                    throw new Error(data.message || 'Failed to fetch subjects');
+                }
+                
+                displaySubjects(data.subjects, data.assignedSubjects || [], facultyId);
+                
+            } catch (error) {
+                console.error('Error fetching subjects:', error);
+                document.getElementById('subjectLoading').style.display = 'none';
+                document.getElementById('subjectError').style.display = 'block';
+                document.getElementById('subjectError').querySelector('p').textContent = 
+                    'Error: ' + error.message;
+            }
+        }
+
+        function displaySubjects(subjects, assignedSubjects, facultyId) {
+            const subjectsList = document.getElementById('subjectsList');
+            const form = document.getElementById('assignSubjectsForm');
+            
+            form.action = `/admin/faculty/${facultyId}/assign-subjects`;
+            
+            if (subjects.length === 0) {
+                subjectsList.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-book text-4xl text-white/30 mb-3"></i>
+                        <p class="text-white/70">No subjects available</p>
+                    </div>
+                `;
+            } else {
+                subjectsList.innerHTML = subjects.map(subject => {
+                    const isAssigned = assignedSubjects.includes(subject.id);
+                    return `
+                        <label class="subject-item flex items-center gap-4 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="subjects[]" 
+                                   value="${subject.id}"
+                                   ${isAssigned ? 'checked' : ''}
+                                   class="flex-shrink-0">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-white font-bold">${subject.subject_name}</span>
+                                    <span class="text-xs px-2 py-1 rounded-full" 
+                                          style="background: rgba(109, 151, 115, 0.2); color: #a8d5b0;">
+                                        ${subject.units} units
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-3 text-xs text-white/60">
+                                    <span><i class="fas fa-code mr-1"></i>${subject.course_code}</span>
+                                    <span><i class="fas fa-calendar mr-1"></i>${subject.semester}</span>
+                                    <span><i class="fas fa-layer-group mr-1"></i>Year ${subject.year_level}</span>
+                                </div>
+                            </div>
+                        </label>
+                    `;
+                }).join('');
+            }
+            
+            document.getElementById('subjectLoading').style.display = 'none';
+            document.getElementById('subjectContent').style.display = 'block';
+        }
+
+        // Handle form submission
+        document.getElementById('assignSubjectsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Assigning...';
+            
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    closeSubjectModal();
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to assign subjects');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while assigning subjects');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('subjectModal').style.display === 'flex') {
+                closeSubjectModal();
+            }
+        });
+    </script>
 </x-app-layout>
+       

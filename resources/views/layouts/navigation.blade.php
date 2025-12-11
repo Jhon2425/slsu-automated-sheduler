@@ -24,12 +24,12 @@
 
         <!-- Center: Tabs (desktop) -->
         <div class="hidden md:flex md:items-center md:space-x-2 flex-1 justify-center relative">
-            <a href="{{ route('admin.faculties.index') }}"
+            <a href="{{ route('admin.subjects.index') }}"
                class="relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group
-                      {{ request()->routeIs('admin.faculties.*') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white' }}">
-                <span class="relative z-10">Manage Faculties</span>
+                      {{ request()->routeIs('admin.subjects.*') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white' }}">
+                <span class="relative z-10">Manage Subjects</span>
                 <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                @if(request()->routeIs('admin.faculties.*'))
+                @if(request()->routeIs('admin.subjects.*'))
                     <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[#fae209]"></div>
                 @endif
             </a>
@@ -117,7 +117,7 @@
                                 </svg>
                                 <span>Admin Dashboard</span>
                             </a>
-                            <a href="{{ route('admin.faculties.index') }}" class="px-4 py-2.5 text-sm text-white hover:bg-[#6D9773]/20 rounded-lg transition-all duration-200 hover:translate-x-1 flex items-center space-x-2">
+                            <a href="{{ route('admin.subjects.index') }}" class="px-4 py-2.5 text-sm text-white hover:bg-[#6D9773]/20 rounded-lg transition-all duration-200 hover:translate-x-1 flex items-center space-x-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                                 </svg>
@@ -192,11 +192,11 @@
          x-transition:leave-end="opacity-0 -translate-y-4"
          class="md:hidden mt-4">
         <div class="px-3 pb-3 space-y-2 bg-white/5 rounded-xl backdrop-blur-sm">
-            <a href="{{ route('admin.faculties.index') }}"
+            <a href="{{ route('admin.subjects.index') }}"
                class="relative block px-4 py-3 rounded-lg text-base font-medium overflow-hidden group
-                      {{ request()->routeIs('admin.faculties.*') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white hover:bg-white/5' }}">
-                <span class="relative z-10">Manage Faculties</span>
-                @if(request()->routeIs('admin.faculties.*'))
+                      {{ request()->routeIs('admin.subjects.*') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white hover:bg-white/5' }}">
+                <span class="relative z-10">Manage Subjects</span>
+                @if(request()->routeIs('admin.subjects.*'))
                     <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#fae209]"></div>
                 @endif
             </a>
