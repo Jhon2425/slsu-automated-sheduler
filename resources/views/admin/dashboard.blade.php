@@ -54,15 +54,15 @@
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <!-- Total Faculties Card -->
+                <!-- Total Accepted Faculties Card -->
                 <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.1s;">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Total Faculties</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $totalFaculties ?? 0 }}</p>
+                            <p class="text-white/80 text-sm font-medium mb-2">Accepted Faculties</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $acceptedFaculties ?? 0 }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-arrow-up text-green-400 mr-1"></i>
-                                Registered members
+                                <i class="fas fa-check-circle text-green-400 mr-1"></i>
+                                Active members
                             </p>
                         </div>
                         <div class="icon-container bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-4 shadow-lg">
@@ -148,63 +148,73 @@
             <!-- Quick Actions Section -->
             <div class="glass-card rounded-2xl shadow-xl p-8 mb-8 animate-fade-in-up" style="animation-delay: 0.5s;">
                 <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
-                    <div class="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl p-2 mr-3">
+                    <div class="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl p-2 mr-3 animate-pulse-glow">
                         <i class="fas fa-bolt text-white"></i>
                     </div>
                     Quick Actions
                 </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <!-- Manage Programs -->
                     <a href="{{ route('admin.programs.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group">
-                        <div class="icon-wrapper bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
+                        <div class="icon-wrapper bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-graduation-cap text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Manage Programs</p>
-                        <p class="text-xs text-white/70">View programs and manage enrollments</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">Manage Programs</p>
+                            <p class="text-xs text-white/70 leading-relaxed">View programs and manage enrollments</p>
+                        </div>
                     </a>
 
-                    <!-- Manage Faculties -->
-                    <a href="{{ route('admin.faculties.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group">
-                        <div class="icon-wrapper bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-                            <i class="fas fa-users text-white text-3xl"></i>
+                    <!-- Manage Subjects -->
+                    <a href="{{ route('admin.subjects.index') }}" 
+                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
+                        <div class="icon-wrapper bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-book text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Manage Faculties</p>
-                        <p class="text-xs text-white/70">Add, edit, or remove members</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">Manage Subjects</p>
+                            <p class="text-xs text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
+                        </div>
                     </a>
 
                     <!-- View Schedules -->
                     <a href="{{ route('admin.schedules.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group">
-                        <div class="icon-wrapper bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
+                        <div class="icon-wrapper bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-calendar text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">View Schedules</p>
-                        <p class="text-xs text-white/70">Browse all schedules</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">View Schedules</p>
+                            <p class="text-xs text-white/70 leading-relaxed">Browse all schedules</p>
+                        </div>
                     </a>
 
                     <!-- Generate Schedule -->
-                    <form method="POST" action="{{ route('admin.schedules.generate') }}" class="m-0">
+                    <form method="POST" action="{{ route('admin.schedules.generate') }}" class="m-0 h-full">
                         @csrf
                         <button type="submit" 
-                                class="w-full action-card glass-card rounded-xl p-6 text-center group">
-                            <div class="icon-wrapper bg-gradient-to-br from-red-400 to-red-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                                class="w-full h-full action-card glass-card rounded-xl p-6 text-center group flex flex-col min-h-[220px]">
+                            <div class="icon-wrapper bg-gradient-to-br from-red-400 to-red-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
                                 <i class="fas fa-magic text-white text-3xl"></i>
                             </div>
-                            <p class="font-bold text-white text-lg mb-2">Generate Schedule</p>
-                            <p class="text-xs text-white/70">Auto-generate schedules</p>
+                            <div class="flex-grow flex flex-col justify-center">
+                                <p class="font-bold text-white text-lg mb-2">Generate Schedule</p>
+                                <p class="text-xs text-white/70 leading-relaxed">Auto-generate schedules</p>
+                            </div>
                         </button>
                     </form>
 
                     <!-- Download Reports -->
                     <a href="{{ route('admin.schedules.download') }}" 
-                       class="action-card glass-card rounded-xl p-6 text-center group">
-                        <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                       class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
+                        <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-file-pdf text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Download Report</p>
-                        <p class="text-xs text-white/70">Export as PDF</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">Download Report</p>
+                            <p class="text-xs text-white/70 leading-relaxed">Export as PDF</p>
+                        </div>
                     </a>
                 </div>
             </div>
@@ -248,7 +258,6 @@
                         <div class="text-center py-8">
                             <i class="fas fa-inbox text-white/30 text-5xl mb-3"></i>
                             <p class="text-white/70 mb-4">No programs created yet</p>
-                            <!-- Removed "Create First Program" link per request -->
                         </div>
                     @endif
                 </div>
@@ -393,6 +402,7 @@
         .glass-item:hover {
             background: rgba(255, 255, 255, 0.15);
             border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
         }
 
         /* Stat Card Animation */
@@ -451,22 +461,57 @@
             transform: rotate(10deg) scale(1.1);
         }
 
-        /* Action Card */
+        /* Action Card - Equal Sizes with Flexbox */
         .action-card {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .action-card:hover::before {
+            width: 300px;
+            height: 300px;
         }
 
         .action-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
         .action-card .icon-wrapper {
-            transition: all 0.4s ease;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         }
 
         .action-card:hover .icon-wrapper {
-            transform: rotateY(360deg) scale(1.1);
+            transform: rotateY(360deg) scale(1.15);
+        }
+
+        /* Pulse Glow Animation */
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 30px rgba(251, 191, 36, 0.4);
+            }
+        }
+
+        .animate-pulse-glow {
+            animation: pulseGlow 2s ease-in-out infinite;
         }
 
         /* Hover Lift */
@@ -485,7 +530,7 @@
         }
 
         .hover-slide:hover {
-            transform: translateX(5px);
+            transform: translateX(8px);
             box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
         }
 
@@ -659,6 +704,13 @@
         .animate-bounce-slow {
             animation: bounceSlow 2s ease-in-out infinite;
         }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .action-card {
+                min-h: 200px;
+            }
+        }
     </style>
 
     <script>
@@ -703,6 +755,12 @@
                 setTimeout(() => {
                     card.style.opacity = '1';
                 }, index * 100);
+            });
+
+            // Add stagger animation to action cards
+            const actionCards = document.querySelectorAll('.action-card');
+            actionCards.forEach((card, index) => {
+                card.style.animationDelay = `${0.5 + (index * 0.1)}s`;
             });
         });
     </script>

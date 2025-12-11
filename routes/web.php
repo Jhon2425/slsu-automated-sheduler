@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\ProgramController;
+use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Faculty\FacultyDashboardController;
 use App\Http\Controllers\ProfileController;
 
@@ -41,6 +42,9 @@ Route::middleware('auth')->group(function () {
 
         // Faculty CRUD
         Route::resource('faculties', FacultyController::class);
+
+        // Subject Management
+        Route::resource('subjects', SubjectController::class)->except(['show', 'create', 'edit']);
 
         // Program management
         Route::get('programs', [ProgramController::class, 'index'])->name('programs.index');
