@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Faculty;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Program;
-use App\Models\FacultyEnrollment; // table to store faculty enrollments
+use App\Models\FacultyEnrollment;
 use Illuminate\Support\Facades\Auth;
 
 class FacultyDashboardController extends Controller
@@ -13,6 +13,7 @@ class FacultyDashboardController extends Controller
     public function index()
     {
         $facultyId = Auth::id();
+        $user = Auth::user();
 
         // Get IDs of programs the faculty is already enrolled in
         $enrolledProgramIds = FacultyEnrollment::where('faculty_id', $facultyId)
@@ -30,7 +31,10 @@ class FacultyDashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('faculty.dashboard', compact('availablePrograms', 'enrolledPrograms'));
+        // Get assigned subjects for this faculty member
+        $assignedSubjects = $user->subjects()->with('program')->get();
+
+        return view('faculty.dashboard', compact('availablePrograms', 'enrolledPrograms', 'assignedSubjects'));
     }
 
     /**
@@ -72,5 +76,54 @@ class FacultyDashboardController extends Controller
         $enrollment->delete();
 
         return redirect()->back()->with('success', 'Successfully unenrolled from the program.');
+    }
+
+    /**
+     * View schedule for a specific enrollment
+     */
+    public function viewSchedule($enrollmentId)
+    {
+        $facultyId = Auth::id();
+
+        $enrollment = FacultyEnrollment::where('id', $enrollmentId)
+            ->where('faculty_id', $facultyId)
+            ->with(['program', 'schedules'])
+            ->firstOrFail();
+
+        return view('faculty.schedule', compact('enrollment'));
+    }
+
+    /**
+     * Download schedule for a specific enrollment
+     */
+    public function downloadSchedule($enrollmentId)
+    {
+        $facultyId = Auth::id();
+
+        $enrollment = FacultyEnrollment::where('id', $enrollmentId)
+            ->where('faculty_id', $facultyId)
+            ->with(['program', 'schedules'])
+            ->firstOrFail();
+
+        // Generate PDF logic here
+        $pdf = \PDF::loadView('faculty.schedule-pdf', compact('enrollment'));
+        
+        return $pdf->download('schedule-' . $enrollment->program->code . '.pdf');
+    }
+
+    /**
+     * Download all schedules (legacy)
+     */
+    public function downloadPDF()
+    {
+        $facultyId = Auth::id();
+        
+        $enrolledPrograms = FacultyEnrollment::where('faculty_id', $facultyId)
+            ->with(['program', 'schedules'])
+            ->get();
+
+        $pdf = \PDF::loadView('faculty.all-schedules-pdf', compact('enrolledPrograms'));
+        
+        return $pdf->download('my-schedules.pdf');
     }
 }
