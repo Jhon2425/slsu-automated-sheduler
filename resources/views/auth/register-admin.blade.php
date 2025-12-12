@@ -517,7 +517,7 @@
             </div>
         </div>
 
-        <p class="absolute bottom-4 text-center text-xs text-white/80 z-20">
+        <p class="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-xs text-white/80 z-20">
             © {{ date('Y') }} South Luzon State University - Tiaong Campus
         </p>
     </div>
