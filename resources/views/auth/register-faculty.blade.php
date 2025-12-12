@@ -514,9 +514,9 @@
                                     <label for="password_confirmation" class="block text-sm font-medium text-primary-dark mb-2">Confirm Password</label>
                                 
                                     <div class="relative">
-                                        <input id="password" 
+                                        <input id="password_confirmation" 
                                             type="password" 
-                                            name="password" 
+                                            name="password_confirmation" 
                                             placeholder="Minimum 8 characters"
                                             class="form-input pr-12"
                                             required>
