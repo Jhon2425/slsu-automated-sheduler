@@ -55,11 +55,10 @@
 
         .login-card {
             background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(12px);
-            border-radius: 20px;
+            border-radius: 24px;
             box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
-            animation: fadeIn 0.6s ease-out;
         }
 
         .step-content {
@@ -285,17 +284,17 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-    </style>
+</style>
 </head>
 <body class="antialiased font-sans">
     <div class="relative min-h-screen flex items-center justify-center overflow-hidden">
         <img src="{{ asset('automated.png') }}" alt="Background" class="absolute inset-0 w-full h-full object-cover z-0">
         <div class="absolute inset-0 bg-gradient-to-br from-primary-dark/70 to-primary-light/60 z-10"></div>
 
-        <div class="login-card relative z-20 w-full max-w-md lg:max-w-4xl">
+        <div class="login-card relative z-20 w-full max-w-md lg:max-w-3xl">
             <div class="grid lg:grid-cols-2">
                 <!-- Left Side -->
-                <div class="p-8 md:p-10 text-center bg-primary-dark/70 text-white flex flex-col justify-center items-center rounded-l-2xl">
+                <div class="p-8 md:p-10 text-center bg-primary-dark/70 text-white flex flex-col justify-center items-center rounded-l-3xl">
                     <div class="inline-block p-4 mb-4 rounded-full bg-gradient-to-br from-primary-light to-primary-dark shadow-lg floating">
                         <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo" class="w-16 h-16 object-contain rounded-full">
                     </div>
@@ -332,19 +331,20 @@
                 </div>
 
                 <!-- Right Side (Form) -->
-                <div class="p-8 md:p-10 bg-white/10 backdrop-blur-lg rounded-r-2xl relative overflow-hidden min-h-[600px] flex flex-col justify-between">
-                    @if ($errors->any())
-                        <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-800 rounded-lg text-sm">
-                            <ul class="list-disc list-inside">
+                <div class="p-8 md:p-10 bg-white/10 backdrop-blur-lg rounded-r-3xl relative overflow-hidden min-h-[600px] flex flex-col justify-between">
+
+                    <form method="POST" action="{{ route('register.admin') }}" id="registration-form">
+                        @csrf
+
+                        @if ($errors->any())
+                        <div class="mb-2 p-3 bg-red-100 border border-red-400 text-red-800 rounded-lg text-sm">
+                            <ul class="list-disc list-inside m-0 p-0">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
                                 @endforeach
                             </ul>
                         </div>
-                    @endif
-
-                    <form method="POST" action="{{ route('register.admin') }}" id="registration-form">
-                        @csrf
+                        @endif
 
                         <!-- Step 1: Personal Information -->
                         <div class="step-content" id="step-1">
@@ -398,7 +398,30 @@
                             <div class="space-y-5">
                                 <div class="input-wrapper">
                                     <label for="password" class="block text-sm font-medium text-primary-dark mb-2">Password</label>
-                                    <input id="password" class="form-input" type="password" name="password" placeholder="Minimum 8 characters" required>
+
+                                    <div class="relative">
+                                        <input id="password" 
+                                            type="password" 
+                                            name="password" 
+                                            placeholder="Minimum 8 characters"
+                                            class="form-input pr-12"
+                                            required>
+
+                                        <!-- Toggle Icon -->
+                                        <button type="button" 
+                                                class="absolute right-5 top-1/2 -translate-y-1/2 flex items-center p-2 cursor-pointer text-primary-dark/80 hover:text-primary-dark"
+                                                onclick="togglePassword('password', this)">
+                                            <!-- Eye Icon -->
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                                                    -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </button>
+                                    </div>                                    
+                                    
                                     <div class="input-icon">
                                         <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -408,7 +431,30 @@
 
                                 <div class="input-wrapper">
                                     <label for="password_confirmation" class="block text-sm font-medium text-primary-dark mb-2">Confirm Password</label>
-                                    <input id="password_confirmation" class="form-input" type="password" name="password_confirmation" placeholder="Re-enter your password" required>
+                            
+                                    <div class="relative">
+                                        <input id="password_confirmation" 
+                                            type="password" 
+                                            name="password_confirmation" 
+                                            placeholder="Re-enter your password"
+                                            class="form-input pr-12"
+                                            required>
+
+                                        <!-- Toggle Icon -->
+                                        <button type="button" 
+                                                class="absolute right-5 top-1/2 -translate-y-1/2 flex items-center p-2 cursor-pointer text-primary-dark/80 hover:text-primary-dark"
+                                                onclick="togglePassword('password_confirmation', this)">
+                                            <!-- Eye Icon -->
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                                                    -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </button>
+                                    </div>                                    
+                                    
                                     <div class="input-icon">
                                         <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -471,7 +517,7 @@
             </div>
         </div>
 
-        <p class="absolute bottom-4 text-center text-xs text-white/80 z-20">
+        <p class="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-xs text-white/80 z-20">
             © {{ date('Y') }} South Luzon State University - Tiaong Campus
         </p>
     </div>
@@ -689,6 +735,29 @@
 
         // Initialize
         showStep(currentStep);
+
+        function togglePassword(id, btn) {
+        const input = document.getElementById(id);
+        const isPassword = input.type === "password";
+
+        input.type = isPassword ? "text" : "password";
+
+        // Swap icon when toggling
+        btn.innerHTML = isPassword
+            ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                        .563 -1.79 1.63-3.35 3.042-4.542M6.18 6.18A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 
+                        9.542 7-.46 1.466-1.26 2.788-2.304 3.85M3 3l18 18"/>
+            </svg>`
+            : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                        -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>`;
+        }    
     </script>
 </body>
 </html>

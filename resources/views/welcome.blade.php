@@ -754,10 +754,13 @@
         }
 
         .close-btn:hover {
-            background: rgba(255,255,255,0.15);
-            transform: translateY(-3px) scale(1.05);
-            border-color: rgba(255,255,255,0.4);
-            box-shadow: 0 8px 24px rgba(255,255,255,0.2);
+            background: linear-gradient(135deg, #FFBA00, #FFD700);
+            color: #0C3B2E !important;
+            transform: translateY(-6px) scale(1.05);
+            border-color: #FFBA00; 
+            box-shadow: 0 16px 40px rgba(255,186,0,0.5),
+            0 0 0 1px rgba(255,186,0,0.5),
+            inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .close-btn:active {
