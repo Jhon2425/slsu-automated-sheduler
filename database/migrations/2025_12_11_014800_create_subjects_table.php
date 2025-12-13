@@ -21,6 +21,10 @@ return new class extends Migration
             $table->decimal('units', 3, 1);
             $table->enum('semester', ['1st Semester', '2nd Semester', 'Summer']);
             $table->tinyInteger('year_level');
+
+            // ✅ ADDED ENROLLED STUDENT FIELD
+            $table->integer('enrolled_student')->default(0);
+
             $table->timestamps();
 
             // Indexes for better query performance

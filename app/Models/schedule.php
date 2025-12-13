@@ -10,53 +10,43 @@ class Schedule extends Model
     use HasFactory;
 
     protected $fillable = [
-        'faculty_enrollment_id',
-        'classroom_id',
+        'faculty_id',
+        'subject_id',
+        'room_id',
+        'program_id',
         'day',
         'start_time',
         'end_time',
-        'schedule_date',
+        'class_type',
+        'semester',
+        'academic_year',
+        'type',
+        'is_confirmed',
     ];
 
-    protected $casts = [
-        'schedule_date' => 'date',
-    ];
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
 
-    // Get the faculty enrollment
-    public function facultyEnrollment()
-    {
-        return $this->belongsTo(FacultyEnrollment::class);
-    }
-
-    // Get the classroom
-    public function classroom()
-    {
-        return $this->belongsTo(Classroom::class);
-    }
-
-    // Get the faculty directly through enrollment
     public function faculty()
     {
-        return $this->hasOneThrough(
-            User::class,
-            FacultyEnrollment::class,
-            'id',
-            'id',
-            'faculty_enrollment_id',
-            'faculty_id'
-        );
+        return $this->belongsTo(User::class, 'faculty_id');
     }
 
-    // Get the program directly through enrollment
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(Room::class, 'room_id');
+    }
+
     public function program()
     {
-        return $this->hasOneThrough(
-            Program::class,
-            FacultyEnrollment::class,
-            'id',
-            'id',
-            'faculty_enrollment_id',
-            'program_id'
-        );
+        return $this->belongsTo(Program::class, 'program_id');
     }
 }

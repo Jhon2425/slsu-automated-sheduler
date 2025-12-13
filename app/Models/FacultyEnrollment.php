@@ -38,6 +38,15 @@ class FacultyEnrollment extends Model
     }
 
     /**
+     * The subject for this enrollment
+     * course_subject column contains the subject_id
+     */
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class, 'course_subject');
+    }
+
+    /**
      * The schedules assigned to this enrollment
      */
     public function schedules()

@@ -202,6 +202,13 @@
                                 <th class="px-6 py-5 text-left text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:bg-white/20 group" 
                                     style="color: #f6de0cf2;">
                                     <div class="flex items-center">
+                                        <i class="fas fa-users mr-2 group-hover:scale-110 transition-transform"></i>
+                                        Students
+                                    </div>
+                                </th>
+                                <th class="px-6 py-5 text-left text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:bg-white/20 group" 
+                                    style="color: #f6de0cf2;">
+                                    <div class="flex items-center">
                                         <i class="fas fa-calendar-alt mr-2 group-hover:scale-110 transition-transform"></i>
                                         Semester
                                     </div>
@@ -239,6 +246,7 @@
                                         'course_code' => $subject->course_code,
                                         'subject_name' => $subject->subject_name,
                                         'units' => $subject->units,
+                                        'students_enrolled' => $subject->students_enrolled ?? 0,
                                         'semester' => $subject->semester,
                                         'year_level' => $subject->year_level,
                                         'program_id' => $subject->program_id,
@@ -271,6 +279,14 @@
                                                      group-hover/row:scale-110 group-hover/row:rotate-6 group-hover/row:shadow-lg group-hover/row:shadow-yellow-500/30
                                                      transition-all duration-300 backdrop-blur-sm">
                                             {{ $subject->units }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-5 text-white">
+                                        <span class="inline-flex items-center px-4 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-cyan-500/30 to-teal-500/30 
+                                                     text-cyan-200 border border-cyan-400/40
+                                                     group-hover/row:from-cyan-500/40 group-hover/row:to-teal-500/40 group-hover/row:shadow-lg group-hover/row:shadow-cyan-500/30
+                                                     transition-all duration-300 backdrop-blur-sm">
+                                            <i class="fas fa-user-friends mr-2"></i>{{ $subject->enrolled_student ?? 0 }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-5 text-white">
@@ -317,7 +333,7 @@
 
                             @empty
                                 <tr class="animate-fade-in">
-                                    <td colspan="7" class="px-6 py-20 text-center text-white/60">
+                                    <td colspan="8" class="px-6 py-20 text-center text-white/60">
                                         <div class="flex flex-col items-center space-y-6">
                                             <div class="relative">
                                                 <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center backdrop-blur-sm border border-white/20">

@@ -88,6 +88,7 @@ class FacultyController extends Controller
                         'units' => $subject->units,
                         'semester' => $subject->semester,
                         'year_level' => $subject->year_level,
+                        'enrolled_student' => $subject->enrolled_student,
                     ];
                 });
 

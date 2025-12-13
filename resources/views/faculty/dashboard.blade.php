@@ -502,6 +502,12 @@
                                             </div>
                                             <span class="text-sm font-medium">{{ $subject->units }} Units</span>
                                         </div>
+                                         <div class="flex items-center text-white group/item">
+                                            <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center mr-3 group-hover/item:scale-110 transition-transform duration-300">
+                                                <i class="fas fa-person text-purple-400 text-sm"></i>
+                                            </div>
+                                            <span class="text-sm font-medium">{{ $subject->enrolled_student }} Students Enrolled</span>
+                                        </div>
                                         @if($subject->description)
                                             <div class="mt-4 pt-4 border-t border-white/10">
                                                 <p class="text-white/70 text-xs line-clamp-3">{{ $subject->description }}</p>

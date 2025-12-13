@@ -16,11 +16,13 @@ class Subject extends Model
         'units',
         'semester',
         'year_level',
+        'enrolled_student', // ✅ ADDED
     ];
 
     protected $casts = [
         'units' => 'decimal:1',
         'year_level' => 'integer',
+        'enrolled_student' => 'integer', // ✅ ADDED
     ];
 
     /**

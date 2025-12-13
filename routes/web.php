@@ -1,5 +1,7 @@
 <?php
 
+// Updated routes/web.php - Add these routes to your existing file
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -72,10 +74,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/enrollments/{enrollment}/assign-schedule', [ProgramController::class, 'assignSchedule'])->name('enrollments.assign-schedule');
         Route::post('/enrollments/{enrollment}/store-schedule', [ProgramController::class, 'storeSchedule'])->name('enrollments.store-schedule');
 
-        // Schedule management
-        Route::get('/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
-        Route::post('/schedules/generate', [ScheduleController::class, 'generate'])->name('schedules.generate');
-        Route::get('/schedules/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('schedules.download');
+        // =================== Enhanced Schedule Management ===================
+        Route::prefix('schedules')->name('schedules.')->group(function () {
+            // Existing routes
+            Route::get('/', [ScheduleController::class, 'index'])->name('index');
+            Route::post('/generate', [ScheduleController::class, 'generate'])->name('generate');
+            Route::get('/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('download');
+            
+            // New relationship-based routes
+            Route::post('/save', [ScheduleController::class, 'save'])->name('save');
+            Route::post('/check-conflicts', [ScheduleController::class, 'checkConflicts'])->name('checkConflicts');
+            
+            // View schedules by entity with relationships
+            Route::get('/faculty/{facultyId}', [ScheduleController::class, 'getFacultySchedule'])->name('faculty');
+            Route::get('/room/{roomId}', [ScheduleController::class, 'getRoomSchedule'])->name('room');
+            Route::get('/program/{programId}', [ScheduleController::class, 'getProgramSchedule'])->name('program');
+            
+            // Get all programs for schedule generation UI
+            Route::get('/programs-list', [ScheduleController::class, 'getPrograms'])->name('programs');
+        });
     });
 
     // =================== Faculty Routes ===================
@@ -92,5 +109,8 @@ Route::middleware('auth')->group(function () {
 
         // Legacy PDF download
         Route::get('/schedule/download-pdf', [FacultyDashboardController::class, 'downloadPDF'])->name('schedule.download-legacy');
+        
+        // New: Faculty view their own schedule with relationships
+        Route::get('/my-schedule', [FacultyDashboardController::class, 'mySchedule'])->name('schedule.my');
     });
 });
