@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>SLSU - Admin Registration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -20,6 +20,7 @@
             }
         }
     </script>
+
     <style>
         @keyframes slideInRight {
             from {
@@ -31,7 +32,7 @@
                 transform: translateX(0);
             }
         }
-        
+
         @keyframes slideInLeft {
             from {
                 opacity: 0;
@@ -78,10 +79,10 @@
             padding: 0 1rem;
             font-weight: 600;
             border-radius: 0.75rem;
-            
-            /* full gradient background - changed #1 */ 
+
+            /* full gradient background - changed #1 */
             background: rgba(255, 255, 255, 0.15);
-            
+
             /* remove white border + glass effect - changed #2 */
             border: 1.5px solid rgba(255, 255, 255, 0.35);
             backdrop-filter: blur(12px);
@@ -94,7 +95,6 @@
             overflow: hidden;
         }
 
-
         /* Shimmer effect */
         .glass-button::before {
             content: '';
@@ -106,7 +106,7 @@
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             transition: left 0.6s ease;
         }
-        
+
         .glass-button:hover::before {
             left: 100%;
         }
@@ -131,6 +131,7 @@
             cursor: not-allowed;
         }
 
+        /* legacy admin inputs (kept for compatibility, but we will use enhanced-input) */
         .form-input {
             width: 100%;
             padding: 0.75rem;
@@ -232,28 +233,40 @@
             to { width: 100%; }
         }
 
+        /* FIXED: corrected syntax and animation for wrapper */
         .input-wrapper {
+            position: relative;
+            animation: fadeIn 0.45s ease-out backwards;
+        }
+
+        .input-icon-wrapper {
             position: relative;
         }
 
-         .input-icon {
+        /* left icon inside input */
+        .input-left {
             position: absolute;
-            right: 12px;
-            top: 68%;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1.25rem;
+            height: 1.25rem;
+            pointer-events: none;
+            z-index: 10;
+            transition: all 0.2s ease;
+            color: inherit;
+        }
+
+        /* neon check / validation icon — MUST keep class name `.input-icon` because JS toggles it */
+        .input-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
             transform: translateY(-50%);
             opacity: 0;
-            transition: all 0.3s ease;
-        }
-
-        #name + .input-icon,
-        #email + .input-icon,
-        #password + .input-icon,
-        #password_confirmation + .input-icon {
-            top: 68%;
-        }
-
-        #faculty_id + .input-icon {
-            top: 52%;
+            transition: all 0.25s ease;
+            z-index: 12;
+            pointer-events: none;
         }
 
         .input-icon svg {
@@ -262,9 +275,59 @@
             stroke-width: 2.8 !important;
             opacity: 1 !important;
         }
+
         .input-icon.show {
             opacity: 1;
         }
+
+        /* keep a small gap on the right so the check + eye won't overlap the text */
+        .enhanced-input {
+            width: 100%;
+            padding: 1rem 3rem 1rem 3rem; /* room for left icon and right icons */
+            border: 2px solid rgba(109, 151, 115, 0.3);
+            border-radius: 0.875rem;
+            background: rgba(255, 255, 255, 0.85);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem;
+        }
+
+        .enhanced-input:focus {
+            outline: none;
+            border-color: #6D9773;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 0 4px rgba(109, 151, 115, 0.15), 0 8px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .enhanced-input:focus ~ .input-icon {
+            /* no-op - icon is absolute; JS controls visibility */
+        }
+
+        /* Hide neon check icon for password fields */
+        #password ~ .input-icon,
+        #password_confirmation ~ .input-icon {
+            display: none !important;
+        }
+
+
+        /* small helper for the eye toggle button we place inside wrapper */
+        .toggle-btn {
+            position: absolute;
+            right: 1rem; /* slightly left of check icon */
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            padding: 0.35rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 11;
+            color: rgba(12, 59, 46, 0.7);
+        }
+
+        .toggle-btn:hover { color: rgba(12, 59, 46, 1); }
 
         .shake {
             animation: shake 0.5s;
@@ -284,7 +347,7 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-</style>
+    </style>
 </head>
 <body class="antialiased font-sans">
     <div class="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -304,7 +367,8 @@
                     </p>
                     <div class="mt-6 flex items-center gap-2 text-accent-yellow">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                         </svg>
                         <span class="text-sm font-semibold">Administrator Access</span>
                     </div>
@@ -332,7 +396,6 @@
 
                 <!-- Right Side (Form) -->
                 <div class="p-8 md:p-10 bg-white/10 backdrop-blur-lg rounded-r-3xl relative overflow-hidden min-h-[600px] flex flex-col justify-between">
-
                     <form method="POST" action="{{ route('register.admin') }}" id="registration-form">
                         @csrf
 
@@ -349,26 +412,51 @@
                         <!-- Step 1: Personal Information -->
                         <div class="step-content" id="step-1">
                             <h2 class="text-xl font-bold text-primary-dark mb-6">Personal Information</h2>
-                            
+
                             <div class="space-y-5">
                                 <div class="input-wrapper">
                                     <label for="name" class="block text-sm font-medium text-primary-dark mb-2">Full Name</label>
-                                    <input id="name" class="form-input" type="text" name="name" value="{{ old('name') }}" placeholder="Enter your full name" required>
-                                    <div class="input-icon">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+
+                                    <div class="input-icon-wrapper">
+                                        <!-- left icon -->
+                                        <svg class="input-left text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M5 13l4 4L19 7"/>
                                         </svg>
+
+                                        <input id="name" class="enhanced-input" type="text" name="name" value="{{ old('name') }}" placeholder="Enter your full name" required>
+
+                                        <!-- neon check inside wrapper (JS toggles .show) -->
+                                        <div class="input-icon" aria-hidden="true">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
                                     </div>
+                                    @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
 
                                 <div class="input-wrapper">
                                     <label for="email" class="block text-sm font-medium text-primary-dark mb-2">Email Address</label>
-                                    <input id="email" class="form-input" type="email" name="email" value="{{ old('email') }}" placeholder="your.email@slsu.edu.ph" required>
-                                    <div class="input-icon">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+
+                                    <div class="input-icon-wrapper">
+                                        <!-- left icon -->
+                                        <svg class="input-left text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                         </svg>
+
+                                        <input id="email" class="enhanced-input" type="email" name="email" value="{{ old('email') }}" placeholder="your.email@slsu.edu.ph" required>
+
+                                        <div class="input-icon" aria-hidden="true">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
                                     </div>
+                                    @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
                             </div>
                         </div>
@@ -376,16 +464,28 @@
                         <!-- Step 2: Program Details -->
                         <div class="step-content hidden" id="step-2">
                             <h2 class="text-xl font-bold text-primary-dark mb-6">Program Details</h2>
-                            
+
                             <div class="space-y-5">
                                 <div class="input-wrapper">
                                     <label for="program" class="block text-sm font-medium text-primary-dark mb-2">Program</label>
-                                    <input id="program" class="form-input" type="text" name="program" value="{{ old('program') }}" placeholder="e.g., BSIT, BSCS, BSBA" required>
-                                    <div class="input-icon">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+
+                                    <div class="input-icon-wrapper">
+                                        <svg class="input-left text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M5 13l4 4L19 7"/>
                                         </svg>
+
+                                        <input id="program" class="enhanced-input" type="text" name="program"
+                                               value="{{ old('program') }}" placeholder="e.g., BSIT, BSCS, BSBA" required>
+
+                                        <div class="input-icon" aria-hidden="true">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
                                     </div>
+
                                     <p class="text-xs text-gray-600 mt-2">Enter the program code you will manage</p>
                                 </div>
                             </div>
@@ -394,72 +494,73 @@
                         <!-- Step 3: Security -->
                         <div class="step-content hidden" id="step-3">
                             <h2 class="text-xl font-bold text-primary-dark mb-6">Security</h2>
-                            
+
                             <div class="space-y-5">
                                 <div class="input-wrapper">
                                     <label for="password" class="block text-sm font-medium text-primary-dark mb-2">Password</label>
 
-                                    <div class="relative">
-                                        <input id="password" 
-                                            type="password" 
-                                            name="password" 
-                                            placeholder="Minimum 8 characters"
-                                            class="form-input pr-12"
-                                            required>
+                                    <div class="input-icon-wrapper">
+                                        <!-- left lock icon -->
+                                        <svg class="input-left text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
 
-                                        <!-- Toggle Icon -->
-                                        <button type="button" 
-                                                class="absolute right-5 top-1/2 -translate-y-1/2 flex items-center p-2 cursor-pointer text-primary-dark/80 hover:text-primary-dark"
-                                                onclick="togglePassword('password', this)">
-                                            <!-- Eye Icon -->
+                                        <input id="password" class="enhanced-input pr-12" type="password" name="password" placeholder="Minimum 8 characters" required>
+
+                                        <!-- eye toggle button inside wrapper -->
+                                        <button type="button" class="toggle-btn" onclick="togglePassword('password', this)" aria-label="Toggle password visibility">
+                                            <!-- Eye icon (initial) -->
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
-                                                    -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+                                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                             </svg>
                                         </button>
-                                    </div>                                    
-                                    
-                                    <div class="input-icon">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
+
+                                        <!-- neon check -->
+                                        <div class="input-icon" aria-hidden="true">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
                                     </div>
+                                    @error('password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
 
                                 <div class="input-wrapper">
                                     <label for="password_confirmation" class="block text-sm font-medium text-primary-dark mb-2">Confirm Password</label>
-                            
-                                    <div class="relative">
-                                        <input id="password_confirmation" 
-                                            type="password" 
-                                            name="password_confirmation" 
-                                            placeholder="Re-enter your password"
-                                            class="form-input pr-12"
-                                            required>
 
-                                        <!-- Toggle Icon -->
-                                        <button type="button" 
-                                                class="absolute right-5 top-1/2 -translate-y-1/2 flex items-center p-2 cursor-pointer text-primary-dark/80 hover:text-primary-dark"
-                                                onclick="togglePassword('password_confirmation', this)">
-                                            <!-- Eye Icon -->
+                                    <div class="input-icon-wrapper">
+                                        <!-- left icon (same lock) -->
+                                        <svg class="input-left text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+
+                                        <input id="password_confirmation" class="enhanced-input pr-12" type="password" name="password_confirmation" placeholder="Re-enter your password" required>
+
+                                        <!-- eye toggle button for confirmation -->
+                                        <button type="button" class="toggle-btn" onclick="togglePassword('password_confirmation', this)" aria-label="Toggle confirm password visibility">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
-                                                    -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+                                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                             </svg>
                                         </button>
-                                    </div>                                    
-                                    
-                                    <div class="input-icon">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
+
+                                        <!-- neon check -->
+                                        <div class="input-icon" aria-hidden="true">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
                                     </div>
+                                    @error('password_confirmation') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                 </div>
 
                                 <div id="password-strength" class="hidden">
@@ -479,7 +580,7 @@
                             <button type="button" id="prev-btn" class="glass-button hidden">
                                 <span class="flex items-center justify-center gap-2">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                     </svg>
                                     Previous
                                 </span>
@@ -488,14 +589,14 @@
                                 <span class="flex items-center justify-center gap-2">
                                     Next
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                     </svg>
                                 </span>
                             </button>
                             <button type="submit" id="submit-btn" class="glass-button hidden">
                                 <span class="flex items-center justify-center gap-2">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                     Complete Registration
                                 </span>
@@ -508,10 +609,6 @@
                                 Already have an account? <a href="{{ route('login') }}" class="text-[#FFBA00] font-medium transition">Sign In</a>
                             </p>
                         </div>
-                    </form>
-                </div>
-            </div>
-        </div>
                     </form>
                 </div>
             </div>
@@ -542,7 +639,10 @@
 
         // Add input validation and styling
         [nameInput, emailInput, programInput, passwordInput, passwordConfirmInput].forEach(input => {
+            // defensive: some inputs may not exist if server-side rendered differently
+            if (!input) return;
             input.addEventListener('input', function() {
+                // NOTE: parentElement is .input-icon-wrapper — select the neon check inside it
                 const icon = this.parentElement.querySelector('.input-icon');
                 if (this.value.trim() !== '') {
                     this.classList.add('filled');
@@ -559,7 +659,7 @@
         });
 
         // Password strength indicator
-        passwordInput.addEventListener('input', function() {
+        passwordInput?.addEventListener('input', function() {
             const strength = calculatePasswordStrength(this.value);
             updatePasswordStrength(strength);
         });
@@ -577,24 +677,25 @@
             const strengthDiv = document.getElementById('password-strength');
             const strengthText = document.getElementById('strength-text');
             const bars = [1, 2, 3, 4].map(i => document.getElementById(`strength-${i}`));
-            
+
             strengthDiv.classList.remove('hidden');
-            
+
             const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500'];
             const texts = ['Weak', 'Fair', 'Good', 'Strong'];
-            
+
             bars.forEach((bar, index) => {
                 bar.className = 'h-1 flex-1 rounded bg-gray-300';
                 if (index < strength) {
                     bar.classList.add(colors[strength - 1]);
                 }
             });
-            
+
             strengthText.textContent = `Password strength: ${texts[strength - 1] || 'Weak'}`;
             strengthText.className = `text-xs ${strength > 2 ? 'text-green-600' : strength > 1 ? 'text-yellow-600' : 'text-red-600'}`;
         }
 
         function validateField(input) {
+            if (!input) return false;
             if (input.id === 'email') {
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value);
             }
@@ -609,7 +710,7 @@
 
         function validateStep(step) {
             let isValid = true;
-            
+
             if (step === 1) {
                 isValid = validateField(nameInput) && validateField(emailInput);
             } else if (step === 2) {
@@ -617,7 +718,7 @@
             } else if (step === 3) {
                 isValid = validateField(passwordInput) && validateField(passwordConfirmInput);
             }
-            
+
             return isValid;
         }
 
@@ -627,7 +728,7 @@
                 const stepEl = document.getElementById(`step-${i}`);
                 stepEl.classList.add('hidden');
             }
-            
+
             // Show current step
             const currentStepEl = document.getElementById(`step-${step}`);
             currentStepEl.classList.remove('hidden');
@@ -635,13 +736,13 @@
             if (isReverse) {
                 currentStepEl.classList.add('reverse');
             }
-            
+
             // Update progress
             updateProgress(step);
-            
+
             // Update buttons
             updateButtons(step);
-            
+
             // Update step indicators
             updateStepIndicators(step);
         }
@@ -657,7 +758,7 @@
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
             const submitBtn = document.getElementById('submit-btn');
-            
+
             if (step === 1) {
                 prevBtn.classList.add('hidden');
                 nextBtn.classList.remove('hidden');
@@ -677,7 +778,7 @@
             for (let i = 1; i <= totalSteps; i++) {
                 const indicator = document.getElementById(`step-${i}-indicator`);
                 indicator.classList.remove('active', 'completed');
-                
+
                 if (i < step) {
                     indicator.classList.add('completed');
                     indicator.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>';
@@ -687,7 +788,7 @@
                 } else {
                     indicator.textContent = i;
                 }
-                
+
                 // Update lines
                 if (i < totalSteps) {
                     const line = document.getElementById(`line-${i}`);
@@ -707,7 +808,7 @@
                 setTimeout(() => currentStepEl.classList.remove('shake'), 500);
                 return;
             }
-            
+
             if (currentStep < totalSteps) {
                 isReverse = false;
                 currentStep++;
@@ -723,11 +824,12 @@
             }
         });
 
-        document.getElementById('submit-btn').addEventListener('click', function() {
+        document.getElementById('submit-btn').addEventListener('click', function(e) {
             if (!validateStep(currentStep)) {
                 const currentStepEl = document.getElementById(`step-${currentStep}`);
                 currentStepEl.classList.add('shake');
                 setTimeout(() => currentStepEl.classList.remove('shake'), 500);
+                e.preventDefault();
                 return;
             }
             document.getElementById('registration-form').submit();
@@ -737,27 +839,28 @@
         showStep(currentStep);
 
         function togglePassword(id, btn) {
-        const input = document.getElementById(id);
-        const isPassword = input.type === "password";
+            const input = document.getElementById(id);
+            if (!input) return;
+            const isPassword = input.type === "password";
 
-        input.type = isPassword ? "text" : "password";
+            input.type = isPassword ? "text" : "password";
 
-        // Swap icon when toggling
-        btn.innerHTML = isPassword
-            ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
-                        .563 -1.79 1.63-3.35 3.042-4.542M6.18 6.18A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 
-                        9.542 7-.46 1.466-1.26 2.788-2.304 3.85M3 3l18 18"/>
-            </svg>`
-            : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
-                        -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>`;
-        }    
+            // Swap icon inside the button (replace its innerHTML)
+            btn.innerHTML = isPassword
+                ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                            .563 -1.79 1.63-3.35 3.042-4.542M6.18 6.18A9.956 9.956 0 0112 5c4.477 0 
+                            8.268 2.943 9.542 7-.46 1.466-1.26 2.788-2.304 3.85M3 3l18 18"/>
+                    </svg>`
+                : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                            -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>`;
+        }
     </script>
 </body>
 </html>

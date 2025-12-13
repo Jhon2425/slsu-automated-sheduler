@@ -445,18 +445,39 @@
                         <label for="password" class="block text-sm font-semibold text-primary-dark mb-2">
                             Password
                         </label>
-                        <div class="input-icon-wrapper">
+
+                        <div class="input-icon-wrapper relative">
+
+                            <!-- Left Lock Icon -->
                             <svg class="input-icon text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
-                            <input id="password" 
-                                   class="enhanced-input" 
-                                   type="password" 
-                                   name="password" 
-                                   placeholder="Enter your password" 
-                                   required>
+
+                            <!-- Password Input -->
+                            <input id="password"
+                                class="enhanced-input pr-12"
+                                type="password"
+                                name="password"
+                                placeholder="Enter your password"
+                                required>
+
+                            <!-- View / Hide Password Toggle Button -->
+                            <button type="button"
+                                    class="absolute right-4 top-1/2 -translate-y-1/2 text-primary-dark/70 hover:text-primary-dark"
+                                    onclick="toggleLoginPassword(this)">
+                                
+                                <!-- Eye Icon (default) -->
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                                        -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
                         </div>
+
                         @error('password')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -560,7 +581,32 @@
         }
     `;
     document.head.appendChild(style);
+
+    function toggleLoginPassword(btn) {
+    const input = document.getElementById('password');
+    const isHidden = input.type === "password";
+
+    input.type = isHidden ? "text" : "password";
+
+    btn.innerHTML = isHidden
+        ? `<!-- Eye Off --> 
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7
+                    .563 -1.79 1.63-3.35 3.042-4.542M6.18 6.18A9.956 9.956 0 0112 5c4.477 0 
+                    8.268 2.943 9.542 7-.46 1.466-1.26 2.788-2.304 3.85M3 3l18 18"/>
+            </svg>`
+        : `<!-- Eye On -->
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+                    -1.274 4.057-5.065 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>`;
+    }
 </script>
 
 </body>
 </html>
+
