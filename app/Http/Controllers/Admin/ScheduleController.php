@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\SchedulerService;
 use App\Models\Schedule;
+use App\Services\SchedulerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -18,131 +18,125 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Display all schedules
+     * Display all schedules with proper day handling
      */
     public function index()
     {
-        $schedules = Schedule::with(['faculty', 'subject', 'classroom'])
-            ->orderBy('day')
+        $schedules = Schedule::with(['subject', 'faculty', 'classroom'])
+            ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
             ->orderBy('start_time')
-            ->paginate(50);
+            ->paginate(1000); // Get all schedules for timetable view
 
         return view('admin.schedules.index', compact('schedules'));
     }
 
     /**
-     * Generate schedule preview (returns JSON for modal)
+     * Generate preview using the SchedulerService
      */
     public function generatePreview(Request $request)
     {
         try {
+            Log::info('Generate Preview Request', [
+                'schedule_type' => $request->input('schedule_type')
+            ]);
+
             $result = $this->schedulerService->generateSchedulePreview();
-            
-            if ($result['success']) {
-                // Store schedules and examinations in session for confirmation
-                session([
-                    'pending_schedules' => $result['schedules'],
-                    'pending_examinations' => $result['examinations'] ?? []
-                ]);
-                
-                return response()->json([
-                    'success' => true,
-                    'schedules' => $result['schedules'],
-                    'examinations' => $result['examinations'] ?? [],
-                    'conflicts' => $result['conflicts'] ?? [],
-                    'message' => $result['message']
-                ]);
-            }
 
-            return response()->json([
-                'success' => false,
-                'message' => $result['message']
-            ], 422);
-
-        } catch (\Exception $e) {
-            Log::error('Schedule generation error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error generating schedule: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Confirm and save the generated schedule
-     */
-    public function confirmSchedule(Request $request)
-    {
-        try {
-            Log::info('=== Starting schedule confirmation ===');
-            
-            // Get schedules from session first, then fallback to request
-            $schedules = session('pending_schedules', []);
-            $examinations = session('pending_examinations', []);
-            
-            // If not in session, try to get from request body
-            if (empty($schedules)) {
-                $schedules = $request->input('schedules', []);
-                $examinations = $request->input('examinations', []);
-            }
-            
-            Log::info('Schedules count: ' . count($schedules));
-            Log::info('Examinations count: ' . count($examinations));
-
-            if (empty($schedules)) {
-                Log::warning('No schedules found in session or request');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No schedules to save. Please generate schedules first.'
-                ], 422);
-            }
-
-            // Log first schedule for debugging
-            if (count($schedules) > 0) {
-                Log::info('First schedule data: ' . json_encode($schedules[0]));
-            }
-
-            // Save to database
-            $result = $this->schedulerService->saveSchedule($schedules, $examinations);
-
-            if ($result['success']) {
-                Log::info('Schedules saved successfully');
-                // Clear session data
-                session()->forget(['pending_schedules', 'pending_examinations']);
-            } else {
-                Log::error('Failed to save schedules: ' . $result['message']);
-            }
+            Log::info('Schedule Preview Generated', [
+                'success' => $result['success'],
+                'schedule_count' => count($result['schedules']),
+                'exam_count' => count($result['examinations']),
+                'conflict_count' => count($result['conflicts'])
+            ]);
 
             return response()->json($result);
 
         } catch (\Exception $e) {
-            Log::error('Schedule confirmation error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error in generatePreview controller', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error saving schedule: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Error generating preview: ' . $e->getMessage(),
+                'schedules' => [],
+                'examinations' => [],
+                'conflicts' => []
+            ]);
+        }
+    }
+
+    /**
+     * Confirm and save schedules from preview
+     */
+    public function confirm(Request $request)
+    {
+        try {
+            Log::info('Confirm Schedule Request', [
+                'schedule_type' => $request->input('schedule_type'),
+                'schedule_count' => count($request->input('schedules', [])),
+                'exam_count' => count($request->input('examinations', []))
+            ]);
+
+            $schedules = $request->input('schedules', []);
+            $examinations = $request->input('examinations', []);
+            $scheduleType = $request->input('schedule_type', 'regular');
+
+            // Determine which data to save based on schedule type
+            $dataToSave = $scheduleType === 'examination' ? [] : $schedules;
+            $examsToSave = $scheduleType === 'examination' ? $examinations : $examinations;
+
+            if (empty($dataToSave) && empty($examsToSave)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No schedules to save'
+                ]);
+            }
+
+            // Use the service to save
+            $result = $this->schedulerService->saveSchedule($dataToSave, $examsToSave);
+
+            Log::info('Schedule Save Result', $result);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+            Log::error('Error in confirm controller', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving schedules: ' . $e->getMessage()
+            ]);
         }
     }
 
     /**
      * Clear all schedules
      */
-    public function clearAllSchedules()
+    public function clear()
     {
         try {
             $result = $this->schedulerService->clearAllSchedules();
-            
+
             if ($result['success']) {
-                return redirect()->back()->with('success', $result['message']);
+                return redirect()->route('admin.schedules.index')
+                    ->with('success', $result['message']);
+            } else {
+                return redirect()->route('admin.schedules.index')
+                    ->with('error', $result['message']);
             }
-            
-            return redirect()->back()->with('error', $result['message']);
 
         } catch (\Exception $e) {
-            Log::error('Schedule clear error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error clearing schedules: ' . $e->getMessage());
+            Log::error('Error clearing schedules', [
+                'message' => $e->getMessage()
+            ]);
+
+            return redirect()->route('admin.schedules.index')
+                ->with('error', 'Error clearing schedules: ' . $e->getMessage());
         }
     }
 
@@ -152,21 +146,20 @@ class ScheduleController extends Controller
     public function downloadPdf()
     {
         try {
-            $schedules = Schedule::with(['faculty', 'subject', 'classroom'])
-                ->orderBy('day')
+            $schedules = Schedule::with(['subject', 'faculty', 'classroom'])
+                ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
                 ->orderBy('start_time')
                 ->get();
 
-            if ($schedules->isEmpty()) {
-                return redirect()->back()->with('error', 'No schedules available to download');
-            }
+            // Your PDF generation logic here
+            // Example: return PDF::loadView('admin.schedules.pdf', compact('schedules'))->download('schedules.pdf');
 
-            $pdf = \PDF::loadView('admin.schedules.pdf', compact('schedules'));
-            return $pdf->download('schedules_' . now()->format('Y-m-d') . '.pdf');
-            
+            return redirect()->route('admin.schedules.index')
+                ->with('info', 'PDF download functionality to be implemented');
+
         } catch (\Exception $e) {
-            Log::error('PDF download error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error generating PDF: ' . $e->getMessage());
+            return redirect()->route('admin.schedules.index')
+                ->with('error', 'Error generating PDF: ' . $e->getMessage());
         }
     }
 
@@ -176,23 +169,20 @@ class ScheduleController extends Controller
     public function downloadExcel()
     {
         try {
-            $schedules = Schedule::with(['faculty', 'subject', 'classroom'])
-                ->orderBy('day')
+            $schedules = Schedule::with(['subject', 'faculty', 'classroom'])
+                ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
                 ->orderBy('start_time')
                 ->get();
 
-            if ($schedules->isEmpty()) {
-                return redirect()->back()->with('error', 'No schedules available to download');
-            }
+            // Your Excel generation logic here
+            // Example: return Excel::download(new SchedulesExport($schedules), 'schedules.xlsx');
 
-            // Example:
-            // return Excel::download(new SchedulesExport, 'schedules.xlsx');
-            
-            return redirect()->back()->with('info', 'Excel export feature coming soon');
-            
+            return redirect()->route('admin.schedules.index')
+                ->with('info', 'Excel download functionality to be implemented');
+
         } catch (\Exception $e) {
-            Log::error('Excel download error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error generating Excel: ' . $e->getMessage());
+            return redirect()->route('admin.schedules.index')
+                ->with('error', 'Error generating Excel: ' . $e->getMessage());
         }
     }
 }
