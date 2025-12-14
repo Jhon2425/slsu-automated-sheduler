@@ -175,12 +175,10 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #6D9773 0%, #FFBA00 100%);
+            background: linear-gradient(90deg, #FFBA00 0%, #B46617 100%);
             border-radius: 10px;
             transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 10px rgba(109, 151, 115, 0.5);
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 0 10px rgba(255, 186, 0, 0.5);
         }
 
         .progress-fill::after {
@@ -210,11 +208,10 @@
         }
 
         .step-indicator.active {
-            background: linear-gradient(135deg, #6D9773 0%, #FFBA00 100%);
-            border-color: #6D9773;
-            box-shadow: 0 0 20px rgba(109, 151, 115, 0.6);
+            background: linear-gradient(135deg, #FFBA00 0%, #B46617 100%);
+            border-color: #FFBA00;
+            box-shadow: 0 0 20px rgba(255, 186, 0, 0.6);
             transform: scale(1.1);
-            animation: pulse 2s infinite;
         }
 
         .step-indicator.completed {
@@ -284,10 +281,7 @@
         }
 
         .input-icon svg {
-            stroke: #4EFFA5 !important;  /* bright neon green */
-            filter: drop-shadow(0 0 6px rgba(78, 255, 165, 0.9));
-            stroke-width: 2.8 !important;
-            opacity: 1 !important;
+            opacity: 0;
         }
 
         .input-icon.show {
@@ -465,7 +459,7 @@
 
                             <div class="space-y-5">
                                 <div class="input-wrapper">
-                                    <label for="name" class="block text-sm font-medium text-primary-dark mb-2">Full Name</label>
+                                    <label for="name" class="block text-sm font-semibold text-primary-dark mb-2">Full Name</label>
 
                                     <div class="input-icon-wrapper">
                                         <!-- left icon -->
@@ -489,7 +483,7 @@
                                 </div>
 
                                 <div class="input-wrapper">
-                                    <label for="email" class="block text-sm font-medium text-primary-dark mb-2">Email Address</label>
+                                    <label for="email" class="block text-sm font-semibold text-primary-dark mb-2">Email Address</label>
 
                                     <div class="input-icon-wrapper">
                                         <!-- left icon -->
@@ -498,7 +492,7 @@
                                                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                         </svg>
 
-                                        <input id="email" class="enhanced-input" type="email" name="email" value="{{ old('email') }}" placeholder="faculty.name@slsu.edu.ph" required>
+                                        <input id="email" class="enhanced-input" type="email" name="email" value="{{ old('email') }}" placeholder="example@slsu.edu.ph" required>
 
                                         <div class="input-icon" aria-hidden="true">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,7 +513,7 @@
 
                             <div class="space-y-5">
                                 <div class="input-wrapper">
-                                    <label for="faculty_id" class="block text-sm font-medium text-primary-dark mb-2">Faculty ID</label>
+                                    <label for="faculty_id" class="block text-sm font-semibold text-primary-dark mb-2">Faculty ID</label>
 
                                     <div class="input-icon-wrapper">
                                         <svg class="input-left text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -539,8 +533,8 @@
                                     </div>
 
                                     <div class="tooltip">Your unique faculty identification number</div>
-                                    <p class="text-xs text-gray-600 mt-2">Enter your assigned faculty identification number</p>
-                                    @error('faculty_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                    <p class="text-xs text-white mt-2">Enter your assigned faculty identification number.</p>
+                                    <!--@error('faculty_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror -->
                                 </div>
 
                                 <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -563,7 +557,7 @@
 
                             <div class="space-y-5">
                                 <div class="input-wrapper">
-                                    <label for="password" class="block text-sm font-medium text-primary-dark mb-2">Password</label>
+                                    <label for="password" class="block text-sm font-semibold text-primary-dark mb-2">Password</label>
 
                                     <div class="input-icon-wrapper">
                                         <!-- left lock icon -->
@@ -598,7 +592,7 @@
                                 </div>
 
                                 <div class="input-wrapper">
-                                    <label for="password_confirmation" class="block text-sm font-medium text-primary-dark mb-2">Confirm Password</label>
+                                    <label for="password_confirmation" class="block text-sm font-semibold text-primary-dark mb-2">Confirm Password</label>
 
                                     <div class="input-icon-wrapper">
                                         <!-- left icon (same lock) -->
@@ -680,7 +674,7 @@
                         <!-- Links -->
                         <div class="mt-12 space-y-2">
                             <p class="text-sm text-white text-center">
-                                Already have an account? <a href="{{ route('login') }}" class="text-[#FFBA00] font-medium transition">Sign In</a>
+                                Already have an account? <a href="{{ route('login') }}" class="text-[#FFBA00] font-semibold transition">Sign In</a>
                             </p>
                         </div>
                     </form>
@@ -794,7 +788,7 @@
             strengthDot.className = `inline-block w-2 h-2 rounded-full ${dotColors[strength - 1] || 'bg-red-500'}`;
 
             const strengthText = document.getElementById('strength-text');
-            strengthText.className = `text-xs flex items-center gap-2 ${textColors[strength - 1] || 'text-red-600'}`;
+            strengthText.className = `text-xs flex items-center gap-2 text-white opacity-0`;
         }
 
         function validateField(input) {
@@ -803,7 +797,7 @@
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value);
             }
             if (input.id === 'faculty_id') {
-                return input.value.trim().length >= 3;
+                return true;
             }
             if (input.id === 'password') {
                 return input.value.length >= 8;

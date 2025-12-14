@@ -435,9 +435,10 @@
                                    required 
                                    autofocus>
                         </div>
-                        @error('email')
+                        <!-- @error('email')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
+                        -->
                     </div>
 
                     <!-- Password -->
