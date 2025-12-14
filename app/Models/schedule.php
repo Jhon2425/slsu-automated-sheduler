@@ -43,7 +43,7 @@ class Schedule extends Model
     // 🔥 RENAMED FROM room() → classroom()
     public function classroom()
     {
-        return $this->belongsTo(Room::class, 'room_id');
+        return $this->belongsTo(Classroom::class, 'classroom_id');
     }
 
     public function program()
