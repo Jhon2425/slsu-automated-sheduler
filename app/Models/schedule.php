@@ -4,6 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Models\Subject;
+use App\Models\Room;
+use App\Models\Program;
 
 class Schedule extends Model
 {
@@ -24,11 +28,7 @@ class Schedule extends Model
         'is_confirmed',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
+    /* ================= RELATIONSHIPS ================= */
 
     public function faculty()
     {
@@ -40,7 +40,8 @@ class Schedule extends Model
         return $this->belongsTo(Subject::class, 'subject_id');
     }
 
-    public function room()
+    // 🔥 RENAMED FROM room() → classroom()
+    public function classroom()
     {
         return $this->belongsTo(Room::class, 'room_id');
     }

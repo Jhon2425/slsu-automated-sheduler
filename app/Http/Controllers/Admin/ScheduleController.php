@@ -3,363 +3,196 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\SchedulerService;
 use App\Models\Schedule;
-use App\Models\Faculty;
-use App\Models\Room;
-use App\Models\Program;
-use App\Services\ScheduleGeneratorService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ScheduleController extends Controller
 {
-    protected $scheduleGenerator;
+    protected $schedulerService;
 
-    public function __construct(ScheduleGeneratorService $scheduleGenerator)
+    public function __construct(SchedulerService $schedulerService)
     {
-        $this->scheduleGenerator = $scheduleGenerator;
+        $this->schedulerService = $schedulerService;
     }
 
     /**
-     * Display schedule management page
+     * Display all schedules
      */
     public function index()
     {
-        // Get schedules with relationships
-        $schedules = Schedule::with(['faculty', 'subject', 'room', 'program'])
+        $schedules = Schedule::with(['faculty', 'subject', 'classroom'])
             ->orderBy('day')
             ->orderBy('start_time')
-            ->get();
+            ->paginate(50);
 
-        // Get all programs for the generation form
-        // Remove the status check if users table doesn't have status column
-        $programs = Program::with(['facultySubjects' => function ($query) {
-            $query->with(['faculty', 'subject']);
-            // Only include if you have a status column in users table
-            // ->whereHas('faculty', function ($q) {
-            //     $q->where('status', 'accepted');
-            // });
-        }])->get();
-
-        return view('admin.schedules.index', compact('schedules', 'programs'));
+        return view('admin.schedules.index', compact('schedules'));
     }
 
     /**
-     * Generate schedule for a program
+     * Generate schedule preview (returns JSON for modal)
      */
-    public function generate(Request $request)
+    public function generatePreview(Request $request)
     {
-        $validated = $request->validate([
-            'program_id' => 'required|exists:programs,id',
-            'semester' => 'required|string',
-            'academic_year' => 'required|string',
-            'type' => 'nullable|in:regular,make_up,special'
-        ]);
-
         try {
-            $result = $this->scheduleGenerator->generateSchedule(
-                $validated['program_id'],
-                $validated['semester'],
-                $validated['academic_year'],
-                $validated['type'] ?? 'regular'
-            );
-
-            if (count($result['conflicts']) > 0) {
-                return redirect()->route('admin.schedules.index')
-                    ->with('warning', 'Schedule generated with ' . count($result['conflicts']) . ' conflicts. Please review.')
-                    ->with('generated_schedules', $result['schedules'])
-                    ->with('conflicts', $result['conflicts']);
-            }
-
-            return redirect()->route('admin.schedules.index')
-                ->with('success', 'Schedule generated successfully with ' . count($result['schedules']) . ' entries.')
-                ->with('generated_schedules', $result['schedules']);
-
-        } catch (\Exception $e) {
-            return redirect()->route('admin.schedules.index')
-                ->with('error', 'Failed to generate schedule: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Save generated schedule to database
-     */
-    public function save(Request $request)
-    {
-        $validated = $request->validate([
-            'schedules' => 'required|array',
-            'schedules.*.faculty_id' => 'required|exists:users,id',
-            'schedules.*.subject_id' => 'required|exists:subjects,id',
-            'schedules.*.room_id' => 'required|exists:rooms,id',
-            'schedules.*.program_id' => 'required|exists:programs,id',
-            'schedules.*.day' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
-            'schedules.*.start_time' => 'required|date_format:H:i',
-            'schedules.*.end_time' => 'required|date_format:H:i',
-            'schedules.*.class_type' => 'required|in:lecture,laboratory',
-            'schedules.*.semester' => 'required|string',
-            'schedules.*.academic_year' => 'required|string',
-            'schedules.*.type' => 'required|in:regular,make_up,special',
-        ]);
-
-        try {
-            $saved = $this->scheduleGenerator->saveSchedule($validated['schedules']);
-
-            if ($saved) {
+            $result = $this->schedulerService->generateSchedulePreview();
+            
+            if ($result['success']) {
+                // Store schedules and examinations in session for confirmation
+                session([
+                    'pending_schedules' => $result['schedules'],
+                    'pending_examinations' => $result['examinations'] ?? []
+                ]);
+                
                 return response()->json([
                     'success' => true,
-                    'message' => 'Schedule saved successfully'
+                    'schedules' => $result['schedules'],
+                    'examinations' => $result['examinations'] ?? [],
+                    'conflicts' => $result['conflicts'] ?? [],
+                    'message' => $result['message']
                 ]);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save schedule'
-            ], 500);
+                'message' => $result['message']
+            ], 422);
+
         } catch (\Exception $e) {
+            Log::error('Schedule generation error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get faculty schedule with relationships
-     */
-    public function getFacultySchedule(Request $request, int $facultyId)
-    {
-        $validated = $request->validate([
-            'semester' => 'required|string',
-            'academic_year' => 'required|string'
-        ]);
-
-        try {
-            $schedule = Schedule::where('faculty_id', $facultyId)
-                ->where('semester', $validated['semester'])
-                ->where('academic_year', $validated['academic_year'])
-                ->with(['subject', 'room', 'program'])
-                ->orderBy('day')
-                ->orderBy('start_time')
-                ->get();
-
-            $faculty = User::findOrFail($facultyId);
-
-            return response()->json([
-                'success' => true,
-                'faculty' => $faculty,
-                'schedule' => $schedule
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 404);
-        }
-    }
-
-    /**
-     * Get room schedule with relationships
-     */
-    public function getRoomSchedule(Request $request, int $roomId)
-    {
-        $validated = $request->validate([
-            'semester' => 'required|string',
-            'academic_year' => 'required|string'
-        ]);
-
-        try {
-            $schedule = Schedule::where('room_id', $roomId)
-                ->where('semester', $validated['semester'])
-                ->where('academic_year', $validated['academic_year'])
-                ->with(['faculty', 'subject', 'program'])
-                ->orderBy('day')
-                ->orderBy('start_time')
-                ->get();
-
-            $room = Room::findOrFail($roomId);
-
-            return response()->json([
-                'success' => true,
-                'room' => $room,
-                'schedule' => $schedule
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 404);
-        }
-    }
-
-    /**
-     * Get program schedule with relationships
-     */
-    public function getProgramSchedule(Request $request, int $programId)
-    {
-        $validated = $request->validate([
-            'semester' => 'required|string',
-            'academic_year' => 'required|string'
-        ]);
-
-        try {
-            $schedule = Schedule::where('program_id', $programId)
-                ->where('semester', $validated['semester'])
-                ->where('academic_year', $validated['academic_year'])
-                ->with(['faculty', 'subject', 'room'])
-                ->orderBy('day')
-                ->orderBy('start_time')
-                ->get();
-
-            $program = Program::with(['facultySubjects.faculty', 'facultySubjects.subject'])
-                ->findOrFail($programId);
-
-            return response()->json([
-                'success' => true,
-                'program' => $program,
-                'schedule' => $schedule
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 404);
-        }
-    }
-
-    /**
-     * Get all programs for schedule generation
-     */
-    public function getPrograms()
-    {
-        try {
-            $programs = Program::with(['facultySubjects' => function ($query) {
-                $query->with(['faculty', 'subject']);
-                // Only include if you have a status column in users table
-                // ->whereHas('faculty', function ($q) {
-                //     $q->where('status', 'accepted');
-                // });
-            }])->get();
-
-            return response()->json([
-                'success' => true,
-                'programs' => $programs
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Error generating schedule: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Check for schedule conflicts
+     * Confirm and save the generated schedule
      */
-    public function checkConflicts(Request $request)
+    public function confirmSchedule(Request $request)
     {
-        $validated = $request->validate([
-            'faculty_id' => 'nullable|exists:users,id',
-            'room_id' => 'nullable|exists:rooms,id',
-            'day' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i',
-            'semester' => 'required|string',
-            'academic_year' => 'required|string',
-            'exclude_schedule_id' => 'nullable|exists:schedules,id'
-        ]);
-
         try {
-            $conflicts = [];
+            Log::info('=== Starting schedule confirmation ===');
+            
+            // Get schedules from session first, then fallback to request
+            $schedules = session('pending_schedules', []);
+            $examinations = session('pending_examinations', []);
+            
+            // If not in session, try to get from request body
+            if (empty($schedules)) {
+                $schedules = $request->input('schedules', []);
+                $examinations = $request->input('examinations', []);
+            }
+            
+            Log::info('Schedules count: ' . count($schedules));
+            Log::info('Examinations count: ' . count($examinations));
 
-            // Check faculty conflicts
-            if (isset($validated['faculty_id'])) {
-                $facultyConflicts = Schedule::where('faculty_id', $validated['faculty_id'])
-                    ->where('day', $validated['day'])
-                    ->where('semester', $validated['semester'])
-                    ->where('academic_year', $validated['academic_year'])
-                    ->where(function ($query) use ($validated) {
-                        $query->where(function ($q) use ($validated) {
-                            $q->where('start_time', '<', $validated['end_time'])
-                              ->where('end_time', '>', $validated['start_time']);
-                        });
-                    })
-                    ->when(isset($validated['exclude_schedule_id']), function ($q) use ($validated) {
-                        $q->where('id', '!=', $validated['exclude_schedule_id']);
-                    })
-                    ->with(['subject', 'room'])
-                    ->get();
-
-                if ($facultyConflicts->isNotEmpty()) {
-                    $conflicts['faculty'] = $facultyConflicts;
-                }
+            if (empty($schedules)) {
+                Log::warning('No schedules found in session or request');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No schedules to save. Please generate schedules first.'
+                ], 422);
             }
 
-            // Check room conflicts
-            if (isset($validated['room_id'])) {
-                $roomConflicts = Schedule::where('room_id', $validated['room_id'])
-                    ->where('day', $validated['day'])
-                    ->where('semester', $validated['semester'])
-                    ->where('academic_year', $validated['academic_year'])
-                    ->where(function ($query) use ($validated) {
-                        $query->where(function ($q) use ($validated) {
-                            $q->where('start_time', '<', $validated['end_time'])
-                              ->where('end_time', '>', $validated['start_time']);
-                        });
-                    })
-                    ->when(isset($validated['exclude_schedule_id']), function ($q) use ($validated) {
-                        $q->where('id', '!=', $validated['exclude_schedule_id']);
-                    })
-                    ->with(['faculty', 'subject'])
-                    ->get();
-
-                if ($roomConflicts->isNotEmpty()) {
-                    $conflicts['room'] = $roomConflicts;
-                }
+            // Log first schedule for debugging
+            if (count($schedules) > 0) {
+                Log::info('First schedule data: ' . json_encode($schedules[0]));
             }
 
-            return response()->json([
-                'success' => true,
-                'has_conflicts' => !empty($conflicts),
-                'conflicts' => $conflicts
-            ]);
+            // Save to database
+            $result = $this->schedulerService->saveSchedule($schedules, $examinations);
+
+            if ($result['success']) {
+                Log::info('Schedules saved successfully');
+                // Clear session data
+                session()->forget(['pending_schedules', 'pending_examinations']);
+            } else {
+                Log::error('Failed to save schedules: ' . $result['message']);
+            }
+
+            return response()->json($result);
+
         } catch (\Exception $e) {
+            Log::error('Schedule confirmation error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Error saving schedule: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Download schedule as PDF
+     * Clear all schedules
      */
-    public function downloadPDF(Request $request)
+    public function clearAllSchedules()
     {
-        $query = Schedule::with(['faculty', 'subject', 'room', 'program'])
-            ->orderBy('day')
-            ->orderBy('start_time');
+        try {
+            $result = $this->schedulerService->clearAllSchedules();
+            
+            if ($result['success']) {
+                return redirect()->back()->with('success', $result['message']);
+            }
+            
+            return redirect()->back()->with('error', $result['message']);
 
-        // Apply filters if provided
-        if ($request->has('program_id')) {
-            $query->where('program_id', $request->program_id);
+        } catch (\Exception $e) {
+            Log::error('Schedule clear error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error clearing schedules: ' . $e->getMessage());
         }
-        if ($request->has('semester')) {
-            $query->where('semester', $request->semester);
-        }
-        if ($request->has('academic_year')) {
-            $query->where('academic_year', $request->academic_year);
-        }
+    }
 
-        $schedules = $query->get();
+    /**
+     * Download schedules as PDF
+     */
+    public function downloadPdf()
+    {
+        try {
+            $schedules = Schedule::with(['faculty', 'subject', 'classroom'])
+                ->orderBy('day')
+                ->orderBy('start_time')
+                ->get();
 
-        $pdf = Pdf::loadView('admin.schedules.pdf', compact('schedules'));
-        
-        $filename = 'schedule-' . date('Y-m-d') . '.pdf';
-        if ($request->has('program_id')) {
-            $program = Program::find($request->program_id);
-            $filename = 'schedule-' . $program->code . '-' . date('Y-m-d') . '.pdf';
+            if ($schedules->isEmpty()) {
+                return redirect()->back()->with('error', 'No schedules available to download');
+            }
+
+            $pdf = \PDF::loadView('admin.schedules.pdf', compact('schedules'));
+            return $pdf->download('schedules_' . now()->format('Y-m-d') . '.pdf');
+            
+        } catch (\Exception $e) {
+            Log::error('PDF download error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error generating PDF: ' . $e->getMessage());
         }
+    }
 
-        return $pdf->download($filename);
+    /**
+     * Download schedules as Excel
+     */
+    public function downloadExcel()
+    {
+        try {
+            $schedules = Schedule::with(['faculty', 'subject', 'classroom'])
+                ->orderBy('day')
+                ->orderBy('start_time')
+                ->get();
+
+            if ($schedules->isEmpty()) {
+                return redirect()->back()->with('error', 'No schedules available to download');
+            }
+
+            // Example:
+            // return Excel::download(new SchedulesExport, 'schedules.xlsx');
+            
+            return redirect()->back()->with('info', 'Excel export feature coming soon');
+            
+        } catch (\Exception $e) {
+            Log::error('Excel download error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error generating Excel: ' . $e->getMessage());
+        }
     }
 }
