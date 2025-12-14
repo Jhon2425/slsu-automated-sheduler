@@ -859,6 +859,7 @@
                                     <span><i class="fas fa-code mr-1"></i>${subject.course_code}</span>
                                     <span><i class="fas fa-calendar mr-1"></i>${subject.semester}</span>
                                     <span><i class="fas fa-layer-group mr-1"></i>Year ${subject.year_level}</span>
+                                    <span><i class="fas fa-person mr-1"></i>Student enrolled ${subject.enrolled_student}</span>
                                 </div>
                             </div>
                         </label>

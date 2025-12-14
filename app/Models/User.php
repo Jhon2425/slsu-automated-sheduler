@@ -56,4 +56,13 @@ class User extends Authenticatable
     {
         return $this->hasOne(Program::class, 'admin_id');
     }
+
+    /**
+     * Get the subjects assigned to this faculty member.
+     */
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class, 'faculty_subjects', 'faculty_id', 'subject_id')
+                    ->withTimestamps();
+    }
 }

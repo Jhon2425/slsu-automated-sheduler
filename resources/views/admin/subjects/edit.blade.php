@@ -133,28 +133,52 @@
                         @enderror
                     </div>
 
-                    <!-- Units -->
-                    <div class="group">
-                        <label class="block text-white text-sm font-bold mb-2 flex items-center">
-                            <i class="fas fa-calculator mr-2 text-yellow-400 group-hover:scale-110 transition-transform duration-300"></i>
-                            Units <span class="text-red-400 ml-1 animate-pulse">*</span>
-                        </label>
-                        <input type="number" 
-                            name="units" 
-                            required
-                            min="1"
-                            max="6"
-                            step="0.5"
-                            x-model="editSubject.units"
-                            placeholder="e.g., 3"
-                            class="w-full px-4 py-3 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 text-white placeholder-white/40
-                                   focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20
-                                   transition-all duration-300 hover:bg-white/20 hover:border-yellow-400/50">
-                        @error('units')
-                            <p class="text-red-400 text-xs mt-2 flex items-center animate-shake">
-                                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
-                            </p>
-                        @enderror
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Units -->
+                        <div class="group">
+                            <label class="block text-white text-sm font-bold mb-2 flex items-center">
+                                <i class="fas fa-calculator mr-2 text-yellow-400 group-hover:scale-110 transition-transform duration-300"></i>
+                                Units <span class="text-red-400 ml-1 animate-pulse">*</span>
+                            </label>
+                            <input type="number" 
+                                name="units" 
+                                required
+                                min="1"
+                                max="6"
+                                step="0.5"
+                                x-model="editSubject.units"
+                                placeholder="e.g., 3"
+                                class="w-full px-4 py-3 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 text-white placeholder-white/40
+                                       focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20
+                                       transition-all duration-300 hover:bg-white/20 hover:border-yellow-400/50">
+                            @error('units')
+                                <p class="text-red-400 text-xs mt-2 flex items-center animate-shake">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <!-- Students Enrolled -->
+                        <div class="group">
+                            <label class="block text-white text-sm font-bold mb-2 flex items-center">
+                                <i class="fas fa-users mr-2 text-yellow-400 group-hover:scale-110 transition-transform duration-300"></i>
+                                Students Enrolled <span class="text-red-400 ml-1 animate-pulse">*</span>
+                            </label>
+                            <input type="number" 
+                                name="enrolled_student" 
+                                required
+                                min="0"
+                                x-model="editSubject.enrolled_student"
+                                placeholder="e.g., 30"
+                                class="w-full px-4 py-3 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 text-white placeholder-white/40
+                                       focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20
+                                       transition-all duration-300 hover:bg-white/20 hover:border-yellow-400/50">
+                            @error('enrolled_student')
+                                <p class="text-red-400 text-xs mt-2 flex items-center animate-shake">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+                                </p>
+                            @enderror
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">

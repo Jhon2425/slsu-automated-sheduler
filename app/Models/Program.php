@@ -45,4 +45,22 @@ class Program extends Model
     {
         return $this->belongsTo(User::class, 'admin_id');
     }
+
+    /**
+     * Alias for faculty enrollments - used for schedule generation
+     * This maps to faculty_enrollments table with active status
+     */
+    public function facultySubjects()
+    {
+        return $this->hasMany(FacultyEnrollment::class, 'program_id')
+            ->where('enrollment_status', 'active');
+    }
+
+    /**
+     * Get schedules for this program
+     */
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class, 'program_id');
+    }
 }

@@ -21,10 +21,8 @@ Route::middleware('guest')->group(function () {
     // Registration
     Route::get('/register/admin', [AuthController::class, 'showRegisterAdmin'])->name('register.admin');
     Route::post('/register/admin', [AuthController::class, 'registerAdmin']);
-
     Route::get('/register/faculty', [AuthController::class, 'showRegisterFaculty'])->name('register.faculty');
     Route::post('/register/faculty', [AuthController::class, 'registerFaculty']);
-
     Route::get('/register', fn() => view('welcome'))->name('register');
 });
 
@@ -42,14 +40,11 @@ Route::middleware('auth')->group(function () {
 
         // Faculty Management
         Route::get('/faculty', [FacultyController::class, 'index'])->name('faculty.index');
-        
-        // Faculty Subject Assignment (AJAX endpoints)
         Route::get('/faculty/{user}/subjects', [FacultyController::class, 'getSubjects'])->name('faculty.subjects');
         Route::post('/faculty/{user}/assign-subjects', [FacultyController::class, 'assignSubjects'])->name('faculty.assign-subjects');
 
-        // Subject Management (both route names for compatibility)
+        // Subject Management
         Route::resource('subjects', SubjectController::class)->except(['show']);
-        // Alias routes for backward compatibility
         Route::get('/manage-subjects', [SubjectController::class, 'index'])->name('manage-subjects.index');
         Route::post('/manage-subjects', [SubjectController::class, 'store'])->name('manage-subjects.store');
         Route::get('/manage-subjects/create', [SubjectController::class, 'create'])->name('manage-subjects.create');
@@ -57,40 +52,64 @@ Route::middleware('auth')->group(function () {
         Route::delete('/manage-subjects/{subject}', [SubjectController::class, 'destroy'])->name('manage-subjects.destroy');
         Route::get('/manage-subjects/{subject}/edit', [SubjectController::class, 'edit'])->name('manage-subjects.edit');
 
-        // Program management
+        // Program Management
         Route::get('programs', [ProgramController::class, 'index'])->name('programs.index');
 
-        // Enrollment actions: Accept / Decline
+        // Enrollment actions
         Route::post('/enrollments/{enrollment}/accept', [ProgramController::class, 'acceptEnrollment'])->name('enrollments.accept');
         Route::post('/enrollments/{enrollment}/decline', [ProgramController::class, 'declineEnrollment'])->name('enrollments.decline');
-
-        // Enrollment management (edit/update)
         Route::get('/enrollments/{enrollment}/edit', [ProgramController::class, 'editEnrollment'])->name('enrollments.edit');
         Route::put('/enrollments/{enrollment}', [ProgramController::class, 'updateEnrollment'])->name('enrollments.update');
-
-        // Assign schedules
         Route::get('/enrollments/{enrollment}/assign-schedule', [ProgramController::class, 'assignSchedule'])->name('enrollments.assign-schedule');
         Route::post('/enrollments/{enrollment}/store-schedule', [ProgramController::class, 'storeSchedule'])->name('enrollments.store-schedule');
 
-        // Schedule management
-        Route::get('/schedules', [ScheduleController::class, 'index'])->name('schedules.index');
-        Route::post('/schedules/generate', [ScheduleController::class, 'generate'])->name('schedules.generate');
-        Route::get('/schedules/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('schedules.download');
+        // =================== Schedule Management ===================
+        Route::prefix('schedules')->name('schedules.')->group(function () {
+            // Main index page
+            Route::get('/', [ScheduleController::class, 'index'])->name('index');
+
+            // AJAX schedule generation (for timetable modal)
+            Route::post('/generate-preview', [ScheduleController::class, 'generatePreview'])->name('generate-preview');
+            Route::post('/confirm', [ScheduleController::class, 'confirmSchedule'])->name('confirm');
+
+            // Single schedule view (modal)
+            Route::get('/{id}', [ScheduleController::class, 'show'])->name('show');
+
+            // Previous schedules history
+            Route::get('/previous', [ScheduleController::class, 'viewPrevious'])->name('previous');
+
+            // Calendar events data (for FullCalendar integration)
+            Route::get('/calendar-data', [ScheduleController::class, 'getCalendarData'])->name('calendar-data');
+
+            // Export & print
+            Route::get('/print', [ScheduleController::class, 'printSchedule'])->name('print');
+            Route::get('/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('download-pdf');
+            Route::get('/download-excel', [ScheduleController::class, 'downloadExcel'])->name('download-excel');
+
+            // Clear all schedules
+            Route::post('/clear', [ScheduleController::class, 'clearAllSchedules'])->name('clear');
+
+            // Legacy compatibility routes (optional - can be removed if not needed)
+            Route::post('/generate', [ScheduleController::class, 'generatePreview'])->name('generate');
+            Route::post('/save', [ScheduleController::class, 'confirmSchedule'])->name('save');
+            Route::get('/download', [ScheduleController::class, 'downloadPDF'])->name('download');
+        });
     });
 
     // =================== Faculty Routes ===================
     Route::prefix('faculty')->middleware('faculty')->name('faculty.')->group(function () {
         Route::get('/dashboard', [FacultyDashboardController::class, 'index'])->name('dashboard');
 
-        // Program enrollment/unenrollment
+        // Program enrollment
         Route::post('/programs/{program}/enroll', [FacultyDashboardController::class, 'enrollProgram'])->name('programs.enroll');
         Route::delete('/enrollments/{enrollment}/unenroll', [FacultyDashboardController::class, 'unenrollProgram'])->name('programs.unenroll');
 
-        // Schedule viewing & download
+        // Schedule viewing
         Route::get('/enrollments/{enrollment}/schedule', [FacultyDashboardController::class, 'viewSchedule'])->name('schedule.view');
         Route::get('/enrollments/{enrollment}/schedule/download', [FacultyDashboardController::class, 'downloadSchedule'])->name('schedule.download');
-
-        // Legacy PDF download
         Route::get('/schedule/download-pdf', [FacultyDashboardController::class, 'downloadPDF'])->name('schedule.download-legacy');
+
+        // My schedule
+        Route::get('/my-schedule', [FacultyDashboardController::class, 'mySchedule'])->name('schedule.my');
     });
 });

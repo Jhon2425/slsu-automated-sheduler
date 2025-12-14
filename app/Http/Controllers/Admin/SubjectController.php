@@ -28,12 +28,13 @@ class SubjectController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'program_id' => 'required|exists:programs,id',
-            'course_code' => 'required|string|max:20|unique:subjects,course_code',
-            'subject_name' => 'required|string|max:255',
-            'units' => 'required|numeric|min:0.5|max:6',
-            'semester' => 'required|in:1st Semester,2nd Semester,Summer',
-            'year_level' => 'required|integer|min:1|max:4',
+            'program_id'        => 'required|exists:programs,id',
+            'course_code'       => 'required|string|max:20|unique:subjects,course_code',
+            'subject_name'      => 'required|string|max:255',
+            'units'             => 'required|numeric|min:0.5|max:6',
+            'semester'          => 'required|in:1st Semester,2nd Semester,Summer',
+            'year_level'        => 'required|integer|min:1|max:4',
+            'enrolled_student'  => 'required|integer|min:0',  // ✅ ADDED
         ]);
 
         Subject::create($validated);
@@ -46,12 +47,13 @@ class SubjectController extends Controller
     public function update(Request $request, Subject $subject)
     {
         $validated = $request->validate([
-            'program_id' => 'required|exists:programs,id',
-            'course_code' => 'required|string|max:20|unique:subjects,course_code,' . $subject->id,
-            'subject_name' => 'required|string|max:255',
-            'units' => 'required|numeric|min:0.5|max:6',
-            'semester' => 'required|in:1st Semester,2nd Semester,Summer',
-            'year_level' => 'required|integer|min:1|max:4',
+            'program_id'        => 'required|exists:programs,id',
+            'course_code'       => 'required|string|max:20|unique:subjects,course_code,' . $subject->id,
+            'subject_name'      => 'required|string|max:255',
+            'units'             => 'required|numeric|min:0.5|max:6',
+            'semester'          => 'required|in:1st Semester,2nd Semester,Summer',
+            'year_level'        => 'required|integer|min:1|max:4',
+            'enrolled_student'  => 'required|integer|min:0',  // ✅ ADDED
         ]);
 
         $subject->update($validated);
