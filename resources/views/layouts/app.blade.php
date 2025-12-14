@@ -23,13 +23,14 @@
     @include('layouts.navigation')
     
     <!-- Page Heading -->
-    @if (isset($header))
-        <header class="shadow" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);">
-            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8" style="color: #fff;">
+    @if (isset($header) && trim($header) !== '')
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4">
                 {{ $header }}
             </div>
         </header>
     @endif
+
     
     <!-- Page Content -->
     <main>

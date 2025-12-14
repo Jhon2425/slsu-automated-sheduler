@@ -2,6 +2,21 @@
     <div class="min-h-screen bg-[url('/path/to/your/bg.jpg')] bg-cover bg-center py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
+        <!-- Breadcrumb -->
+        <nav class="flex items-center text-sm text-white/80 mb-6">
+            <a href="{{ route('admin.dashboard') }}"
+            class="flex items-center hover:text-violet-400 transition-colors">
+                <i class="fas fa-home mr-2"></i>
+                Dashboard
+            </a>
+
+            <i class="fas fa-chevron-right mx-3 text-xs text-white/50"></i>
+
+            <span class="font-semibold text-white">
+                All Schedules
+            </span>
+        </nav>
+
             <!-- Success/Error Messages -->
             @if(session('success'))
                 <div class="bg-green-500/20 backdrop-blur-md border border-green-500/50 text-white px-6 py-4 rounded-xl mb-6">

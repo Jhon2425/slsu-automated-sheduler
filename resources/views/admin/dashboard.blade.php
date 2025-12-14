@@ -169,7 +169,7 @@
                     <!-- Manage Subjects -->
                     <a href="{{ route('admin.subjects.index') }}" 
                       class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
-                        <div class="icon-wrapper bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                        <div class="icon-wrapper bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-book text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
@@ -252,7 +252,7 @@
                         </div>
                         <a href="{{ route('admin.programs.index') }}" 
                            class="block mt-4 text-center text-white/80 hover:text-white text-sm transition-colors font-medium">
-                            View all programs →
+                            View all programs
                         </a>
                     @else
                         <div class="text-center py-8">

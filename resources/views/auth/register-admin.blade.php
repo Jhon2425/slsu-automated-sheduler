@@ -527,7 +527,7 @@
                                             </svg>
                                         </div>
                                     </div>
-                                    @error('password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                    @error('password') <p class="mt-1 text-sm text-red-600 hidden">{{ $message }}</p> @enderror
                                 </div>
 
                                 <div class="input-wrapper">
@@ -560,7 +560,7 @@
                                             </svg>
                                         </div>
                                     </div>
-                                    @error('password_confirmation') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                    @error('password_confirmation') <p class="mt-1 text-sm text-red-600 hidden">{{ $message }}</p> @enderror
                                 </div>
 
                                 <div id="password-strength" class="hidden">

@@ -23,6 +23,7 @@
         </div>
 
         <!-- Center: Tabs (desktop) -->
+        <!--
         <div class="hidden md:flex md:items-center md:space-x-2 flex-1 justify-center relative">
             <a href="{{ route('admin.subjects.index') }}"
                class="relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group
@@ -64,6 +65,7 @@
                 @endif
             </a>
         </div>
+        -->
 
         <!-- Right: User dropdown + Mobile button -->
         <div class="flex items-center space-x-3">

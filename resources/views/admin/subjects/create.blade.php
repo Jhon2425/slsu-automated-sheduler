@@ -71,13 +71,21 @@
                         </label>
                         <div class="relative">
                             <select name="program_id" required
-                                class="w-full px-4 py-3 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 text-white 
-                                       focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20
-                                       transition-all duration-300 appearance-none cursor-pointer
-                                       hover:bg-white/20 hover:border-yellow-400/50">
-                                <option value="">Select Program</option>
+                                class="w-full px-4 py-3 rounded-xl
+                                    bg-white/90 text-[#0C3B2E]
+                                    border border-white/30
+                                    focus:outline-none focus:border-yellow-500
+                                    focus:ring-2 focus:ring-yellow-500/20
+                                    transition-all duration-300
+                                    appearance-none cursor-pointer
+                                    hover:bg-gray-100">
+
+                                <option value="" disabled selected hidden>Select Program</option>
+
                                 @foreach($programs as $program)
-                                    <option value="{{ $program->id }}" class="bg-gray-800">{{ $program->name }}</option>
+                                    <option value="{{ $program->id }}">
+                                        {{ $program->name }}
+                                    </option>
                                 @endforeach
                             </select>
                             <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-yellow-400 pointer-events-none"></i>
@@ -188,7 +196,7 @@
                                            focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20
                                            transition-all duration-300 appearance-none cursor-pointer
                                            hover:bg-white/20 hover:border-yellow-400/50">
-                                    <option value="">Select Semester</option>
+                                    <option value="" disabled selected hidden>Select Semester</option>
                                     <option value="1st Semester" class="bg-gray-800">1st Semester</option>
                                     <option value="2nd Semester" class="bg-gray-800">2nd Semester</option>
                                     <option value="Summer" class="bg-gray-800">Summer</option>
@@ -214,7 +222,7 @@
                                            focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20
                                            transition-all duration-300 appearance-none cursor-pointer
                                            hover:bg-white/20 hover:border-yellow-400/50">
-                                    <option value="">Select Year</option>
+                                    <option value="" disabled selected hidden>Select Year Level</option>
                                     <option value="1" class="bg-gray-800">1st Year</option>
                                     <option value="2" class="bg-gray-800">2nd Year</option>
                                     <option value="3" class="bg-gray-800">3rd Year</option>
@@ -311,5 +319,27 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(218, 198, 17, 0.7);
         }
+
+        /* Force light dropdown UI */
+        select {
+            background-color: rgba(255, 255, 255, 1) !important;
+            color: #0C3B2E !important;
+            color-scheme: light; /* key fix for Chrome/Edge */
+        }
+
+        /* Dropdown list */
+        select option {
+            background-color: #ffffff !important;
+            color: #0C3B2E !important;
+            padding: 10px 14px;
+        }
+
+        /* Hover / selected option */
+        select option:hover,
+        select option:checked {
+            background-color: #e5e7eb !important; /* Tailwind gray-200 */
+            color: #0C3B2E !important;
+        }
+
     </style>
 </div>
