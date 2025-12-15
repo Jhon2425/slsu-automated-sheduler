@@ -70,7 +70,7 @@ Route::middleware('auth')->group(function () {
 
             // AJAX schedule generation (for timetable modal)
             Route::post('/generate-preview', [ScheduleController::class, 'generatePreview'])->name('generate-preview');
-            Route::post('/confirm', [ScheduleController::class, 'confirmSchedule'])->name('confirm');
+            Route::post('/confirm', [ScheduleController::class, 'confirm'])->name('confirm');
 
             // Single schedule view (modal)
             Route::get('/{id}', [ScheduleController::class, 'show'])->name('show');
@@ -91,7 +91,7 @@ Route::middleware('auth')->group(function () {
 
             // Legacy compatibility routes (optional - can be removed if not needed)
             Route::post('/generate', [ScheduleController::class, 'generatePreview'])->name('generate');
-            Route::post('/save', [ScheduleController::class, 'confirmSchedule'])->name('save');
+            Route::post('/save', [ScheduleController::class, 'confirm'])->name('save');
             Route::get('/download', [ScheduleController::class, 'downloadPDF'])->name('download');
         });
     });

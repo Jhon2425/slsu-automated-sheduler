@@ -77,12 +77,35 @@
                                             }
                                         }
                                         
+                                        // Track which cells are occupied by rowspan
+                                        $occupiedCells = [];
+                                        
                                         // Populate the array
                                         foreach($schedules as $schedule) {
-                                            $day = $schedule->day;
-                                            $startTime = substr($schedule->start_time, 0, 5); // Get HH:MM format
+                                            $day = $schedule->day_name;
+                                            $startTime = substr($schedule->start_time, 0, 5);
+                                            $endTime = substr($schedule->end_time, 0, 5);
+                                            
+                                            // Calculate duration in hours
+                                            $startHour = (int)substr($startTime, 0, 2);
+                                            $endHour = (int)substr($endTime, 0, 2);
+                                            $duration = $endHour - $startHour;
+                                            
                                             if(isset($schedulesByDayAndTime[$day][$startTime])) {
+                                                $schedule->calculated_rowspan = max(1, $duration);
                                                 $schedulesByDayAndTime[$day][$startTime][] = $schedule;
+                                                
+                                                // Mark subsequent cells as occupied
+                                                for($i = 1; $i < $duration; $i++) {
+                                                    $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
+                                                    if($nextTimeIndex < count($timeSlots)) {
+                                                        $nextTime = $timeSlots[$nextTimeIndex];
+                                                        if(!isset($occupiedCells[$day])) {
+                                                            $occupiedCells[$day] = [];
+                                                        }
+                                                        $occupiedCells[$day][$nextTime] = true;
+                                                    }
+                                                }
                                             }
                                         }
                                         
@@ -106,11 +129,19 @@
                                             </td>
                                             
                                             @foreach($days as $day)
-                                                <td class="bg-white/5 border border-white/20 time-slot timetable-cell">
-                                                    @php
-                                                        $daySchedules = $schedulesByDayAndTime[$day][$time];
-                                                    @endphp
+                                                @php
+                                                    // Skip cell if it's occupied by a rowspan from above
+                                                    if(isset($occupiedCells[$day][$time])) {
+                                                        continue;
+                                                    }
                                                     
+                                                    $daySchedules = $schedulesByDayAndTime[$day][$time];
+                                                @endphp
+                                                
+                                                <td class="bg-white/5 border border-white/20 time-slot timetable-cell" 
+                                                    @if(count($daySchedules) > 0 && isset($daySchedules[0]->calculated_rowspan))
+                                                        rowspan="{{ $daySchedules[0]->calculated_rowspan }}"
+                                                    @endif>
                                                     @if(count($daySchedules) > 0)
                                                         <div style="display: flex; gap: 4px; height: 100%; padding: 4px;">
                                                             @foreach($daySchedules as $schedule)
@@ -121,9 +152,11 @@
                                                                         $colorIndex++;
                                                                     }
                                                                     $color = $subjectColors[$schedule->subject_id];
+                                                                    $rowspan = $schedule->calculated_rowspan ?? 1;
                                                                 @endphp
                                                                 
-                                                                <div class="schedule-block schedule-block-{{ $color }}" style="flex: 1; min-width: 0;">
+                                                                <div class="schedule-block schedule-block-{{ $color }}" 
+                                                                     style="flex: 1; min-width: 0; height: {{ $rowspan * 150 - 8 }}px;">
                                                                     <div class="schedule-text font-bold text-xs truncate">{{ $schedule->subject->course_code ?? 'N/A' }}</div>
                                                                     <div class="schedule-text text-xs truncate">{{ $schedule->subject->subject_name ?? 'N/A' }}</div>
                                                                     <div class="schedule-text text-xs truncate">{{ $schedule->classroom->room_name ?? 'N/A' }}</div>
@@ -382,6 +415,7 @@
         let generatedSchedules = null;
         let generatedExaminations = null;
         let selectedScheduleType = null;
+        let responseData = null; // Store the full response
 
         const subjectColors = [
             'pink', 'blue', 'green', 'yellow', 'purple', 'red',
@@ -441,7 +475,11 @@
                 const data = await res.json();
                 loading.classList.add('hidden');
 
+                console.log('Response data:', data); // Debug log
+
                 if(data.success){
+                    // Store the entire response
+                    responseData = data;
                     generatedSchedules = data.schedules;
                     generatedExaminations = data.examinations;
                     
@@ -455,9 +493,9 @@
                     closePreviewModal();
                 }
             } catch(e) {
-                console.error(e);
+                console.error('Error generating schedule:', e);
                 loading.classList.add('hidden');
-                alert('Error generating schedule');
+                alert('Error generating schedule: ' + e.message);
                 closePreviewModal();
             }
         }
@@ -488,13 +526,20 @@
             const subjectMap = new Map();
             const container = document.getElementById('previewContent');
             
-            // Updated time slots from 7 AM to 7 PM
+            if (!schedules || schedules.length === 0) {
+                container.innerHTML = '<div class="text-center text-white py-8">No schedules to display</div>';
+                return;
+            }
+            
             const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
             
-            // Group schedules by day and time
+            // Group schedules by day and time, calculate rowspan
             const schedulesByDayAndTime = {};
+            const occupiedCells = {};
+            
             days.forEach(day => {
                 schedulesByDayAndTime[day] = {};
+                occupiedCells[day] = {};
                 timeSlots.forEach(time => {
                     schedulesByDayAndTime[day][time] = [];
                 });
@@ -503,9 +548,26 @@
             schedules.forEach(schedule => {
                 const day = schedule.day_name || schedule.day;
                 const startTime = schedule.start_time;
+                const endTime = schedule.end_time;
+                
+                // Calculate duration
+                const startHour = parseInt(startTime.split(':')[0]);
+                const endHour = parseInt(endTime.split(':')[0]);
+                const duration = endHour - startHour;
+                
+                schedule.calculated_rowspan = Math.max(1, duration);
                 
                 if (schedulesByDayAndTime[day] && schedulesByDayAndTime[day][startTime]) {
                     schedulesByDayAndTime[day][startTime].push(schedule);
+                    
+                    // Mark subsequent cells as occupied
+                    for(let i = 1; i < duration; i++) {
+                        const nextTimeIndex = timeSlots.indexOf(startTime) + i;
+                        if(nextTimeIndex < timeSlots.length) {
+                            const nextTime = timeSlots[nextTimeIndex];
+                            occupiedCells[day][nextTime] = true;
+                        }
+                    }
                 }
             });
 
@@ -528,24 +590,31 @@
                 </td>`;
                 
                 days.forEach(day => {
-                    const schedulesAtThisTime = schedulesByDayAndTime[day][time] || [];
+                    // Skip if cell is occupied by rowspan
+                    if(occupiedCells[day][time]) {
+                        return;
+                    }
                     
-                    html += `<td class="bg-white/5 border border-white/20 time-slot timetable-cell">`;
+                    const schedulesAtThisTime = schedulesByDayAndTime[day][time] || [];
+                    const rowspan = schedulesAtThisTime.length > 0 ? schedulesAtThisTime[0].calculated_rowspan : 1;
+                    
+                    html += `<td class="bg-white/5 border border-white/20 time-slot timetable-cell" ${rowspan > 1 ? `rowspan="${rowspan}"` : ''}>`;
                     
                     if (schedulesAtThisTime.length > 0) {
                         html += `<div style="display: flex; gap: 4px; height: 100%; padding: 4px;">`;
                         
                         schedulesAtThisTime.forEach(schedule => {
                             const color = getSubjectColor(schedule.subject_id, subjectMap);
+                            const blockHeight = (rowspan * 150) - 8;
                             
                             html += `
-                                <div class="schedule-block schedule-block-${color}" style="flex: 1; min-width: 0;">
-                                    <div class="schedule-text font-bold text-xs truncate">${schedule.course_code}</div>
-                                    <div class="schedule-text text-xs truncate">${schedule.course_subject}</div>
-                                    <div class="schedule-text text-xs truncate">${schedule.classroom_name}</div>
-                                    <div class="schedule-text text-xs truncate">${schedule.faculty_name}</div>
-                                    <div class="schedule-text text-xs">${schedule.class_type}</div>
-                                    <div class="schedule-text text-xs">Yr ${schedule.year_level}</div>
+                                <div class="schedule-block schedule-block-${color}" style="flex: 1; min-width: 0; height: ${blockHeight}px;">
+                                    <div class="schedule-text font-bold text-xs truncate">${schedule.course_code || 'N/A'}</div>
+                                    <div class="schedule-text text-xs truncate">${schedule.course_subject || schedule.subject_name || 'N/A'}</div>
+                                    <div class="schedule-text text-xs truncate">${schedule.classroom_name || 'N/A'}</div>
+                                    <div class="schedule-text text-xs truncate">${schedule.faculty_name || 'N/A'}</div>
+                                    <div class="schedule-text text-xs">${schedule.class_type || 'Lec'}</div>
+                                    <div class="schedule-text text-xs">Yr ${schedule.year_level || 'N/A'}</div>
                                     <div class="schedule-text text-xs opacity-80">${formatTimeSimple(schedule.start_time)} - ${formatTimeSimple(schedule.end_time)}</div>
                                 </div>`;
                         });
@@ -567,9 +636,13 @@
         function closePreviewModal() {
             document.getElementById('previewModal').classList.add('hidden');
             selectedScheduleType = null;
+            responseData = null;
+            generatedSchedules = null;
+            generatedExaminations = null;
         }
 
         function formatTimeSimple(time) {
+            if (!time) return 'N/A';
             const [h, m] = time.split(':');
             const hour = parseInt(h);
             const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -578,7 +651,7 @@
         }
 
         async function confirmSchedule(){
-            if(!generatedSchedules && !generatedExaminations) {
+            if(!responseData || (!generatedSchedules && !generatedExaminations)) {
                 alert('No schedules to save');
                 return;
             }
@@ -588,31 +661,66 @@
             confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
 
             try{
+                // Prepare the payload with proper formatting
+                const payload = {
+                    schedule_type: selectedScheduleType,
+                    schedules: generatedSchedules || [],
+                    examinations: generatedExaminations || []
+                };
+
+                console.log('Sending payload:', {
+                    schedule_type: payload.schedule_type,
+                    schedule_count: payload.schedules.length,
+                    exam_count: payload.examinations.length
+                });
+                
+                console.log('First schedule sample:', payload.schedules[0]);
+                console.log('First exam sample:', payload.examinations[0]);
+
                 const res = await fetch('{{ route("admin.schedules.confirm") }}', {
                     method:'POST',
                     headers:{
                         'Content-Type':'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({
-                        schedules: generatedSchedules,
-                        examinations: generatedExaminations,
-                        schedule_type: selectedScheduleType
-                    })
+                    body: JSON.stringify(payload)
                 });
+                
+                console.log('Response status:', res.status);
+                console.log('Response headers:', res.headers.get('content-type'));
+                
+                // Check if response is actually JSON
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await res.text();
+                    console.error('Server returned non-JSON response:');
+                    console.error(text);
+                    throw new Error('Server error: Expected JSON response but got HTML. Check browser console for full error.');
+                }
                 
                 const data = await res.json();
                 
+                console.log('Confirmation response:', data);
+                
                 if(data.success) {
+                    const message = data.message || 'Schedule saved successfully!';
+                    if (data.errors && data.errors.length > 0) {
+                        console.warn('Some items had errors:', data.errors);
+                        alert(message + '\n\nNote: Some items had errors (see console for details)');
+                    } else {
+                        alert(message);
+                    }
                     window.location.reload();
                 } else {
-                    alert(data.message || 'Failed to save schedules');
+                    const errorMsg = data.message || 'Failed to save schedules';
+                    console.error('Save failed:', data);
+                    alert('Error: ' + errorMsg);
                     confirmBtn.disabled = false;
                     confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirm & Save';
                 }
             }catch(e){
-                console.error(e);
-                alert('Error saving schedule');
+                console.error('Error saving schedule:', e);
+                alert('Error saving schedule: ' + e.message + '\n\nCheck the browser console (F12) for more details.');
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirm & Save';
             }

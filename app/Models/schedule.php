@@ -4,10 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Subject;
-use App\Models\Room;
-use App\Models\Program;
 
 class Schedule extends Model
 {
@@ -16,20 +12,39 @@ class Schedule extends Model
     protected $fillable = [
         'faculty_id',
         'subject_id',
-        'room_id',
+        'classroom_id',
         'program_id',
         'day',
         'start_time',
         'end_time',
+        'schedule_date',
         'class_type',
         'semester',
-        'academic_year',
-        'type',
-        'is_confirmed',
+        'year_level'
     ];
 
-    /* ================= RELATIONSHIPS ================= */
+    // Map day numbers to names
+    private static $dayNumberToName = [
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+        7 => 'Sunday'
+    ];
 
+    /**
+     * Get the day name from day number
+     */
+    public function getDayNameAttribute()
+    {
+        return self::$dayNumberToName[$this->day] ?? 'Monday';
+    }
+
+    /**
+     * Relationships
+     */
     public function faculty()
     {
         return $this->belongsTo(User::class, 'faculty_id');
@@ -37,17 +52,16 @@ class Schedule extends Model
 
     public function subject()
     {
-        return $this->belongsTo(Subject::class, 'subject_id');
+        return $this->belongsTo(Subject::class);
     }
 
-    // 🔥 RENAMED FROM room() → classroom()
     public function classroom()
     {
-        return $this->belongsTo(Classroom::class, 'classroom_id');
+        return $this->belongsTo(Classroom::class);
     }
 
     public function program()
     {
-        return $this->belongsTo(Program::class, 'program_id');
+        return $this->belongsTo(Program::class);
     }
 }

@@ -63,61 +63,107 @@ class ScheduleController extends Controller
                 'schedules' => [],
                 'examinations' => [],
                 'conflicts' => []
-            ]);
+            ], 500);
         }
     }
 
     /**
-     * Confirm and save schedules from preview
+     * Confirm and save schedules from preview - WITH ENHANCED DEBUGGING
      */
     public function confirm(Request $request)
     {
+        // Force JSON response even if there's an error
         try {
-            Log::info('Confirm Schedule Request', [
-                'schedule_type' => $request->input('schedule_type'),
-                'schedule_count' => count($request->input('schedules', [])),
-                'exam_count' => count($request->input('examinations', []))
-            ]);
-
+            Log::info('=== CONFIRM SCHEDULE START ===');
+            Log::info('Request Method: ' . $request->method());
+            Log::info('Request URL: ' . $request->url());
+            Log::info('Content Type: ' . $request->header('Content-Type'));
+            
+            // Log raw input
+            Log::info('Raw Input:', ['input' => $request->all()]);
+            
+            $scheduleType = $request->input('schedule_type', 'regular');
             $schedules = $request->input('schedules', []);
             $examinations = $request->input('examinations', []);
-            $scheduleType = $request->input('schedule_type', 'regular');
 
-            // Determine which data to save based on schedule type
-            $dataToSave = $scheduleType === 'examination' ? [] : $schedules;
-            $examsToSave = $scheduleType === 'examination' ? $examinations : $examinations;
+            Log::info('Parsed Data:', [
+                'schedule_type' => $scheduleType,
+                'has_schedules' => !empty($schedules),
+                'has_examinations' => !empty($examinations),
+                'schedule_count' => count($schedules),
+                'exam_count' => count($examinations)
+            ]);
 
-            if (empty($dataToSave) && empty($examsToSave)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No schedules to save'
-                ]);
+            // Validate that we have data to save
+            if ($scheduleType === 'examination') {
+                if (empty($examinations)) {
+                    Log::warning('No examination schedules provided');
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No examination schedules provided'
+                    ], 400);
+                }
+                $dataToSave = [];
+                $examsToSave = $examinations;
+            } else {
+                if (empty($schedules)) {
+                    Log::warning('No regular schedules provided');
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No regular schedules provided'
+                    ], 400);
+                }
+                $dataToSave = $schedules;
+                $examsToSave = [];
+            }
+
+            Log::info('Data prepared for saving', [
+                'schedule_type' => $scheduleType,
+                'regular_schedules_count' => count($dataToSave),
+                'examination_schedules_count' => count($examsToSave)
+            ]);
+
+            // Log first item for debugging
+            if (!empty($dataToSave)) {
+                Log::info('First schedule sample:', ['schedule' => $dataToSave[0]]);
+            }
+            if (!empty($examsToSave)) {
+                Log::info('First exam sample:', ['exam' => $examsToSave[0]]);
             }
 
             // Use the service to save
+            Log::info('Calling schedulerService->saveSchedule...');
             $result = $this->schedulerService->saveSchedule($dataToSave, $examsToSave);
 
-            Log::info('Schedule Save Result', $result);
+            Log::info('Schedule Save Result:', $result);
+            Log::info('=== CONFIRM SCHEDULE END ===');
 
             return response()->json($result);
 
-        } catch (\Exception $e) {
-            Log::error('Error in confirm controller', [
+        } catch (\Throwable $e) {
+            // Catch ALL errors including fatal errors
+            Log::error('=== FATAL ERROR IN CONFIRM ===', [
                 'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error saving schedules: ' . $e->getMessage()
-            ]);
+                'message' => 'Critical error: ' . $e->getMessage(),
+                'error_details' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]
+            ], 500);
         }
     }
 
     /**
      * Clear all schedules
      */
-    public function clear()
+    public function clearAllSchedules()
     {
         try {
             $result = $this->schedulerService->clearAllSchedules();
@@ -143,7 +189,7 @@ class ScheduleController extends Controller
     /**
      * Download schedules as PDF
      */
-    public function downloadPdf()
+    public function downloadPDF()
     {
         try {
             $schedules = Schedule::with(['subject', 'faculty', 'classroom'])

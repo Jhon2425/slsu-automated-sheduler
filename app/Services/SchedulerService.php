@@ -10,11 +10,23 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Exception;
 
 class SchedulerService
 {
     private $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Map day names to numbers
+    private $dayNameToNumber = [
+        'Monday' => 1,
+        'Tuesday' => 2,
+        'Wednesday' => 3,
+        'Thursday' => 4,
+        'Friday' => 5,
+        'Saturday' => 6,
+        'Sunday' => 7
+    ];
     
     // Time slots from 7 AM to 7 PM
     private $timeSlots = [
@@ -31,6 +43,14 @@ class SchedulerService
         ['start' => '17:00:00', 'end' => '18:00:00'],
         ['start' => '18:00:00', 'end' => '19:00:00'],
     ];
+
+    /**
+     * Convert day name to number
+     */
+    private function convertDayToNumber($dayName)
+    {
+        return $this->dayNameToNumber[$dayName] ?? 1;
+    }
 
     /**
      * Generate schedule preview with conflict prevention
@@ -96,14 +116,12 @@ class SchedulerService
             $examinations = [];
             $conflicts = [];
             
-            // Track which days each subject has been scheduled
             $subjectDayUsage = [];
 
             foreach ($facultyAssignments as $assignment) {
                 $units = (float) $assignment->units;
                 if ($units < 1) continue;
 
-                // Get proper distribution based on units
                 $distribution = $this->getClassDistribution($units);
 
                 $scheduled = false;
@@ -126,7 +144,6 @@ class SchedulerService
                         $schedules = array_merge($schedules, $sessionSchedules);
                         $scheduled = true;
 
-                        // Track days used by this subject
                         $subjectKey = $assignment->year_level . '_' . $assignment->subject_id;
                         foreach ($sessionSchedules as $session) {
                             if (!isset($subjectDayUsage[$subjectKey])) {
@@ -135,7 +152,6 @@ class SchedulerService
                             $subjectDayUsage[$subjectKey][] = $session['day_name'];
                         }
 
-                        // Generate examination
                         $exam = $this->generateExaminationForAssignment($assignment, $classrooms, $examinations);
                         if ($exam) $examinations[] = $exam;
                     }
@@ -152,7 +168,6 @@ class SchedulerService
                 }
             }
 
-            // Format times for frontend display (remove seconds)
             $schedules = array_map(function($schedule) {
                 $schedule['start_time'] = substr($schedule['start_time'], 0, 5);
                 $schedule['end_time'] = substr($schedule['end_time'], 0, 5);
@@ -192,13 +207,6 @@ class SchedulerService
         }
     }
 
-    /**
-     * Fixed class distribution - returns CONTINUOUS time blocks
-     * 2 units = 2 continuous hours Lecture
-     * 3 units = 2 continuous hours Lecture + 1 hour Lab
-     * 4 units = 2 continuous hours Lecture + 2 continuous hours Lab
-     * 5 units = 3 continuous hours Lecture + 2 continuous hours Lab
-     */
     private function getClassDistribution($units)
     {
         $units = (int)$units;
@@ -234,7 +242,6 @@ class SchedulerService
         $sessionSchedules = [];
         $usedDays = [];
         
-        // Get days already used by this subject
         $subjectKey = $assignment->year_level . '_' . $assignment->subject_id;
         $existingDays = $subjectDayUsage[$subjectKey] ?? [];
 
@@ -245,7 +252,6 @@ class SchedulerService
 
             if ($rooms->isEmpty()) return false;
 
-            // Find CONTINUOUS time slot
             $slot = $this->findAvailableSlotForAssignment(
                 $assignment, 
                 $hours, 
@@ -264,9 +270,6 @@ class SchedulerService
         return $sessionSchedules;
     }
 
-    /**
-     * Find CONTINUOUS time slots (e.g., 2 hours = 8:00-10:00, not separate 8:00-9:00 and 9:00-10:00)
-     */
     private function findAvailableSlotForAssignment($assignment, $hours, $classType, $classrooms, $existingSchedules, $usedDays = [])
     {
         $shuffledDays = $this->daysOfWeek; 
@@ -274,12 +277,10 @@ class SchedulerService
         $shuffledClassrooms = $classrooms->shuffle();
 
         foreach ($shuffledDays as $day) {
-            // CRITICAL: Skip if subject already scheduled on this day
             if (in_array($day, $usedDays)) {
                 continue;
             }
             
-            // Get CONTINUOUS time slots (e.g., 2 hours = one block from 8-10, not two separate 8-9 and 9-10)
             $availableSlots = $this->getContinuousTimeSlots($hours); 
             shuffle($availableSlots);
 
@@ -317,11 +318,6 @@ class SchedulerService
         return false;
     }
 
-    /**
-     * Get CONTINUOUS time slots
-     * Example: For 2 hours, returns [07:00-09:00, 08:00-10:00, 09:00-11:00, etc.]
-     * This ensures 2-hour lectures occupy a continuous 2-hour block, not separate hours
-     */
     private function getContinuousTimeSlots($hours)
     {
         $continuousSlots = [];
@@ -344,13 +340,8 @@ class SchedulerService
             
             if (!$this->timesOverlap($startTime, $endTime, $schedule['start_time'], $schedule['end_time'])) continue;
 
-            // Classroom conflict
             if ($schedule['classroom_id'] == $classroomId) return false;
-            
-            // Faculty conflict
             if (isset($schedule['faculty_id']) && $schedule['faculty_id'] == $assignment->faculty_id) return false;
-            
-            // Student group conflict
             if (($schedule['year_section'] ?? null) === $assignmentSection) return false;
         }
 
@@ -436,7 +427,7 @@ class SchedulerService
     }
 
     /**
-     * Save schedules with better error handling and validation
+     * Save schedules with DAY NAME TO NUMBER CONVERSION
      */
     public function saveSchedule($schedules, $examinations = [])
     {
@@ -454,7 +445,6 @@ class SchedulerService
 
             foreach ($schedules as $index => $schedule) {
                 try {
-                    // Validate required fields
                     if (empty($schedule['faculty_id'])) {
                         $errors[] = "Schedule {$index}: Missing faculty_id";
                         continue;
@@ -468,27 +458,41 @@ class SchedulerService
                         continue;
                     }
 
-                    // Ensure time format
                     $startTime = $this->ensureTimeFormat($schedule['start_time']);
                     $endTime = $this->ensureTimeFormat($schedule['end_time']);
 
-                    // Use day name directly
-                    $day = $schedule['day_name'] ?? $schedule['day'];
+                    // Convert day name to number
+                    $dayName = $schedule['day_name'] ?? $schedule['day'];
+                    $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Create schedule record
-                    Schedule::create([
+                    // Build data array with only existing columns
+                    $data = [
                         'faculty_id' => $schedule['faculty_id'],
                         'subject_id' => $schedule['subject_id'],
                         'classroom_id' => $schedule['classroom_id'],
-                        'program_id' => $schedule['program_id'] ?? null,
-                        'day' => $day,
+                        'day' => $dayNumber, // Store as number
                         'start_time' => $startTime,
                         'end_time' => $endTime,
-                        'schedule_date' => $schedule['schedule_date'] ?? null,
-                        'class_type' => $schedule['class_type'] ?? 'Lecture',
-                        'semester' => $schedule['semester'] ?? null,
-                        'year_level' => $schedule['year_level'] ?? null
-                    ]);
+                    ];
+
+                    // Add optional fields only if they exist in the table
+                    if (Schema::hasColumn('schedules', 'program_id')) {
+                        $data['program_id'] = $schedule['program_id'] ?? null;
+                    }
+                    if (Schema::hasColumn('schedules', 'schedule_date')) {
+                        $data['schedule_date'] = $schedule['schedule_date'] ?? null;
+                    }
+                    if (Schema::hasColumn('schedules', 'class_type')) {
+                        $data['class_type'] = $schedule['class_type'] ?? 'Lecture';
+                    }
+                    if (Schema::hasColumn('schedules', 'semester')) {
+                        $data['semester'] = $schedule['semester'] ?? null;
+                    }
+                    if (Schema::hasColumn('schedules', 'year_level')) {
+                        $data['year_level'] = $schedule['year_level'] ?? null;
+                    }
+
+                    Schedule::create($data);
 
                     $savedSchedules++;
 
@@ -508,14 +512,17 @@ class SchedulerService
 
                     $startTime = $this->ensureTimeFormat($exam['start_time']);
                     $endTime = $this->ensureTimeFormat($exam['end_time']);
-                    $day = $exam['day_name'] ?? $exam['day'];
+                    
+                    // Convert day name to number
+                    $dayName = $exam['day_name'] ?? $exam['day'];
+                    $dayNumber = $this->convertDayToNumber($dayName);
 
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
                         'exam_date' => $exam['exam_date'] ?? null,
-                        'day' => $day,
+                        'day' => $dayNumber, // Store as number
                         'start_time' => $startTime,
                         'end_time' => $endTime,
                         'exam_type' => $exam['exam_type'] ?? 'Final',
@@ -531,17 +538,15 @@ class SchedulerService
                 }
             }
 
-            // If there were errors but some were saved, still commit
             if (count($errors) > 0 && ($savedSchedules > 0 || $savedExams > 0)) {
                 Log::warning('Some schedules had errors but proceeding', ['errors' => $errors]);
             }
 
-            // If nothing was saved and there are errors, rollback
             if ($savedSchedules === 0 && $savedExams === 0 && count($errors) > 0) {
                 DB::rollBack();
                 return [
                     'success' => false,
-                    'message' => 'Failed to save schedules. Errors: ' . implode('; ', $errors)
+                    'message' => 'Failed to save schedules. Errors: ' . implode('; ', array_slice($errors, 0, 3))
                 ];
             }
 
