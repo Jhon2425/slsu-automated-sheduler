@@ -49,7 +49,7 @@
             </div>
 
             @if(isset($schedules) && $schedules->count() > 0)
-                <!-- Timetable View - FIXED TO MATCH MODAL -->
+                <!-- Timetable View -->
                 <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6">
                     <div class="timetable-wrapper overflow-x-auto">
                         <div class="timetable-container bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/20" style="min-width: max-content;">
@@ -64,11 +64,9 @@
                                 </thead>
                                 <tbody>
                                     @php
-                                        // Updated time slots from 7 AM to 7 PM
                                         $timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
                                         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                         
-                                        // Group schedules by day and time
                                         $schedulesByDayAndTime = [];
                                         foreach($days as $day) {
                                             $schedulesByDayAndTime[$day] = [];
@@ -77,25 +75,28 @@
                                             }
                                         }
                                         
-                                        // Track which cells are occupied by rowspan
                                         $occupiedCells = [];
                                         
-                                        // Populate the array
                                         foreach($schedules as $schedule) {
                                             $day = $schedule->day_name;
                                             $startTime = substr($schedule->start_time, 0, 5);
                                             $endTime = substr($schedule->end_time, 0, 5);
                                             
-                                            // Calculate duration in hours
                                             $startHour = (int)substr($startTime, 0, 2);
+                                            $startMin = (int)substr($startTime, 3, 2);
                                             $endHour = (int)substr($endTime, 0, 2);
+                                            $endMin = (int)substr($endTime, 3, 2);
+                                            
+                                            // Calculate duration in hours (including partial hours)
                                             $duration = $endHour - $startHour;
+                                            if ($endMin > $startMin) {
+                                                $duration += 1;
+                                            }
                                             
                                             if(isset($schedulesByDayAndTime[$day][$startTime])) {
                                                 $schedule->calculated_rowspan = max(1, $duration);
                                                 $schedulesByDayAndTime[$day][$startTime][] = $schedule;
                                                 
-                                                // Mark subsequent cells as occupied
                                                 for($i = 1; $i < $duration; $i++) {
                                                     $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
                                                     if($nextTimeIndex < count($timeSlots)) {
@@ -109,7 +110,6 @@
                                             }
                                         }
                                         
-                                        // Color palette
                                         $colors = ['pink', 'blue', 'green', 'yellow', 'purple', 'red', 'indigo', 'teal', 'orange', 'cyan', 'lime', 'fuchsia'];
                                         $subjectColors = [];
                                         $colorIndex = 0;
@@ -130,7 +130,6 @@
                                             
                                             @foreach($days as $day)
                                                 @php
-                                                    // Skip cell if it's occupied by a rowspan from above
                                                     if(isset($occupiedCells[$day][$time])) {
                                                         continue;
                                                     }
@@ -138,7 +137,7 @@
                                                     $daySchedules = $schedulesByDayAndTime[$day][$time];
                                                 @endphp
                                                 
-                                                <td class="bg-white/5 border border-white/20 time-slot timetable-cell" 
+                                                <td class="bg-white/5 border border-white/20 time-slot timetable-cell align-top" 
                                                     @if(count($daySchedules) > 0 && isset($daySchedules[0]->calculated_rowspan))
                                                         rowspan="{{ $daySchedules[0]->calculated_rowspan }}"
                                                     @endif>
@@ -146,17 +145,17 @@
                                                         <div style="display: flex; gap: 4px; height: 100%; padding: 4px;">
                                                             @foreach($daySchedules as $schedule)
                                                                 @php
-                                                                    // Assign color to subject if not assigned
                                                                     if(!isset($subjectColors[$schedule->subject_id])) {
                                                                         $subjectColors[$schedule->subject_id] = $colors[$colorIndex % count($colors)];
                                                                         $colorIndex++;
                                                                     }
                                                                     $color = $subjectColors[$schedule->subject_id];
                                                                     $rowspan = $schedule->calculated_rowspan ?? 1;
+                                                                    $blockHeight = ($rowspan * 150) - 8;
                                                                 @endphp
                                                                 
                                                                 <div class="schedule-block schedule-block-{{ $color }}" 
-                                                                     style="flex: 1; min-width: 0; height: {{ $rowspan * 150 - 8 }}px;">
+                                                                     style="flex: 1; min-width: 0; height: {{ $blockHeight }}px;">
                                                                     <div class="schedule-text font-bold text-xs truncate">{{ $schedule->subject->course_code ?? 'N/A' }}</div>
                                                                     <div class="schedule-text text-xs truncate">{{ $schedule->subject->subject_name ?? 'N/A' }}</div>
                                                                     <div class="schedule-text text-xs truncate">{{ $schedule->classroom->room_name ?? 'N/A' }}</div>
@@ -212,7 +211,6 @@
             </div>
 
             <div class="grid md:grid-cols-2 gap-6 mb-8">
-                <!-- Regular Class Schedule -->
                 <button onclick="selectScheduleType('regular')" 
                     class="schedule-type-card bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md border-2 border-blue-400/50 hover:border-blue-400 rounded-2xl p-8 transition-all transform hover:scale-105">
                     <div class="text-center">
@@ -228,7 +226,6 @@
                     </div>
                 </button>
 
-                <!-- Examination Schedule -->
                 <button onclick="selectScheduleType('examination')" 
                     class="schedule-type-card bg-orange-500/20 hover:bg-orange-500/30 backdrop-blur-md border-2 border-orange-400/50 hover:border-orange-400 rounded-2xl p-8 transition-all transform hover:scale-105">
                     <div class="text-center">
@@ -269,13 +266,11 @@
                 </button>
             </div>
             
-            <!-- Loading Indicator -->
             <div id="loadingIndicator" class="hidden text-center py-12">
                 <i class="fas fa-spinner fa-spin text-white text-6xl mb-4"></i>
                 <p class="text-white text-xl">Generating schedule...</p>
             </div>
 
-            <!-- Conflicts Alert -->
             <div id="conflictsAlert" class="hidden bg-yellow-500/20 backdrop-blur-md border border-yellow-500/50 text-white px-6 py-4 rounded-xl mb-6">
                 <h4 class="font-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Scheduling Conflicts</h4>
                 <div id="conflictsList"></div>
@@ -295,7 +290,6 @@
     </div>
 
     <style>
-        /* Unified Timetable Styles for Both Saved View and Modal */
         .time-slot {
             height: 150px;
             min-height: 150px;
@@ -303,6 +297,7 @@
             background: rgba(255, 255, 255, 0.03);
             position: relative;
             padding: 0 !important;
+            vertical-align: top;
         }
         
         .schedule-block {
@@ -316,7 +311,6 @@
             flex-direction: column;
             gap: 3px;
             font-size: 0.75rem;
-            height: 100%;
         }
         
         .timetable-cell {
@@ -355,7 +349,6 @@
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         }
 
-        /* Color palette */
         .schedule-block-pink {
             background: linear-gradient(135deg, rgba(236, 72, 153, 0.75) 0%, rgba(219, 39, 119, 0.75) 100%);
         }
@@ -415,7 +408,7 @@
         let generatedSchedules = null;
         let generatedExaminations = null;
         let selectedScheduleType = null;
-        let responseData = null; // Store the full response
+        let responseData = null;
 
         const subjectColors = [
             'pink', 'blue', 'green', 'yellow', 'purple', 'red',
@@ -450,7 +443,6 @@
             const conflictsAlert = document.getElementById('conflictsAlert');
             const previewTitle = document.getElementById('previewTitle');
             
-            // Update title based on type
             previewTitle.innerHTML = selectedScheduleType === 'examination' 
                 ? '<i class="fas fa-file-alt mr-2"></i>Examination Schedule Preview' 
                 : '<i class="fas fa-chalkboard-teacher mr-2"></i>Regular Class Schedule Preview';
@@ -475,10 +467,9 @@
                 const data = await res.json();
                 loading.classList.add('hidden');
 
-                console.log('Response data:', data); // Debug log
+                console.log('Response data:', data);
 
                 if(data.success){
-                    // Store the entire response
                     responseData = data;
                     generatedSchedules = data.schedules;
                     generatedExaminations = data.examinations;
@@ -522,6 +513,20 @@
             return subjectMap.get(subjectId);
         }
 
+        function calculateDuration(startTime, endTime) {
+            const [startHour, startMin] = startTime.split(':').map(Number);
+            const [endHour, endMin] = endTime.split(':').map(Number);
+            
+            let duration = endHour - startHour;
+            
+            // If end minutes are greater than start minutes, we need another slot
+            if (endMin > startMin) {
+                duration += 1;
+            }
+            
+            return Math.max(1, duration);
+        }
+
         function displayTimetable(schedules) {
             const subjectMap = new Map();
             const container = document.getElementById('previewContent');
@@ -533,7 +538,6 @@
             
             const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
             
-            // Group schedules by day and time, calculate rowspan
             const schedulesByDayAndTime = {};
             const occupiedCells = {};
             
@@ -550,17 +554,13 @@
                 const startTime = schedule.start_time;
                 const endTime = schedule.end_time;
                 
-                // Calculate duration
-                const startHour = parseInt(startTime.split(':')[0]);
-                const endHour = parseInt(endTime.split(':')[0]);
-                const duration = endHour - startHour;
+                const duration = calculateDuration(startTime, endTime);
                 
-                schedule.calculated_rowspan = Math.max(1, duration);
+                schedule.calculated_rowspan = duration;
                 
                 if (schedulesByDayAndTime[day] && schedulesByDayAndTime[day][startTime]) {
                     schedulesByDayAndTime[day][startTime].push(schedule);
                     
-                    // Mark subsequent cells as occupied
                     for(let i = 1; i < duration; i++) {
                         const nextTimeIndex = timeSlots.indexOf(startTime) + i;
                         if(nextTimeIndex < timeSlots.length) {
@@ -590,7 +590,6 @@
                 </td>`;
                 
                 days.forEach(day => {
-                    // Skip if cell is occupied by rowspan
                     if(occupiedCells[day][time]) {
                         return;
                     }
@@ -598,7 +597,7 @@
                     const schedulesAtThisTime = schedulesByDayAndTime[day][time] || [];
                     const rowspan = schedulesAtThisTime.length > 0 ? schedulesAtThisTime[0].calculated_rowspan : 1;
                     
-                    html += `<td class="bg-white/5 border border-white/20 time-slot timetable-cell" ${rowspan > 1 ? `rowspan="${rowspan}"` : ''}>`;
+                    html += `<td class="bg-white/5 border border-white/20 time-slot timetable-cell align-top" ${rowspan > 1 ? `rowspan="${rowspan}"` : ''}>`;
                     
                     if (schedulesAtThisTime.length > 0) {
                         html += `<div style="display: flex; gap: 4px; height: 100%; padding: 4px;">`;
@@ -661,7 +660,6 @@
             confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
 
             try{
-                // Prepare the payload with proper formatting
                 const payload = {
                     schedule_type: selectedScheduleType,
                     schedules: generatedSchedules || [],
@@ -689,7 +687,6 @@
                 console.log('Response status:', res.status);
                 console.log('Response headers:', res.headers.get('content-type'));
                 
-                // Check if response is actually JSON
                 const contentType = res.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await res.text();

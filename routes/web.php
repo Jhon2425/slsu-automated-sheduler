@@ -72,16 +72,16 @@ Route::middleware('auth')->group(function () {
             Route::post('/generate-preview', [ScheduleController::class, 'generatePreview'])->name('generate-preview');
             Route::post('/confirm', [ScheduleController::class, 'confirm'])->name('confirm');
 
-            // Single schedule view (modal)
-            Route::get('/{id}', [ScheduleController::class, 'show'])->name('show');
-
-            // Previous schedules history
+            // Previous schedules history (SPECIFIC ROUTE - before {id})
             Route::get('/previous', [ScheduleController::class, 'viewPrevious'])->name('previous');
 
-            // Calendar events data (for FullCalendar integration)
+            // Calendar events data (SPECIFIC ROUTE - before {id})
             Route::get('/calendar-data', [ScheduleController::class, 'getCalendarData'])->name('calendar-data');
 
-            // Export & print
+            // NEW: Schedule data API for AJAX (SPECIFIC ROUTE - before {id})
+            Route::get('/data', [ScheduleController::class, 'getScheduleData'])->name('data');
+
+            // Export & print (SPECIFIC ROUTES - before {id})
             Route::get('/print', [ScheduleController::class, 'printSchedule'])->name('print');
             Route::get('/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('download-pdf');
             Route::get('/download-excel', [ScheduleController::class, 'downloadExcel'])->name('download-excel');
@@ -89,10 +89,13 @@ Route::middleware('auth')->group(function () {
             // Clear all schedules
             Route::post('/clear', [ScheduleController::class, 'clearAllSchedules'])->name('clear');
 
-            // Legacy compatibility routes (optional - can be removed if not needed)
+            // Legacy compatibility routes
             Route::post('/generate', [ScheduleController::class, 'generatePreview'])->name('generate');
             Route::post('/save', [ScheduleController::class, 'confirm'])->name('save');
             Route::get('/download', [ScheduleController::class, 'downloadPDF'])->name('download');
+
+            // Single schedule view (modal) - MUST BE LAST
+            Route::get('/{id}', [ScheduleController::class, 'show'])->name('show');
         });
     });
 
@@ -104,12 +107,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/programs/{program}/enroll', [FacultyDashboardController::class, 'enrollProgram'])->name('programs.enroll');
         Route::delete('/enrollments/{enrollment}/unenroll', [FacultyDashboardController::class, 'unenrollProgram'])->name('programs.unenroll');
 
-        // Schedule viewing
+        // Schedule viewing (SPECIFIC ROUTES - before any {id} routes)
+        Route::get('/schedule/download-pdf', [FacultyDashboardController::class, 'downloadPDF'])->name('schedule.download-legacy');
+        Route::get('/my-schedule', [FacultyDashboardController::class, 'mySchedule'])->name('schedule.my');
+
+        // Schedule viewing with enrollment ID
         Route::get('/enrollments/{enrollment}/schedule', [FacultyDashboardController::class, 'viewSchedule'])->name('schedule.view');
         Route::get('/enrollments/{enrollment}/schedule/download', [FacultyDashboardController::class, 'downloadSchedule'])->name('schedule.download');
-        Route::get('/schedule/download-pdf', [FacultyDashboardController::class, 'downloadPDF'])->name('schedule.download-legacy');
-
-        // My schedule
-        Route::get('/my-schedule', [FacultyDashboardController::class, 'mySchedule'])->name('schedule.my');
     });
 });
