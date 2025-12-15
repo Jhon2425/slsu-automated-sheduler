@@ -13,7 +13,7 @@
                 </div>
                 <div class="flex flex-col leading-tight">
                     <p class="font-bold text-lg mb-0 transition-colors duration-300" style="color: #fae209ee;"> 
-                        South Luzon State University -
+                        Southern Luzon State University -
                     </p>
                     <p class="font-semibold text-sm mb-0 transition-colors duration-300" style="color: #e7d954a3;"> 
                         Tiaong Campus
