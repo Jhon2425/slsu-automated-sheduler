@@ -31,18 +31,18 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            opacity: 0.04;
-            z-index: 0;
+            opacity: 0.08;
+            z-index: -1;
             pointer-events: none;
-            width: 900px;
-            height: 900px;
+            width: 700px;
+            height: 700px;
         }
 
         .watermark img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            filter: grayscale(50%) contrast(1.1);
+            filter: grayscale(30%) contrast(1.2);
         }
 
         /* Print Button */

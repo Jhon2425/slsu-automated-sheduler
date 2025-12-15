@@ -207,32 +207,49 @@ class SchedulerService
         }
     }
 
+    /**
+     * Get class distribution based on units
+     * Rules:
+     * - 1 unit Lecture = 1 hour
+     * - 1 unit Laboratory = 3 hours
+     * - 2 units = 2 hours Lecture only
+     * - 3 units = 2 hours Lecture + 3 hours Laboratory
+     * - 4 units = 2 hours Lecture + 6 hours Laboratory (2 units lab)
+     * - 5+ units = all Lecture hours
+     */
     private function getClassDistribution($units)
     {
         $units = (int)$units;
+        
         switch ($units) {
             case 2: 
+                // 2 units = 2 hours lecture only
                 return [['type' => 'Lecture', 'hours' => 2]];
                 
             case 3: 
+                // 3 units = 2 units lecture (2 hours) + 1 unit laboratory (3 hours)
                 return [
                     ['type' => 'Lecture', 'hours' => 2],
-                    ['type' => 'Laboratory', 'hours' => 1]
+                    ['type' => 'Laboratory', 'hours' => 3]
                 ];
                 
             case 4: 
+                // 4 units = 2 units lecture (2 hours) + 2 units laboratory (6 hours)
                 return [
                     ['type' => 'Lecture', 'hours' => 2],
-                    ['type' => 'Laboratory', 'hours' => 2]
+                    ['type' => 'Laboratory', 'hours' => 6]
                 ];
                 
             case 5: 
-                return [
-                    ['type' => 'Lecture', 'hours' => 3],
-                    ['type' => 'Laboratory', 'hours' => 2]
-                ];
+                // 5 units = all lecture (5 hours)
+                return [['type' => 'Lecture', 'hours' => 5]];
+                
+            case 6:
+                // 6 units = all lecture (6 hours)
+                return [['type' => 'Lecture', 'hours' => 6]];
                 
             default: 
+                // Any other units = all lecture hours
                 return [['type' => 'Lecture', 'hours' => $units]];
         }
     }

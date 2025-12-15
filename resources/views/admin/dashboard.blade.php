@@ -153,68 +153,45 @@
                     </div>
                     Quick Actions
                 </h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Manage Programs -->
                     <a href="{{ route('admin.programs.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
-                        <div class="icon-wrapper bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                      class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
+                        <div class="icon-wrapper bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-graduation-cap text-white text-3xl"></i>
                         </div>
-                        <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Manage Programs</p>
-                            <p class="text-xs text-white/70 leading-relaxed">View programs and manage enrollments</p>
-                        </div>
+                        <p class="font-bold text-white text-lg mb-2">Manage Programs</p>
+                        <p class="text-sm text-white/70 leading-relaxed">View programs and manage enrollments</p>
                     </a>
 
                     <!-- Manage Subjects -->
                     <a href="{{ route('admin.subjects.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
-                        <div class="icon-wrapper bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                      class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
+                        <div class="icon-wrapper bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-book text-white text-3xl"></i>
                         </div>
-                        <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Manage Subjects</p>
-                            <p class="text-xs text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
-                        </div>
+                        <p class="font-bold text-white text-lg mb-2">Manage Subjects</p>
+                        <p class="text-sm text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
                     </a>
 
                     <!-- View Schedules -->
                     <a href="{{ route('admin.schedules.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
-                        <div class="icon-wrapper bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                      class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
+                        <div class="icon-wrapper bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-calendar text-white text-3xl"></i>
                         </div>
-                        <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">View Schedules</p>
-                            <p class="text-xs text-white/70 leading-relaxed">Browse all schedules</p>
-                        </div>
+                        <p class="font-bold text-white text-lg mb-2">Generate Schedules</p>
+                        <p class="text-sm text-white/70 leading-relaxed">Browse all schedules</p>
                     </a>
-
-                    <!-- Generate Schedule -->
-                    <form method="POST" action="{{ route('admin.schedules.generate') }}" class="m-0 h-full">
-                        @csrf
-                        <button type="submit" 
-                                class="w-full h-full action-card glass-card rounded-xl p-6 text-center group flex flex-col min-h-[220px]">
-                            <div class="icon-wrapper bg-gradient-to-br from-red-400 to-red-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-magic text-white text-3xl"></i>
-                            </div>
-                            <div class="flex-grow flex flex-col justify-center">
-                                <p class="font-bold text-white text-lg mb-2">Generate Schedule</p>
-                                <p class="text-xs text-white/70 leading-relaxed">Auto-generate schedules</p>
-                            </div>
-                        </button>
-                    </form>
 
                     <!-- Download Reports -->
                     <a href="{{ route('admin.schedules.download') }}" 
-                       class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
-                        <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                       class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
+                        <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-file-pdf text-white text-3xl"></i>
                         </div>
-                        <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Download Report</p>
-                            <p class="text-xs text-white/70 leading-relaxed">Export as PDF</p>
-                        </div>
+                        <p class="font-bold text-white text-lg mb-2">Download Report</p>
+                        <p class="text-sm text-white/70 leading-relaxed">Export as PDF</p>
                     </a>
                 </div>
             </div>
@@ -461,11 +438,14 @@
             transform: rotate(10deg) scale(1.1);
         }
 
-        /* Action Card - Equal Sizes with Flexbox */
+        /* Action Card - Improved Layout */
         .action-card {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 200px;
         }
 
         .action-card::before {
@@ -487,8 +467,8 @@
         }
 
         .action-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             border-color: rgba(255, 255, 255, 0.4);
         }
 
@@ -497,7 +477,7 @@
         }
 
         .action-card:hover .icon-wrapper {
-            transform: rotateY(360deg) scale(1.15);
+            transform: rotateY(360deg) scale(1.1);
         }
 
         /* Pulse Glow Animation */
@@ -708,7 +688,7 @@
         /* Responsive adjustments */
         @media (max-width: 640px) {
             .action-card {
-                min-h: 200px;
+                min-height: 180px;
             }
         }
     </style>
