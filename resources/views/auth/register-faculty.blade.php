@@ -392,6 +392,11 @@
             padding-bottom: 0.95rem;   /* adjust this value */
             line-height: 1.4;          /* helps center dots vertically */
         }
+
+        /* Hide password error message text but keep spacing minimal */
+        .password-error {
+            display: none;
+        }
     </style>
 </head>
 <body class="antialiased font-sans">
@@ -522,7 +527,7 @@
                                         </svg>
 
                                         <input id="faculty_id" class="enhanced-input" type="text" name="faculty_id"
-                                               value="{{ old('faculty_id') }}" placeholder="e.g., FAC-2024-001" required>
+                                               value="{{ old('faculty_id') }}" placeholder="" required>
 
                                         <div class="input-icon" aria-hidden="true">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -588,7 +593,7 @@
                                         </div>
                                     </div>
                                     <div class="tooltip">Use a strong, unique password</div>
-                                    @error('password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                    @error('password') <p class="password-error">{{ $message }}</p> @enderror
                                 </div>
 
                                 <div class="input-wrapper">

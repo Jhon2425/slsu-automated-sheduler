@@ -4,13 +4,26 @@
 
             <!-- Page Header with Date/Time -->
             <div class="mb-8 animate-fade-in flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 class="text-4xl font-bold text-white flex items-center">
-                        <i class="fas fa-tachometer-alt mr-3 floating"></i>Admin Dashboard
-                    </h1>
-                    <p class="mt-2 text-white/90 text-lg">Welcome back, {{ auth()->user()->name }}!</p>
-                </div>
+                <div class="animate-slide-in-left">
+                    <h1 class="text-5xl font-bold text-white flex items-center mb-2">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 flex items-center justify-center mr-4 shadow-2xl shadow-blue-500/50 floating relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent shimmer"></div>
+                            <i class="fas fa-tachometer-alt text-2xl animate-pulse-gentle relative z-10"></i>
+                        </div>
 
+                        <span class="animate-text-shimmer bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-200 to-purple-300">
+                            Admin Dashboard
+                        </span>
+                    </h1>
+
+                    <p class="text-white/80 text-lg mt-2 animate-fade-in-delayed">
+                        Welcome back,
+                        <span class="font-semibold text-white animate-glow">
+                            {{ auth()->user()->name }}
+                        </span>!
+                    </p>
+                </div>
+                
                 <!-- Glass Date/Time Display -->
                 <div class="glass-card px-6 py-4 rounded-2xl shadow-xl hover-lift">
                     <div class="flex items-center space-x-4">
