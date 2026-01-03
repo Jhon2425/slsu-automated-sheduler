@@ -21,8 +21,6 @@ Route::middleware('guest')->group(function () {
     // Registration
     Route::get('/register/admin', [AuthController::class, 'showRegisterAdmin'])->name('register.admin');
     Route::post('/register/admin', [AuthController::class, 'registerAdmin']);
-    Route::get('/register/faculty', [AuthController::class, 'showRegisterFaculty'])->name('register.faculty');
-    Route::post('/register/faculty', [AuthController::class, 'registerFaculty']);
     Route::get('/register', fn() => view('welcome'))->name('register');
 });
 

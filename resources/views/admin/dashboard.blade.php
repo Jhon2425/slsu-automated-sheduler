@@ -174,7 +174,7 @@
                             <i class="fas fa-graduation-cap text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Manage Programs</p>
+                            <p class="font-bold text-white text-lg mb-2">Manage Faculties</p>
                             <p class="text-xs text-white/70 leading-relaxed">View programs and manage enrollments</p>
                         </div>
                     </a>
@@ -186,7 +186,7 @@
                             <i class="fas fa-book text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Manage Subjects</p>
+                            <p class="font-bold text-white text-lg mb-2">Generate Exam Schedules</p>
                             <p class="text-xs text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
                         </div>
                     </a>
@@ -212,7 +212,7 @@
                                 <i class="fas fa-magic text-white text-3xl"></i>
                             </div>
                             <div class="flex-grow flex flex-col justify-center">
-                                <p class="font-bold text-white text-lg mb-2">Generate Schedule</p>
+                                <p class="font-bold text-white text-lg mb-2">Generate Class Schedule</p>
                                 <p class="text-xs text-white/70 leading-relaxed">Auto-generate schedules</p>
                             </div>
                         </button>
@@ -225,7 +225,7 @@
                             <i class="fas fa-file-pdf text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Download Report</p>
+                            <p class="font-bold text-white text-lg mb-2">View Generated Archives</p>
                             <p class="text-xs text-white/70 leading-relaxed">Export as PDF</p>
                         </div>
                     </a>

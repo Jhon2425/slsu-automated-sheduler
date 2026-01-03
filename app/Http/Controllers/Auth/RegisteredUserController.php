@@ -15,47 +15,43 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    public function create(Request $request): View
+    public function create(): View
     {
-        $role = $request->query('role'); // Get role from URL
-        return view('auth.register', compact('role'));
+        // No role selection anymore
+        return view('auth.register');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:admin,faculty'], // Validate role
-            'program' => $request->role === 'admin' ? ['required', 'string', 'max:255'] : [], // Program required for admin
+            'program' => ['required', 'string', 'max:255'], // Admin only
         ]);
 
-        $program = null;
-        if ($request->role === 'admin') {
-            // Create or get existing program
-            $program = Program::firstOrCreate(
-                ['name' => $request->program],
-                [
-                    'code' => strtoupper(substr($request->program, 0, 4)),
-                    'description' => 'Created during admin registration',
-                ]
-            );
-        }
+        // Always create/get program for admin
+        $program = Program::firstOrCreate(
+            ['name' => $request->program],
+            [
+                'code' => strtoupper(substr($request->program, 0, 4)),
+                'description' => 'Created during admin registration',
+            ]
+        );
 
-        // Create the user
+        // Create ADMIN user only
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'program' => $program?->name,   // text field in users table
-            'program_id' => $program?->id,  // optional foreign key
+            'role' => 'admin',              // 🔒 forced
+            'program' => $program->name,
+            'program_id' => $program->id,
         ]);
 
         event(new Registered($user));
         Auth::login($user);
 
-        return redirect(route('dashboard'));
+        return redirect()->route('dashboard');
     }
 }
