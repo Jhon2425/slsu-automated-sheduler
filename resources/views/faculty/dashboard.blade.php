@@ -317,7 +317,7 @@
                                                         <i class="fas fa-book mr-1 text-xs"></i>
                                                         {{ $program->academic_year }}
                                                     </span>
-                                                    <span class="glass-badge {{ $enrollment->enrollment_status === 'pending' ? 'badge-yellow' : 'badge-green' }}">
+                                                    <span class="glass-badge text-white {{ $enrollment->enrollment_status === 'pending' ? 'badge-yellow' : 'badge-green' }}">
                                                         <i class="fas {{ $enrollment->enrollment_status === 'pending' ? 'fa-clock' : 'fa-check-circle' }} mr-1 text-xs"></i>
                                                         {{ ucfirst($enrollment->enrollment_status) }}
                                                     </span>
@@ -410,15 +410,15 @@
                                         <!-- Action Buttons - No Schedule -->
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <button disabled 
-                                                    class="glass-btn glass-btn-disabled group/btn cursor-not-allowed">
+                                                    class="glass-btn glass-btn-disabled group/btn cursor-not-allowed text-white">
                                                 <div class="glass-btn-glow glass-btn-glow-gray"></div>
-                                                <i class="fas fa-calendar-times mr-2"></i>
+                                                <i class="fas fa-calendar-times mr-2 text-white"></i>
                                                 <span>Schedule Not Available</span>
                                             </button>
                                             <button onclick="confirmUnenroll({{ $enrollment->id }}, '{{ addslashes($program->name) }}')" 
-                                                    class="glass-btn glass-btn-danger group/btn">
+                                                    class="glass-btn glass-btn-danger group/btn text-white">
                                                 <div class="glass-btn-glow glass-btn-glow-red"></div>
-                                                <i class="fas fa-sign-out-alt mr-2 group-hover/btn:scale-110 group-hover/btn:rotate-12 transition-all duration-300"></i>
+                                                <i class="fas fa-sign-out-alt mr-2 group-hover/btn:scale-110 group-hover/btn:rotate-12 transition-all duration-300 text-white"></i>
                                                 <span>Unenroll from Program</span>
                                             </button>
                                         </div>
@@ -1090,6 +1090,17 @@
             .stat-card-enhanced:hover {
                 transform: translateY(-4px) scale(1.01);
             }
+        }
+
+        .glass-badge {
+            color: white;
+            /* for soft contrast
+            color: rgba(255, 255, 255, 0.9)
+             */
+        }
+
+        .glass-badge i {
+            color: white;
         }
     </style>
 </x-app-layout>

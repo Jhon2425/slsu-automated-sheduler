@@ -4,13 +4,26 @@
 
             <!-- Page Header with Date/Time -->
             <div class="mb-8 animate-fade-in flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 class="text-4xl font-bold text-white flex items-center">
-                        <i class="fas fa-tachometer-alt mr-3 floating"></i>Admin Dashboard
-                    </h1>
-                    <p class="mt-2 text-white/90 text-lg">Welcome back, {{ auth()->user()->name }}!</p>
-                </div>
+                <div class="animate-slide-in-left">
+                    <h1 class="text-5xl font-bold text-white flex items-center mb-2">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 flex items-center justify-center mr-4 shadow-2xl shadow-blue-500/50 floating relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent shimmer"></div>
+                            <i class="fas fa-tachometer-alt text-2xl animate-pulse-gentle relative z-10"></i>
+                        </div>
 
+                        <span class="animate-text-shimmer bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-200 to-purple-300">
+                            Admin Dashboard
+                        </span>
+                    </h1>
+
+                    <p class="text-white/80 text-lg mt-2 animate-fade-in-delayed">
+                        Welcome back,
+                        <span class="font-semibold text-white animate-glow">
+                            {{ auth()->user()->name }}
+                        </span>!
+                    </p>
+                </div>
+                
                 <!-- Glass Date/Time Display -->
                 <div class="glass-card px-6 py-4 rounded-2xl shadow-xl hover-lift">
                     <div class="flex items-center space-x-4">
@@ -160,18 +173,22 @@
                         <div class="icon-wrapper bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-graduation-cap text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Manage Programs</p>
-                        <p class="text-sm text-white/70 leading-relaxed">View programs and manage enrollments</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">Manage Faculties</p>
+                            <p class="text-xs text-white/70 leading-relaxed">View programs and manage enrollments</p>
+                        </div>
                     </a>
 
                     <!-- Manage Subjects -->
                     <a href="{{ route('admin.subjects.index') }}" 
-                      class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
-                        <div class="icon-wrapper bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
+                      class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
+                        <div class="icon-wrapper bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
                             <i class="fas fa-book text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Manage Subjects</p>
-                        <p class="text-sm text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">Generate Exam Schedules</p>
+                            <p class="text-xs text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
+                        </div>
                     </a>
 
                     <!-- View Schedules -->
@@ -184,14 +201,31 @@
                         <p class="text-sm text-white/70 leading-relaxed">Browse all schedules</p>
                     </a>
 
+                    <!-- Generate Schedule -->
+                    <form method="POST" action="{{ route('admin.schedules.generate') }}" class="m-0 h-full">
+                        @csrf
+                        <button type="submit" 
+                                class="w-full h-full action-card glass-card rounded-xl p-6 text-center group flex flex-col min-h-[220px]">
+                            <div class="icon-wrapper bg-gradient-to-br from-red-400 to-red-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-magic text-white text-3xl"></i>
+                            </div>
+                            <div class="flex-grow flex flex-col justify-center">
+                                <p class="font-bold text-white text-lg mb-2">Generate Class Schedule</p>
+                                <p class="text-xs text-white/70 leading-relaxed">Auto-generate schedules</p>
+                            </div>
+                        </button>
+                    </form>
+
                     <!-- Download Reports -->
                     <a href="{{ route('admin.schedules.download') }}" 
                        class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
                         <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-file-pdf text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Download Report</p>
-                        <p class="text-sm text-white/70 leading-relaxed">Export as PDF</p>
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="font-bold text-white text-lg mb-2">View Generated Archives</p>
+                            <p class="text-xs text-white/70 leading-relaxed">Export as PDF</p>
+                        </div>
                     </a>
                 </div>
             </div>
@@ -229,7 +263,7 @@
                         </div>
                         <a href="{{ route('admin.programs.index') }}" 
                            class="block mt-4 text-center text-white/80 hover:text-white text-sm transition-colors font-medium">
-                            View all programs →
+                            View all programs
                         </a>
                     @else
                         <div class="text-center py-8">

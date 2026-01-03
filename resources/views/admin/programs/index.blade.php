@@ -6,11 +6,11 @@
             <div class="mb-8 animate-fade-in flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <div class="flex items-center text-white/70 text-sm mb-2">
-                        <a href="{{ route('admin.dashboard') }}" class="hover:text-white transition-colors hover:scale-105 inline-flex items-center">
+                        <a href="{{ route('admin.dashboard') }}" class="hover:text-blue-400 transition-colors hover:scale-105 inline-flex items-center">
                             <i class="fas fa-home mr-2"></i>Dashboard
                         </a>
                         <i class="fas fa-chevron-right mx-2 text-xs animate-pulse-slow"></i>
-                        <span class="text-white font-medium">Faculty</span>
+                        <span class="text-white font-semibold">Faculty</span>
                     </div>
                     <h1 class="text-4xl font-bold text-white flex items-center">
                         <i class="fas fa-user-graduate mr-3 floating"></i>Faculty Management

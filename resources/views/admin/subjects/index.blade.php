@@ -1,9 +1,5 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-white leading-tight">
-            <i class="fas fa-book mr-3"></i>{{ __('Subject Management') }}
-        </h2>
-    </x-slot>
+    <x-slot name="header"></x-slot>
 
     <div 
         x-data="{
@@ -26,6 +22,21 @@
         </div>
 
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 relative z-10">
+            
+        <!-- Breadcrumb -->
+        <nav class="flex items-center text-sm text-white/70 mb-6 animate-fade-in">
+            <a href="{{ route('admin.dashboard') }}"
+            class="flex items-center hover:text-yellow-400 transition-colors">
+                <i class="fas fa-home mr-2"></i>
+                Dashboard
+            </a>
+
+            <i class="fas fa-chevron-right mx-3 text-xs text-white/40"></i>
+
+            <span class="font-semibold text-white">
+                Subject Management
+            </span>
+        </nav>
 
             <!-- Page Title + Add Button -->
             <div class="flex justify-between items-center mb-8 animate-fade-in">
@@ -97,7 +108,7 @@
                                            focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:bg-white/15
                                            transition-all duration-300 cursor-pointer hover:bg-white/15 hover:border-white/30 appearance-none
                                            shadow-lg group-hover:shadow-xl">
-                                    <option value="">All Programs</option>
+                                    <option value="" selected hidden>All Programs</option>
                                     @foreach($programs as $program)
                                         <option value="{{ $program->id }}" {{ request('program_id') == $program->id ? 'selected' : '' }}>
                                             {{ $program->name }}
@@ -120,7 +131,7 @@
                                            focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:bg-white/15
                                            transition-all duration-300 cursor-pointer hover:bg-white/15 hover:border-white/30 appearance-none
                                            shadow-lg group-hover:shadow-xl">
-                                    <option value="">All Years</option>
+                                    <option value="" selected hidden>All Year</option>
                                     <option value="1" {{ request('year_level') == '1' ? 'selected' : '' }}>1st Year</option>
                                     <option value="2" {{ request('year_level') == '2' ? 'selected' : '' }}>2nd Year</option>
                                     <option value="3" {{ request('year_level') == '3' ? 'selected' : '' }}>3rd Year</option>
@@ -142,7 +153,7 @@
                                            focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40 focus:bg-white/15
                                            transition-all duration-300 cursor-pointer hover:bg-white/15 hover:border-white/30 appearance-none
                                            shadow-lg group-hover:shadow-xl">
-                                    <option value="">All Semesters</option>
+                                    <option value="" selected hidden>All Semester</option>
                                     <option value="1st Semester" {{ request('semester') == '1st Semester' ? 'selected' : '' }}>1st Semester</option>
                                     <option value="2nd Semester" {{ request('semester') == '2nd Semester' ? 'selected' : '' }}>2nd Semester</option>
                                     <option value="Summer" {{ request('semester') == 'Summer' ? 'selected' : '' }}>Summer</option>

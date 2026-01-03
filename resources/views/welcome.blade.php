@@ -889,9 +889,6 @@
             <a href="{{ route('register.admin') }}" class="role-btn">
                 <span>👤 Admin</span>
             </a>
-            <a href="{{ route('register.faculty') }}" class="role-btn">
-                <span>🎓 Faculty</span>
-            </a>
 
             <button class="close-btn" @click="showRoleModal = false">Close</button>
         </div>
