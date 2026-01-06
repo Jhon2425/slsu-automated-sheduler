@@ -22,51 +22,6 @@
             </a>
         </div>
 
-        <!-- Center: Tabs (desktop) -->
-        <!--
-        <div class="hidden md:flex md:items-center md:space-x-2 flex-1 justify-center relative">
-            <a href="{{ route('admin.subjects.index') }}"
-               class="relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group
-                      {{ request()->routeIs('admin.subjects.*') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white' }}">
-                <span class="relative z-10">Manage Subjects</span>
-                <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                @if(request()->routeIs('admin.subjects.*'))
-                    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[#fae209]"></div>
-                @endif
-            </a>
-
-            <a href="{{ route('admin.schedules.index') }}"
-               class="relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group
-                      {{ request()->routeIs('admin.schedules.index') || request()->routeIs('admin.schedules.*') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white' }}">
-                <span class="relative z-10">View Schedules</span>
-                <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                @if(request()->routeIs('admin.schedules.index') || request()->routeIs('admin.schedules.*'))
-                    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[#fae209]"></div>
-                @endif
-            </a>
-
-            <a href="{{ route('admin.schedules.generate') }}"
-               class="relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group
-                      {{ request()->routeIs('admin.schedules.generate') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white' }}">
-                <span class="relative z-10">Generate Schedule</span>
-                <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                @if(request()->routeIs('admin.schedules.generate'))
-                    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[#fae209]"></div>
-                @endif
-            </a>
-
-            <a href="{{ route('admin.schedules.download') }}"
-               class="relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group
-                      {{ request()->routeIs('admin.schedules.download') ? 'bg-white/10 text-white shadow-md' : 'text-white/80 hover:text-white' }}">
-                <span class="relative z-10">Download Schedule</span>
-                <div class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                @if(request()->routeIs('admin.schedules.download'))
-                    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-[#fae209]"></div>
-                @endif
-            </a>
-        </div>
-        -->
-
         <!-- Right: User dropdown + Mobile button -->
         <div class="flex items-center space-x-3">
             <!-- User Dropdown (desktop & mobile) -->

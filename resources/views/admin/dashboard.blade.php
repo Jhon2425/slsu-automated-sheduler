@@ -66,16 +66,16 @@
             @endif
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <!-- Total Accepted Faculties Card -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Added Faculty Card -->
                 <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.1s;">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Accepted Faculties</p>
+                            <p class="text-white/80 text-sm font-medium mb-2">Added Faculty</p>
                             <p class="text-4xl font-bold text-white number-animate">{{ $acceptedFaculties ?? 0 }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-check-circle text-green-400 mr-1"></i>
-                                Active members
+                                <i class="fas fa-user-check text-green-400 mr-1"></i>
+                                Total faculty members
                             </p>
                         </div>
                         <div class="icon-container bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-4 shadow-lg">
@@ -85,33 +85,33 @@
                     <div class="progress-bar mt-4"></div>
                 </div>
 
-                <!-- Total Programs Card -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.15s;">
+                <!-- Total Schedule for Examination Card -->
+                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.2s;">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Active Programs</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $totalPrograms ?? 0 }}</p>
+                            <p class="text-white/80 text-sm font-medium mb-2">Exam Schedules</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $examSchedules ?? 0 }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-check-circle text-green-400 mr-1"></i>
-                                Current programs
+                                <i class="fas fa-file-alt text-purple-400 mr-1"></i>
+                                Examination schedules
                             </p>
                         </div>
-                        <div class="icon-container bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-4 shadow-lg">
-                            <i class="fas fa-graduation-cap text-white text-3xl"></i>
+                        <div class="icon-container bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-4 shadow-lg">
+                            <i class="fas fa-file-alt text-white text-3xl"></i>
                         </div>
                     </div>
                     <div class="progress-bar mt-4"></div>
                 </div>
 
-                <!-- Total Schedules Card -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.2s;">
+                <!-- Total Schedule for Regular Class Card -->
+                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.3s;">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Total Schedules</p>
+                            <p class="text-white/80 text-sm font-medium mb-2">Class Schedules</p>
                             <p class="text-4xl font-bold text-white number-animate">{{ $totalSchedules ?? 0 }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
                                 <i class="fas fa-calendar-check text-green-400 mr-1"></i>
-                                Generated schedules
+                                Regular class schedules
                             </p>
                         </div>
                         <div class="icon-container bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-4 shadow-lg">
@@ -122,36 +122,18 @@
                 </div>
 
                 <!-- Total Classrooms Card -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.3s;">
+                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.4s;">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">Classrooms</p>
                             <p class="text-4xl font-bold text-white number-animate">{{ $totalClassrooms ?? 0 }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-door-open text-purple-400 mr-1"></i>
+                                <i class="fas fa-door-open text-yellow-400 mr-1"></i>
                                 Available rooms
                             </p>
                         </div>
-                        <div class="icon-container bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-4 shadow-lg">
-                            <i class="fas fa-door-open text-white text-3xl"></i>
-                        </div>
-                    </div>
-                    <div class="progress-bar mt-4"></div>
-                </div>
-
-                <!-- Enrollments Card -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.4s;">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Enrollments</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $totalEnrollments ?? 0 }}</p>
-                            <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-user-check text-yellow-400 mr-1"></i>
-                                Faculty enrolled
-                            </p>
-                        </div>
                         <div class="icon-container bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-4 shadow-lg">
-                            <i class="fas fa-user-check text-white text-3xl"></i>
+                            <i class="fas fa-door-open text-white text-3xl"></i>
                         </div>
                     </div>
                     <div class="progress-bar mt-4"></div>
@@ -179,7 +161,7 @@
                         </div>
                     </a>
 
-                    <!-- Manage Subjects -->
+                    <!-- Generate Exam Schedules -->
                     <a href="{{ route('admin.subjects.index') }}" 
                       class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
                         <div class="icon-wrapper bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
@@ -191,30 +173,15 @@
                         </div>
                     </a>
 
-                    <!-- View Schedules -->
+                    <!-- Generate Class Schedule -->
                     <a href="{{ route('admin.schedules.index') }}" 
                       class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
                         <div class="icon-wrapper bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-calendar text-white text-3xl"></i>
                         </div>
-                        <p class="font-bold text-white text-lg mb-2">Generate Schedules</p>
-                        <p class="text-sm text-white/70 leading-relaxed">Browse all schedules</p>
+                        <p class="font-bold text-white text-lg mb-2">Generate Class Schedule</p>
+                        <p class="text-sm text-white/70 leading-relaxed">Create class schedules</p>
                     </a>
-
-                    <!-- Generate Schedule -->
-                    <form method="POST" action="{{ route('admin.schedules.generate') }}" class="m-0 h-full">
-                        @csrf
-                        <button type="submit" 
-                                class="w-full h-full action-card glass-card rounded-xl p-6 text-center group flex flex-col min-h-[220px]">
-                            <div class="icon-wrapper bg-gradient-to-br from-red-400 to-red-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-magic text-white text-3xl"></i>
-                            </div>
-                            <div class="flex-grow flex flex-col justify-center">
-                                <p class="font-bold text-white text-lg mb-2">Generate Class Schedule</p>
-                                <p class="text-xs text-white/70 leading-relaxed">Auto-generate schedules</p>
-                            </div>
-                        </button>
-                    </form>
 
                     <!-- Download Reports -->
                     <a href="{{ route('admin.schedules.download') }}" 
@@ -230,124 +197,8 @@
                 </div>
             </div>
 
-            <!-- Recent Activity & Programs Overview -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <!-- Recent Programs -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.6s;">
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                        <div class="bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-lg p-2 mr-3">
-                            <i class="fas fa-graduation-cap text-white"></i>
-                        </div>
-                        Recent Programs
-                    </h2>
-                    @if(isset($recentPrograms) && $recentPrograms->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($recentPrograms as $program)
-                                <div class="glass-item rounded-xl p-4 hover-slide">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center flex-1 min-w-0">
-                                            <div class="bg-indigo-500/30 rounded-full p-2 mr-3 flex-shrink-0">
-                                                <i class="fas fa-book text-indigo-300"></i>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="font-semibold text-white truncate">{{ $program->name }}</p>
-                                                <p class="text-xs text-white/70">{{ $program->code }}</p>
-                                            </div>
-                                        </div>
-                                        <span class="badge-success ml-2 flex-shrink-0">
-                                            {{ $program->enrollments_count ?? 0 }} enrolled
-                                        </span>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                        <a href="{{ route('admin.programs.index') }}" 
-                           class="block mt-4 text-center text-white/80 hover:text-white text-sm transition-colors font-medium">
-                            View all programs
-                        </a>
-                    @else
-                        <div class="text-center py-8">
-                            <i class="fas fa-inbox text-white/30 text-5xl mb-3"></i>
-                            <p class="text-white/70 mb-4">No programs created yet</p>
-                        </div>
-                    @endif
-                </div>
-
-                <!-- Recent Faculties -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.7s;">
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                        <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg p-2 mr-3">
-                            <i class="fas fa-history text-white"></i>
-                        </div>
-                        Recent Faculties
-                    </h2>
-                    @if(isset($recentFaculties) && $recentFaculties->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($recentFaculties as $faculty)
-                                <div class="glass-item rounded-xl p-4 hover-slide">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center">
-                                            <div class="bg-blue-500/30 rounded-full p-2 mr-3">
-                                                <i class="fas fa-user text-blue-300"></i>
-                                            </div>
-                                            <div>
-                                                <p class="font-semibold text-white">{{ $faculty->name }}</p>
-                                                <p class="text-xs text-white/70">{{ $faculty->course_subject ?? 'No subject' }}</p>
-                                            </div>
-                                        </div>
-                                        <span class="text-xs text-white/60">{{ $faculty->created_at->diffForHumans() }}</span>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-8">
-                            <i class="fas fa-user-slash text-white/30 text-5xl mb-3"></i>
-                            <p class="text-white/70">No recent faculties added</p>
-                        </div>
-                    @endif
-                </div>
-
-                <!-- Pending Enrollments -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.8s;">
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                        <div class="bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg p-2 mr-3 animate-bounce-slow">
-                            <i class="fas fa-clock text-white"></i>
-                        </div>
-                        Pending Enrollments
-                    </h2>
-                    @if(isset($pendingEnrollments) && $pendingEnrollments->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($pendingEnrollments as $enrollment)
-                                <div class="glass-item rounded-xl p-4">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <p class="font-semibold text-white text-sm">{{ $enrollment->faculty->name }}</p>
-                                        <span class="badge-warning">Pending</span>
-                                    </div>
-                                    <p class="text-xs text-white/70 mb-3">{{ $enrollment->program->name }}</p>
-                                    <a href="{{ route('admin.enrollments.edit', $enrollment->id) }}" 
-                                       class="block text-center bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-lg text-xs transition-all transform hover:scale-105 font-medium">
-                                        <i class="fas fa-edit mr-1"></i>Assign Schedule
-                                    </a>
-                                </div>
-                            @endforeach
-                        </div>
-                        <a href="{{ route('admin.programs.index') }}" 
-                           class="block mt-4 text-center text-white/80 hover:text-white text-sm transition-colors font-medium">
-                            View all enrollments →
-                        </a>
-                    @else
-                        <div class="text-center py-8">
-                            <i class="fas fa-check-circle text-green-400 text-5xl mb-3 animate-pulse-slow"></i>
-                            <p class="text-white font-semibold">All caught up!</p>
-                            <p class="text-white/60 text-xs mt-1">No pending enrollments</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
             <!-- System Statistics -->
-            <div class="glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.9s;">
+            <div class="glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.6s;">
                 <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
                     <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-2 mr-3">
                         <i class="fas fa-chart-bar text-white"></i>
