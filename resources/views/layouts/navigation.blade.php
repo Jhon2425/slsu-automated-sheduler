@@ -22,8 +22,6 @@
             </a>
         </div>
 
-<<<<<<< HEAD
-=======
         <!-- Center: Tabs (desktop) -->
         <!--
         <div class="hidden md:flex md:items-center md:space-x-2 flex-1 justify-center relative">
@@ -69,7 +67,6 @@
         </div>
         -->
 
->>>>>>> master
         <!-- Right: User dropdown + Mobile button -->
         <div class="flex items-center space-x-3">
             <!-- User Dropdown (desktop & mobile) -->
