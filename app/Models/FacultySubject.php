@@ -15,6 +15,13 @@ class FacultySubject extends Model
         'faculty_id',
         'subject_id',
         'program_id',
+        'lecture_units',
+        'laboratory_units',
+    ];
+
+    protected $casts = [
+        'lecture_units' => 'decimal:1',
+        'laboratory_units' => 'decimal:1',
     ];
 
     /**
@@ -39,5 +46,13 @@ class FacultySubject extends Model
     public function program()
     {
         return $this->belongsTo(Program::class);
+    }
+
+    /**
+     * Get total units
+     */
+    public function getTotalUnitsAttribute()
+    {
+        return ($this->lecture_units ?? 0) + ($this->laboratory_units ?? 0);
     }
 }

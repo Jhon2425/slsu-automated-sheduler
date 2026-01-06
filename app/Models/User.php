@@ -63,6 +63,23 @@ class User extends Authenticatable
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'faculty_subjects', 'faculty_id', 'subject_id')
+                    ->withPivot('program_id', 'lecture_units', 'laboratory_units')
                     ->withTimestamps();
+    }
+
+    /**
+     * Get the faculty subject assignments for this faculty member.
+     */
+    public function facultySubjects()
+    {
+        return $this->hasMany(FacultySubject::class, 'faculty_id');
+    }
+
+    /**
+     * Get the faculty profile associated with the user
+     */
+    public function faculty()
+    {
+        return $this->hasOne(Faculty::class);
     }
 }

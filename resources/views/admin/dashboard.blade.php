@@ -149,8 +149,8 @@
                     Quick Actions
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Manage Programs -->
-                    <a href="{{ route('admin.programs.index') }}" 
+                    <!-- Manage Faculties -->
+                    <a href="{{ route('admin.faculty.index') }}" 
                       class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
                         <div class="icon-wrapper bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-graduation-cap text-white text-3xl"></i>
@@ -184,7 +184,7 @@
                     </a>
 
                     <!-- Download Reports -->
-                    <a href="{{ route('admin.schedules.download') }}" 
+                    <a href="{{ route('admin.schedules.previous') }}" 
                        class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
                         <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
                             <i class="fas fa-file-pdf text-white text-3xl"></i>

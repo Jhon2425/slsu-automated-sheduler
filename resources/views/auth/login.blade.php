@@ -512,7 +512,7 @@
                     <div class="text-center" style="animation: fadeInUp 0.6s ease-out 0.5s backwards;">
                         <p class="text-sm text-white-fix">
                             Don't have an account? 
-                            <a href="{{ route('register') }}" class="animated-link font-semibold text-[#FFBA00] transition-colors ml-1">
+                            <a href="{{ route('register.admin') }}" class="animated-link font-semibold text-[#FFBA00] transition-colors ml-1">
                                 Register
                             </a>
                         </p>

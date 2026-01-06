@@ -10,25 +10,21 @@
                             <i class="fas fa-home mr-2"></i>Dashboard
                         </a>
                         <i class="fas fa-chevron-right mx-2 text-xs animate-pulse-slow"></i>
-                        <span class="text-white font-semibold">Faculty</span>
+                        <span class="text-white font-semibold">Faculty Management</span>
                     </div>
                     <h1 class="text-4xl font-bold text-white flex items-center">
                         <i class="fas fa-user-graduate mr-3 floating"></i>Faculty Management
                     </h1>
-                    <p class="mt-2 text-white/90 text-lg">Monitor faculty enrollments and assign subjects</p>
+                    <p class="mt-2 text-white/90 text-lg">Manage faculty members and assign subjects</p>
                 </div>
 
-                <!-- Quick Stats Mini Cards -->
-                <div class="flex gap-3">
-                    <div class="glass-mini-card px-4 py-3 rounded-xl">
-                        <div class="text-xs text-white/70 mb-1">Total Faculty</div>
-                        <div class="text-2xl font-bold text-white">{{ $faculties->count() }}</div>
-                    </div>
-                    <div class="glass-mini-card px-4 py-3 rounded-xl">
-                        <div class="text-xs text-white/70 mb-1">Pending</div>
-                        <div class="text-2xl font-bold text-yellow-400">{{ $faculties->sum('pending_count') }}</div>
-                    </div>
-                </div>
+                <!-- Add Faculty Button -->
+                <a href="{{ route('admin.faculty.create') }}" 
+                   class="glass-card px-6 py-3 rounded-xl hover-lift transition-all duration-300 flex items-center gap-2 shadow-xl hover:shadow-2xl group"
+                   style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
+                    <i class="fas fa-plus-circle text-xl group-hover:rotate-90 transition-transform duration-300"></i>
+                    <span class="font-bold">Add Faculty</span>
+                </a>
             </div>
 
             <!-- Success Message -->
@@ -64,7 +60,7 @@
             @endif
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <!-- Total Faculty -->
                 <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.1s;">
                     <div class="flex items-center justify-between">
@@ -83,55 +79,37 @@
                     <div class="progress-bar mt-4"></div>
                 </div>
 
-                <!-- Total Enrollments -->
+                <!-- Faculty with Subjects -->
                 <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.15s;">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Enrollments</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->sum('enrollments_count') }}</p>
+                            <p class="text-white/80 text-sm font-medium mb-2">With Subjects</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->where('subjects_count', '>', 0)->count() }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-clipboard-list text-blue-400 mr-1"></i>
-                                Total enrolled
+                                <i class="fas fa-book text-blue-400 mr-1"></i>
+                                Have assigned subjects
                             </p>
                         </div>
                         <div class="icon-container bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-4 shadow-lg">
-                            <i class="fas fa-clipboard-list text-white text-3xl"></i>
+                            <i class="fas fa-book text-white text-3xl"></i>
                         </div>
                     </div>
                     <div class="progress-bar mt-4"></div>
                 </div>
 
-                <!-- Pending Actions -->
+                <!-- Total Subjects Assigned -->
                 <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.2s;">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Pending</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->sum('pending_count') }}</p>
+                            <p class="text-white/80 text-sm font-medium mb-2">Total Subjects</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->sum('subjects_count') }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-clock text-yellow-400 mr-1"></i>
-                                Needs attention
+                                <i class="fas fa-clipboard-list text-purple-400 mr-1"></i>
+                                Subjects assigned
                             </p>
                         </div>
-                        <div class="icon-container bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-4 shadow-lg animate-pulse-slow">
-                            <i class="fas fa-clock text-white text-3xl"></i>
-                        </div>
-                    </div>
-                    <div class="progress-bar mt-4"></div>
-                </div>
-
-                <!-- Active Enrollments -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.25s;">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-white/80 text-sm font-medium mb-2">Active</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->sum('active_count') }}</p>
-                            <p class="text-xs text-white/60 mt-2 flex items-center">
-                                <i class="fas fa-check-circle text-[#6D9773] mr-1"></i>
-                                Currently active
-                            </p>
-                        </div>
-                        <div class="icon-container rounded-2xl p-4 shadow-lg" style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
-                            <i class="fas fa-check-circle text-white text-3xl"></i>
+                        <div class="icon-container bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl p-4 shadow-lg">
+                            <i class="fas fa-clipboard-list text-white text-3xl"></i>
                         </div>
                     </div>
                     <div class="progress-bar mt-4"></div>
@@ -149,7 +127,7 @@
                                 </div>
                                 Faculty Members
                             </h3>
-                            <p class="text-sm text-white/80 mt-1">Manage enrollments and assign subjects</p>
+                            <p class="text-sm text-white/80 mt-1">View and manage faculty accounts</p>
                         </div>
                         <div class="text-white/70 text-sm">
                             <i class="fas fa-users mr-2"></i>
@@ -164,19 +142,16 @@
                             <thead style="background: rgba(109, 151, 115, 0.1); backdrop-filter: blur(5px);">
                                 <tr>
                                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                                        <i class="fas fa-hashtag mr-2"></i>Faculty ID
+                                        <i class="fas fa-hashtag mr-2"></i>ID
                                     </th>
                                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                         <i class="fas fa-user mr-2"></i>Faculty Name
                                     </th>
-                                    <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
-                                        <i class="fas fa-clipboard-list mr-2"></i>Enrollments
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                        <i class="fas fa-envelope mr-2"></i>Email
                                     </th>
                                     <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
-                                        <i class="fas fa-clock mr-2"></i>Pending
-                                    </th>
-                                    <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
-                                        <i class="fas fa-check-circle mr-2"></i>Active
+                                        <i class="fas fa-book mr-2"></i>Subjects
                                     </th>
                                     <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         <i class="fas fa-cog mr-2"></i>Actions
@@ -185,15 +160,12 @@
                             </thead>
                             <tbody class="divide-y divide-white/10">
                                 @foreach($faculties as $index => $faculty)
-                                    <tr class="table-row hover:bg-white/5 transition-all duration-300 {{ $faculty->active_count > 0 ? 'cursor-pointer' : '' }}" 
-                                        style="animation: tableRowFadeIn 0.5s ease-out {{ $index * 0.05 }}s both;"
-                                        @if($faculty->active_count > 0)
-                                            onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '{{ $faculty->faculty_id ?? '#'.$faculty->id }}')"
-                                        @endif>
+                                    <tr class="table-row hover:bg-white/5 transition-all duration-300" 
+                                        style="animation: tableRowFadeIn 0.5s ease-out {{ $index * 0.05 }}s both;">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="text-sm font-bold text-white/90 px-3 py-1 rounded-full inline-flex items-center" style="background: rgba(109, 151, 115, 0.2);">
                                                 <i class="fas fa-id-badge mr-2 text-xs"></i> 
-                                                {{ $faculty->faculty_id ?? '#'.$faculty->id }}
+                                                #{{ $faculty->id }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4">
@@ -202,86 +174,61 @@
                                                     <i class="fas fa-user text-white"></i>
                                                 </div>
                                                 <div>
-                                                    <div class="text-sm font-bold text-white">{{ $faculty->name ?? 'No Name' }}</div>
+                                                    <div class="text-sm font-bold text-white">{{ $faculty->name }}</div>
                                                     <div class="text-xs text-white/60">
-                                                        <i class="fas fa-envelope mr-1"></i>{{ $faculty->email ?? 'No email' }}
+                                                        <i class="fas fa-user-tag mr-1"></i>Faculty Member
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 text-center">
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">
-                                                <i class="fas fa-clipboard-list mr-1 text-xs"></i>
-                                                {{ $faculty->enrollments_count }}
-                                            </span>
+                                        <td class="px-6 py-4">
+                                            <div class="text-sm text-white/80">
+                                                <i class="fas fa-envelope mr-2 text-white/60"></i>{{ $faculty->email }}
+                                            </div>
                                         </td>
                                         <td class="px-6 py-4 text-center">
-                                            @if($faculty->pending_count > 0)
-                                                <span class="badge-warning animate-pulse-slow inline-flex items-center">
-                                                    <i class="fas fa-exclamation-triangle mr-1 text-xs"></i>
-                                                    {{ $faculty->pending_count }}
-                                                </span>
+                                            @if($faculty->subjects_count > 0)
+                                                <button onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '#{{ $faculty->id }}')"
+                                                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold cursor-pointer hover:scale-110 transition-transform" 
+                                                        style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">
+                                                    <i class="fas fa-book mr-1 text-xs"></i>
+                                                    {{ $faculty->subjects_count }}
+                                                </button>
                                             @else
-                                                <span class="text-sm text-white/40 inline-flex items-center">
-                                                    <i class="fas fa-check mr-1 text-xs"></i>0
-                                                </span>
+                                                <button onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '#{{ $faculty->id }}')"
+                                                        class="text-sm text-white/40 hover:text-white/70 transition-colors inline-flex items-center">
+                                                    <i class="fas fa-plus-circle mr-1 text-xs"></i>Assign
+                                                </button>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 text-center">
-                                            @if($faculty->active_count > 0)
-                                                <span class="badge-success-custom inline-flex items-center">
-                                                    <i class="fas fa-check-circle mr-1 text-xs"></i>
-                                                    {{ $faculty->active_count }}
-                                                </span>
-                                            @else
-                                                <span class="text-sm text-white/40 inline-flex items-center">
-                                                    <i class="fas fa-minus mr-1 text-xs"></i>0
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4" onclick="event.stopPropagation()">
-                                            @if($faculty->enrollments->where('enrollment_status', 'pending')->count() > 0)
-                                                <div class="flex justify-center gap-2 flex-wrap">
-                                                    @foreach($faculty->enrollments->where('enrollment_status', 'pending') as $enrollment)
-                                                        <div class="flex gap-2 items-center p-2 rounded-lg glass-item">
-                                                            <!-- Accept Enrollment -->
-                                                            <form action="{{ route('admin.enrollments.accept', $enrollment->id) }}" method="POST" class="inline">
-                                                                @csrf
-                                                                <button type="submit" 
-                                                                        class="action-button bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg" 
-                                                                        title="Accept Enrollment"
-                                                                        onclick="return confirm('Accept this enrollment?');">
-                                                                    <i class="fas fa-check"></i>
-                                                                </button>
-                                                            </form>
+                                        <td class="px-6 py-4">
+                                            <div class="flex justify-center gap-2">
+                                                <!-- Assign Subjects -->
+                                                <button onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '#{{ $faculty->id }}')"
+                                                        class="action-button bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg" 
+                                                        title="Assign Subjects">
+                                                    <i class="fas fa-book"></i>
+                                                </button>
 
-                                                            <!-- Decline Enrollment -->
-                                                            <form action="{{ route('admin.enrollments.decline', $enrollment->id) }}" method="POST" class="inline">
-                                                                @csrf
-                                                                <button type="submit" 
-                                                                        class="action-button bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg" 
-                                                                        title="Decline Enrollment"
-                                                                        onclick="return confirm('Are you sure you want to decline this enrollment?');">
-                                                                    <i class="fas fa-times"></i>
-                                                                </button>
-                                                            </form>
+                                                <!-- Edit Faculty -->
+                                                <a href="{{ route('admin.faculty.edit', $faculty->id) }}" 
+                                                   class="action-button bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-lg" 
+                                                   title="Edit Faculty">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
 
-                                                            <!-- Assign Schedule -->
-                                                            <a href="{{ route('admin.enrollments.assign-schedule', $enrollment->id) }}" 
-                                                               class="action-button bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg" 
-                                                               title="Assign Schedule">
-                                                                <i class="fas fa-calendar-alt"></i>
-                                                            </a>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            @else
-                                                <div class="text-center">
-                                                    <span class="text-xs text-white/50 italic">
-                                                        <i class="fas fa-check-circle mr-1"></i>No pending actions
-                                                    </span>
-                                                </div>
-                                            @endif
+                                                <!-- Delete Faculty -->
+                                                <form action="{{ route('admin.faculty.destroy', $faculty->id) }}" method="POST" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" 
+                                                            class="action-button bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg" 
+                                                            title="Delete Faculty"
+                                                            onclick="return confirm('Are you sure you want to delete {{ $faculty->name }}? This action cannot be undone.');">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -294,8 +241,14 @@
                             </div>
                             <h3 class="text-2xl font-bold text-white mb-3">No Faculty Found</h3>
                             <p class="text-white/70 mb-8 max-w-md mx-auto">
-                                Faculty members will appear here once they are registered in the system.
+                                Get started by adding your first faculty member to the system.
                             </p>
+                            <a href="{{ route('admin.faculty.create') }}" 
+                               class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                               style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
+                                <i class="fas fa-plus-circle"></i>
+                                Add Your First Faculty
+                            </a>
                         </div>
                     @endif
                 </div>
@@ -364,19 +317,6 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .glass-mini-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .glass-mini-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
 
         .glass-item {
@@ -595,30 +535,6 @@
                 opacity: 1;
                 transform: translateX(0);
             }
-        }
-
-        /* Badge Success Custom */
-        .badge-success-custom {
-            background: rgba(109, 151, 115, 0.25);
-            color: #a8d5b0;
-            padding: 0.35rem 0.85rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            border: 1px solid rgba(109, 151, 115, 0.4);
-            box-shadow: 0 2px 8px rgba(109, 151, 115, 0.3);
-        }
-
-        /* Badge Warning */
-        .badge-warning {
-            background: rgba(234, 179, 8, 0.2);
-            color: #fde047;
-            padding: 0.35rem 0.85rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            border: 1px solid rgba(234, 179, 8, 0.3);
-            box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);
         }
 
         /* Number Animation */
@@ -859,7 +775,7 @@
                                     <span><i class="fas fa-code mr-1"></i>${subject.course_code}</span>
                                     <span><i class="fas fa-calendar mr-1"></i>${subject.semester}</span>
                                     <span><i class="fas fa-layer-group mr-1"></i>Year ${subject.year_level}</span>
-                                    <span><i class="fas fa-person mr-1"></i>Student enrolled ${subject.enrolled_student}</span>
+                                    <span><i class="fas fa-users mr-1"></i>${subject.enrolled_student} students</span>
                                 </div>
                             </div>
                         </label>
@@ -917,4 +833,3 @@
         });
     </script>
 </x-app-layout>
-       
