@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
+use App\Models\User;
+use App\Models\FacultySubject;
+use App\Models\Subject;
+use App\Models\Program;
 use App\Services\SchedulerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ScheduleController extends Controller
@@ -28,6 +33,29 @@ class ScheduleController extends Controller
             ->paginate(1000);
 
         return view('admin.schedules.index', compact('schedules'));
+    }
+
+    /**
+     * Show schedule generation page with faculty data
+     */
+    public function create()
+    {
+        $facultyRoleId = DB::table('roles')->where('name', 'faculty')->value('id');
+        
+        $faculties = User::where('role_id', $facultyRoleId)
+            ->with(['faculty.facultySubjects.subject'])
+            ->orderBy('name')
+            ->get();
+
+        // Calculate statistics
+        $stats = [
+            'total_faculty' => $faculties->count(),
+            'total_assignments' => FacultySubject::count(),
+            'unique_subjects' => Subject::whereHas('facultySubjects')->count(),
+            'programs_count' => Program::count(),
+        ];
+
+        return view('admin.schedules.generate', compact('faculties', 'stats'));
     }
 
     /**
@@ -79,6 +107,15 @@ class ScheduleController extends Controller
                 'conflict_count' => count($result['conflicts'])
             ]);
 
+            // Store in session for review
+            if ($result['success']) {
+                session([
+                    'schedule_preview' => $result['schedules'],
+                    'examination_preview' => $result['examinations'],
+                    'schedule_conflicts' => $result['conflicts']
+                ]);
+            }
+
             return response()->json($result);
 
         } catch (\Exception $e) {
@@ -98,19 +135,49 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Confirm and save schedules from preview
+     * Review generated schedule before saving
+     */
+    public function review()
+    {
+        $schedules = session('schedule_preview', []);
+        $examinations = session('examination_preview', []);
+        $conflicts = session('schedule_conflicts', []);
+
+        if (empty($schedules)) {
+            return redirect()->route('admin.schedules.create')
+                ->with('error', 'No schedule preview available. Please generate a schedule first.');
+        }
+
+        // Group schedules by day for better display
+        $schedulesByDay = collect($schedules)->groupBy('day_name');
+        $examinationsByDate = collect($examinations)->groupBy('exam_date');
+
+        return view('admin.schedules.review', compact(
+            'schedules',
+            'examinations',
+            'conflicts',
+            'schedulesByDay',
+            'examinationsByDate'
+        ));
+    }
+
+    /**
+     * Confirm and save schedules from preview/review
      */
     public function confirm(Request $request)
     {
         try {
             Log::info('=== CONFIRM SCHEDULE START ===');
             Log::info('Request Method: ' . $request->method());
-            Log::info('Content Type: ' . $request->header('Content-Type'));
-            Log::info('Raw Input:', ['input' => $request->all()]);
             
+            // Check if we have session data (from review page)
+            $sessionSchedules = session('schedule_preview', []);
+            $sessionExams = session('examination_preview', []);
+            
+            // Get from request (from AJAX) or session
+            $schedules = $request->input('schedules', $sessionSchedules);
+            $examinations = $request->input('examinations', $sessionExams);
             $scheduleType = $request->input('schedule_type', 'regular');
-            $schedules = $request->input('schedules', []);
-            $examinations = $request->input('examinations', []);
 
             Log::info('Parsed Data:', [
                 'schedule_type' => $scheduleType,
@@ -119,30 +186,20 @@ class ScheduleController extends Controller
             ]);
 
             // Validate data
-            if ($scheduleType === 'examination') {
-                if (empty($examinations)) {
-                    Log::warning('No examination schedules provided');
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'No examination schedules provided'
-                    ], 400);
-                }
-                $dataToSave = [];
-                $examsToSave = $examinations;
-            } else {
-                if (empty($schedules)) {
-                    Log::warning('No regular schedules provided');
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'No regular schedules provided'
-                    ], 400);
-                }
-                $dataToSave = $schedules;
-                $examsToSave = [];
+            if (empty($schedules) && empty($examinations)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No schedules provided'
+                ], 400);
             }
 
             Log::info('Calling schedulerService->saveSchedule...');
-            $result = $this->schedulerService->saveSchedule($dataToSave, $examsToSave);
+            $result = $this->schedulerService->saveSchedule($schedules, $examinations);
+
+            // Clear session data on success
+            if ($result['success']) {
+                session()->forget(['schedule_preview', 'examination_preview', 'schedule_conflicts']);
+            }
 
             Log::info('Schedule Save Result:', $result);
             Log::info('=== CONFIRM SCHEDULE END ===');
@@ -166,6 +223,17 @@ class ScheduleController extends Controller
                 ]
             ], 500);
         }
+    }
+
+    /**
+     * Cancel preview and go back
+     */
+    public function cancel()
+    {
+        session()->forget(['schedule_preview', 'examination_preview', 'schedule_conflicts']);
+        
+        return redirect()->route('admin.schedules.create')
+            ->with('info', 'Schedule preview cancelled.');
     }
 
     /**
@@ -238,7 +306,6 @@ class ScheduleController extends Controller
     public function printSchedule()
     {
         try {
-            // Return the blade view with AJAX functionality
             return view('admin.schedules.print-ajax');
 
         } catch (\Exception $e) {
@@ -259,13 +326,7 @@ class ScheduleController extends Controller
     {
         try {
             Log::info('=== SCHEDULE DATA API CALLED ===');
-            Log::info('Request headers:', [
-                'Accept' => $request->header('Accept'),
-                'Content-Type' => $request->header('Content-Type'),
-                'X-Requested-With' => $request->header('X-Requested-With'),
-            ]);
 
-            // Fetch all schedules
             $schedules = Schedule::with(['subject', 'faculty', 'classroom'])
                 ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
                 ->orderBy('start_time')
@@ -273,7 +334,6 @@ class ScheduleController extends Controller
 
             Log::info('Schedules fetched', ['count' => $schedules->count()]);
 
-            // Assign colors to subjects for consistency
             $colors = [
                 'pink', 'blue', 'green', 'yellow', 'purple', 'red', 
                 'indigo', 'teal', 'orange', 'cyan', 'lime', 'fuchsia'
@@ -297,18 +357,11 @@ class ScheduleController extends Controller
                 'subjectColors' => $subjectColors
             ];
 
-            Log::info('Returning JSON response', [
-                'schedule_count' => count($schedules),
-                'subject_colors_count' => count($subjectColors)
-            ]);
-
             return response()->json($response);
 
         } catch (\Exception $e) {
             Log::error('=== ERROR IN SCHEDULE DATA API ===', [
                 'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -322,18 +375,16 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Download schedules as PDF - UPDATED
+     * Download schedules as PDF
      */
     public function downloadPDF(Request $request)
     {
         try {
-            // Fetch all schedules
             $schedules = Schedule::with(['subject', 'faculty', 'classroom'])
                 ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
                 ->orderBy('start_time')
                 ->get();
 
-            // Prepare data (same as printSchedule)
             $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             $timeSlots = [
                 '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', 
@@ -355,19 +406,12 @@ class ScheduleController extends Controller
                 $startTime = substr($schedule->start_time, 0, 5);
                 $endTime = substr($schedule->end_time, 0, 5);
                 
-                if(!in_array($day, $days)) {
-                    continue;
-                }
+                if(!in_array($day, $days)) continue;
                 
                 $startHour = (int)substr($startTime, 0, 2);
                 $endHour = (int)substr($endTime, 0, 2);
-                $startMin = (int)substr($startTime, 3, 2);
-                $endMin = (int)substr($endTime, 3, 2);
-                
                 $duration = $endHour - $startHour;
-                if($endMin > 0) {
-                    $duration++;
-                }
+                if((int)substr($endTime, 3, 2) > 0) $duration++;
                 
                 $closestSlot = $startTime;
                 $minDiff = 9999;
@@ -388,9 +432,7 @@ class ScheduleController extends Controller
                         $nextTimeIndex = array_search($closestSlot, $timeSlots) + $i;
                         if($nextTimeIndex < count($timeSlots)) {
                             $nextTime = $timeSlots[$nextTimeIndex];
-                            if(!isset($occupiedCells[$day])) {
-                                $occupiedCells[$day] = [];
-                            }
+                            if(!isset($occupiedCells[$day])) $occupiedCells[$day] = [];
                             $occupiedCells[$day][$nextTime] = true;
                         }
                     }
@@ -412,7 +454,6 @@ class ScheduleController extends Controller
                 }
             }
 
-            // Return print view (user will use browser's "Save as PDF")
             return view('admin.schedules.print', compact(
                 'schedules', 
                 'days', 
@@ -444,9 +485,6 @@ class ScheduleController extends Controller
                 ->orderBy('start_time')
                 ->get();
 
-            // Excel generation logic here
-            // return Excel::download(new SchedulesExport($schedules), 'schedules-' . date('Y-m-d') . '.xlsx');
-
             return redirect()->route('admin.schedules.index')
                 ->with('info', 'Excel download functionality to be implemented. Please install maatwebsite/excel');
 
@@ -464,6 +502,10 @@ class ScheduleController extends Controller
         try {
             $result = $this->schedulerService->clearAllSchedules();
 
+            if (request()->ajax()) {
+                return response()->json($result);
+            }
+
             if ($result['success']) {
                 return redirect()->route('admin.schedules.index')
                     ->with('success', $result['message']);
@@ -477,26 +519,27 @@ class ScheduleController extends Controller
                 'message' => $e->getMessage()
             ]);
 
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error clearing schedules: ' . $e->getMessage()
+                ], 500);
+            }
+
             return redirect()->route('admin.schedules.index')
                 ->with('error', 'Error clearing schedules: ' . $e->getMessage());
         }
     }
 
     /**
-     * Helper: Get day number for FullCalendar (0 = Sunday, 1 = Monday, etc.)
+     * Helper: Get day number for FullCalendar
      */
     private function getDayNumber($day)
     {
         $days = [
-            'Sunday' => 0,
-            'Monday' => 1,
-            'Tuesday' => 2,
-            'Wednesday' => 3,
-            'Thursday' => 4,
-            'Friday' => 5,
-            'Saturday' => 6
+            'Sunday' => 0, 'Monday' => 1, 'Tuesday' => 2,
+            'Wednesday' => 3, 'Thursday' => 4, 'Friday' => 5, 'Saturday' => 6
         ];
-
         return $days[$day] ?? 1;
     }
 
@@ -508,13 +551,10 @@ class ScheduleController extends Controller
         $dayNumber = $this->getDayNumber($day);
         $now = now();
         $currentDay = $now->dayOfWeek;
-
-        // Calculate days until next occurrence
         $daysUntil = ($dayNumber - $currentDay + 7) % 7;
         if ($daysUntil === 0 && $now->format('H:i:s') > $time) {
             $daysUntil = 7;
         }
-
         return $now->addDays($daysUntil)->format('Y-m-d') . 'T' . $time;
     }
 }
