@@ -106,7 +106,7 @@ class FacultyController extends Controller
                 foreach ($request->subjects as $subjectData) {
                     if (!empty($subjectData['subject_id'])) {
                         FacultySubject::create([
-                            'faculty_id' => $faculty->id,
+                            'faculty_id' => $user->id, // ✅ USERS.ID
                             'subject_id' => $subjectData['subject_id'],
                             'program_id' => $subjectData['program_id'] ?? null,
                             'lecture_units' => $subjectData['lecture_units'] ?? null,
@@ -206,14 +206,14 @@ class FacultyController extends Controller
                 'school_graduated' => $validated['school_graduated'],
             ]);
 
-            // Reset assigned subjects
-            $facultyRecord->facultySubjects()->delete();
+            // Reset assigned subjects (delete by USERS.ID)
+            FacultySubject::where('faculty_id', $faculty->id)->delete();
 
             if ($request->has('subjects')) {
                 foreach ($request->subjects as $subjectData) {
                     if (!empty($subjectData['subject_id'])) {
                         FacultySubject::create([
-                            'faculty_id' => $facultyRecord->id,
+                            'faculty_id' => $faculty->id, // ✅ USERS.ID
                             'subject_id' => $subjectData['subject_id'],
                             'program_id' => $subjectData['program_id'] ?? null,
                             'lecture_units' => $subjectData['lecture_units'] ?? null,
@@ -239,7 +239,8 @@ class FacultyController extends Controller
 
         if ($facultyRecord) {
             DB::transaction(function () use ($faculty, $facultyRecord) {
-                $facultyRecord->facultySubjects()->delete();
+                // Delete all subjects by USERS.ID
+                FacultySubject::where('faculty_id', $faculty->id)->delete();
                 $facultyRecord->delete();
                 $faculty->delete();
             });

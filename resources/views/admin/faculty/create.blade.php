@@ -321,6 +321,17 @@
         .animate-slide-down {
             animation: slideDown 0.4s ease-out;
         }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+        }
     </style>
 
     <script>
@@ -366,16 +377,20 @@
                         <option value="">Choose a subject</option>
                         ${availableSubjects.map(subject => `
                             <option value="${subject.id}" 
-                                    data-code="${subject.course_code}" 
-                                    data-units="${subject.units}"
-                                    data-name="${subject.subject_name}">
+                                    data-code="${subject.course_code || ''}" 
+                                    data-units="${subject.units || subject.total || ''}"
+                                    data-name="${subject.subject_name || ''}"
+                                    data-year="${subject.year_level || subject.year || ''}"
+                                    data-semester="${subject.semester || ''}"
+                                    data-lecture="${subject.lec || subject.lecture_units || ''}"
+                                    data-laboratory="${subject.lab || subject.laboratory_units || ''}">
                                 ${subject.subject_name} (${subject.course_code})
                             </option>
                         `).join('')}
                     </select>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Subject Code (Auto-filled) -->
                     <div>
                         <label class="block text-white font-medium mb-2">
@@ -387,28 +402,58 @@
                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Lecture Units -->
+                    <!-- Year Level (Auto-filled) -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-layer-group mr-2"></i>Year Level
+                        </label>
+                        <input type="text" 
+                               id="${rowId}-year"
+                               name="subjects[${subjectRowCounter}][year_level]"
+                               readonly
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Semester (Auto-filled) -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-calendar-alt mr-2"></i>Semester
+                        </label>
+                        <input type="text" 
+                               id="${rowId}-semester"
+                               name="subjects[${subjectRowCounter}][semester]"
+                               readonly
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                    </div>
+
+                    <!-- Lecture Units (Auto-filled) -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units
                         </label>
                         <input type="number" 
+                               id="${rowId}-lecture"
                                name="subjects[${subjectRowCounter}][lecture_units]" 
                                min="0" 
                                step="0.5"
-                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                               readonly
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Laboratory Units -->
+                    <!-- Laboratory Units (Auto-filled) -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-flask mr-2"></i>Laboratory Units
                         </label>
                         <input type="number" 
+                               id="${rowId}-laboratory"
                                name="subjects[${subjectRowCounter}][laboratory_units]" 
                                min="0" 
                                step="0.5"
-                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                               readonly
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>
 
@@ -431,8 +476,17 @@
         function updateSubjectDetails(select, rowId) {
             const selectedOption = select.options[select.selectedIndex];
             const code = selectedOption.getAttribute('data-code');
+            const year = selectedOption.getAttribute('data-year');
+            const semester = selectedOption.getAttribute('data-semester');
+            const lecture = selectedOption.getAttribute('data-lecture');
+            const laboratory = selectedOption.getAttribute('data-laboratory');
             
+            // Update all fields including lecture and laboratory units
             document.getElementById(`${rowId}-code`).value = code || '';
+            document.getElementById(`${rowId}-year`).value = year || '';
+            document.getElementById(`${rowId}-semester`).value = semester || '';
+            document.getElementById(`${rowId}-lecture`).value = lecture || '';
+            document.getElementById(`${rowId}-laboratory`).value = laboratory || '';
         }
 
         function removeSubjectRow(rowId) {
@@ -442,21 +496,5 @@
                 setTimeout(() => row.remove(), 300);
             }
         }
-
-        // Add CSS for fadeOut animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeOut {
-                from {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-                to {
-                    opacity: 0;
-                    transform: translateX(-20px);
-                }
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </x-app-layout>

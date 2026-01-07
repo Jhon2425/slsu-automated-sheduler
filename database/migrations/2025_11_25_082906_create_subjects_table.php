@@ -1,42 +1,32 @@
 <?php
 
+// =============================================================================
+// MIGRATION FILE: database/migrations/xxxx_xx_xx_create_subjects_table.php
+// =============================================================================
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
         Schema::create('subjects', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('program_id')
-                ->constrained('programs')
-                ->onDelete('cascade');
-            $table->string('course_code', 20)->unique();
+            $table->string('course_code');
             $table->string('subject_name');
-            $table->decimal('units', 3, 1);
-            $table->enum('semester', ['1st Semester', '2nd Semester', 'Summer']);
-            $table->tinyInteger('year_level');
-
-            // ✅ ADDED ENROLLED STUDENT FIELD
-            $table->integer('enrolled_student')->default(0);
-
+            $table->integer('lec')->default(0); // Lecture units
+            $table->integer('lab')->default(0); // Laboratory units
+            $table->integer('total')->default(0); // Total units
+            $table->string('pre_req')->nullable(); // Pre-requisite
+            $table->integer('year_level'); // 1, 2, 3, or 4
+            $table->string('semester'); // First Semester, Second Semester
             $table->timestamps();
-
-            // Indexes for better query performance
-            $table->index(['program_id', 'year_level', 'semester']);
-            $table->index('course_code');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('subjects');
     }
