@@ -277,10 +277,44 @@
             color-scheme: dark;
         }
 
-        select option {
-            background: #1f2937;
-            color: white;
-        }
+/* Main select box */
+select {
+    background-color: rgba(255, 255, 255, 0.85); /* white background */
+    color: #000000; /* black text */
+    border: 2px solid #10b981; /* green border maintained */
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    outline: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Keep green border on focus */
+select:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+    background-color: rgba(255, 255, 255, 0.85);
+    color: #000000;
+}
+
+/* Dropdown list options - completely neutral */
+select option {
+    background-color: #ffffff; /* plain white background */
+    color: #000000; /* black text */
+    border: none; /* remove any border */
+    box-shadow: none; /* remove any shadow or “select status” */
+}
+
+/* Optional: simple hover effect */
+select option:hover {
+    background-color: rgba(156, 163, 175, 0.2); /* very light gray hover */
+    color: #000000;
+}
+
+
+   
 
         @keyframes fadeIn {
             from { opacity: 0; }

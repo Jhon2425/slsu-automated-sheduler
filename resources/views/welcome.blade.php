@@ -833,9 +833,15 @@
                 <a href="{{ route('login') }}" class="btn btn-glass">
                     <span>Login</span>
                 </a>
+                
+                <!-- Removed
                 <button @click="showRoleModal = true" class="btn btn-glass btn-primary">
                     <span>Register</span>
                 </button>
+                -->
+                <a href="{{ route('register.admin') }}" class="btn btn-glass btn-primary">
+                    <span>Register</span>
+                </a>
             </div>
 
             <!-- Feature Cards -->
@@ -862,6 +868,7 @@
     </div>
 
     <!-- ROLE SELECT MODAL -->
+    <!-- Removed
     <div x-show="showRoleModal" x-cloak class="modal-overlay">
         <div x-cloak 
              class="modal-backdrop" 
@@ -873,7 +880,7 @@
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0">
         </div>
-
+        -->
         <div x-cloak 
              class="modal" 
              @click.stop

@@ -11,19 +11,22 @@
                         </a>
                         <i class="fas fa-chevron-right mx-2 text-xs animate-pulse-slow"></i>
                         <span class="text-white font-semibold">Faculty Management</span>
-                    </div>
-                    <h1 class="text-4xl font-bold text-white flex items-center">
-                        <i class="fas fa-user-graduate mr-3 floating"></i>Faculty Management
+                    </div>  
+                    <h1 class="text-4xl font-bold flex items-center faculty-gradient">
+                        <i class="fas fa-user-graduate mr-3 floating faculty-icon"></i>
+                        Faculty Management
                     </h1>
-                    <p class="mt-2 text-white/90 text-lg">Manage faculty members and assign subjects</p>
+                    <p class="mt-2 text-white/90 text-lg">
+                        Manage faculty members and assign subjects
+                    </p>
                 </div>
 
                 <!-- Add Faculty Button -->
                 <a href="{{ route('admin.faculty.create') }}" 
                    class="glass-card px-6 py-3 rounded-xl hover-lift transition-all duration-300 flex items-center gap-2 shadow-xl hover:shadow-2xl group"
                    style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
-                    <i class="fas fa-plus-circle text-xl group-hover:rotate-90 transition-transform duration-300"></i>
-                    <span class="font-bold">Add Faculty</span>
+                    <i class="fas fa-plus-circle text-xl text-white group-hover:rotate-90 transition-transform duration-300"></i>
+                    <span class="font-bold text-white">Add Faculty</span>
                 </a>
             </div>
 
@@ -676,6 +679,34 @@
         .animate-bounce-slow {
             animation: bounceSlow 2s ease-in-out infinite;
         }
+        /* Faculty Management Gradient Title */
+        .faculty-gradient {
+            background: linear-gradient(
+                90deg,
+                #60a5fa, /* blue-400 */
+                #3b82f6, /* blue-500 */
+                #2563eb  /* blue-600 */
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Optional hover enhancement */
+        .faculty-gradient:hover {
+            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.6));
+        }
+
+        /* Icon follows gradient color */
+        .faculty-icon {
+            color: #60a5fa;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .faculty-gradient:hover .faculty-icon {
+            color: #3b82f6;
+            transform: translateY(-12px) scale(1.1);
+        }
+
     </style>
 
     <script>
