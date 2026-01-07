@@ -93,9 +93,12 @@
                                         $occupiedCells = [];
                                         
                                         foreach($examinations as $exam) {
+                                            // Use the day_name accessor from the model
                                             $day = $exam->day_name;
-                                            $startTime = substr($exam->start_time, 0, 5);
-                                            $endTime = substr($exam->end_time, 0, 5);
+                                            
+                                            // Format times properly
+                                            $startTime = is_string($exam->start_time) ? substr($exam->start_time, 0, 5) : $exam->start_time->format('H:i');
+                                            $endTime = is_string($exam->end_time) ? substr($exam->end_time, 0, 5) : $exam->end_time->format('H:i');
                                             
                                             $startHour = (int)substr($startTime, 0, 2);
                                             $startMin = (int)substr($startTime, 3, 2);
@@ -166,6 +169,10 @@
                                                                     $color = $subjectColors[$exam->subject_id];
                                                                     $rowspan = $exam->calculated_rowspan ?? 1;
                                                                     $blockHeight = ($rowspan * 150) - 8;
+                                                                    
+                                                                    // Format display times
+                                                                    $displayStartTime = is_string($exam->start_time) ? date('g:i A', strtotime($exam->start_time)) : $exam->start_time->format('g:i A');
+                                                                    $displayEndTime = is_string($exam->end_time) ? date('g:i A', strtotime($exam->end_time)) : $exam->end_time->format('g:i A');
                                                                 @endphp
                                                                 
                                                                 <div class="schedule-block schedule-block-{{ $color }}" 
@@ -174,10 +181,10 @@
                                                                     <div class="schedule-text text-xs truncate">{{ $exam->subject->subject_name ?? 'N/A' }}</div>
                                                                     <div class="schedule-text text-xs truncate">{{ $exam->classroom->room_name ?? 'N/A' }}</div>
                                                                     <div class="schedule-text text-xs truncate">{{ $exam->faculty->name ?? 'N/A' }}</div>
-                                                                    <div class="schedule-text text-xs font-bold">EXAMINATION</div>
-                                                                    <div class="schedule-text text-xs">Yr {{ $exam->year_level }}</div>
+                                                                    <div class="schedule-text text-xs font-bold text-yellow-300">EXAMINATION</div>
+                                                                    <div class="schedule-text text-xs">{{ $exam->exam_type ?? 'Final' }}</div>
                                                                     <div class="schedule-text text-xs opacity-80">
-                                                                        {{ date('g:i A', strtotime($exam->start_time)) }} - {{ date('g:i A', strtotime($exam->end_time)) }}
+                                                                        {{ $displayStartTime }} - {{ $displayEndTime }}
                                                                     </div>
                                                                 </div>
                                                             @endforeach
@@ -285,7 +292,7 @@
     .timetable-wrapper {
         display: block;
         width: 100%;
-        overflow-x: auto;
+        overflow-x-auto;
     }
 
     .timetable-container {
@@ -535,8 +542,8 @@
                                 <div class="schedule-text text-xs truncate">${exam.course_subject || exam.subject_name || 'N/A'}</div>
                                 <div class="schedule-text text-xs truncate">${exam.classroom_name || 'N/A'}</div>
                                 <div class="schedule-text text-xs truncate">${exam.faculty_name || 'N/A'}</div>
-                                <div class="schedule-text text-xs font-bold">EXAMINATION</div>
-                                <div class="schedule-text text-xs">Yr ${exam.year_level || 'N/A'}</div>
+                                <div class="schedule-text text-xs font-bold text-yellow-300">EXAMINATION</div>
+                                <div class="schedule-text text-xs">${exam.exam_type || 'Final'}</div>
                                 <div class="schedule-text text-xs opacity-80">${formatTimeSimple(exam.start_time)} - ${formatTimeSimple(exam.end_time)}</div>
                             </div>`;
                     });

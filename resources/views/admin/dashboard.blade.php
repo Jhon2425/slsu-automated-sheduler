@@ -162,14 +162,14 @@
                     </a>
                     
                     <!-- Generate Exam Schedules -->
-                    <a href="{{ route('admin.subjects.index') }}"
-                       class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
+                    <a href="{{ route('admin.exam-schedules.index') }}"
+                    class="action-card glass-card rounded-xl p-6 text-center group flex flex-col h-full min-h-[220px]">
                         <div class="icon-wrapper bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-4 mx-auto mb-4 w-16 h-16 flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-book text-white text-3xl"></i>
+                            <i class="fas fa-file-alt text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">Generate Exam Schedules</p>
-                            <p class="text-xs text-white/70 leading-relaxed">Add, edit, or remove subjects</p>
+                            <p class="font-bold text-white text-lg mb-2">Manage Exam Schedules</p>
+                            <p class="text-xs text-white/70 leading-relaxed">Create and manage examination schedules</p>
                         </div>
                     </a>
                     

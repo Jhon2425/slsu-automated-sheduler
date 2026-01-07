@@ -85,10 +85,17 @@ Route::middleware('auth')->group(function () {
         });
 
         /*
-        |---------------- SUBJECT / EXAM SCHEDULE MANAGEMENT ----------------
+        |---------------- EXAM SCHEDULE MANAGEMENT ----------------
+        | Manual exam schedule creation and management
         */
-        Route::resource('subjects', ExamScheduleController::class)
-            ->except(['show']);
+            Route::prefix('exam-schedules')->name('exam-schedules.')->group(function () {
+                Route::get('/', [ExaminationController::class, 'index'])->name('index');
+                Route::get('/create', [ExaminationController::class, 'create'])->name('create');
+                Route::post('/', [ExaminationController::class, 'store'])->name('store');
+                Route::get('/{examSchedule}/edit', [ExaminationController::class, 'edit'])->name('edit');
+                Route::put('/{examSchedule}', [ExaminationController::class, 'update'])->name('update');
+                Route::delete('/{examSchedule}', [ExaminationController::class, 'destroy'])->name('destroy');
+            });
 
         /*
         |---------------- CLASS SCHEDULE MANAGEMENT ----------------
@@ -130,6 +137,7 @@ Route::middleware('auth')->group(function () {
 
         /*
         |---------------- EXAMINATION SCHEDULE MANAGEMENT ----------------
+        | Auto-generated examination schedules (from scheduler)
         */
         Route::prefix('examinations')->name('examinations.')->group(function () {
 

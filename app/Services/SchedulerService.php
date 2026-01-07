@@ -494,6 +494,7 @@ class SchedulerService
 
             foreach ($schedules as $index => $schedule) {
                 try {
+                    // Validate required fields
                     if (empty($schedule['faculty_id'])) {
                         $errors[] = "Schedule {$index}: Missing faculty_id";
                         continue;
@@ -510,9 +511,11 @@ class SchedulerService
                     $startTime = $this->ensureTimeFormat($schedule['start_time']);
                     $endTime = $this->ensureTimeFormat($schedule['end_time']);
 
+                    // Convert day name to number
                     $dayName = $schedule['day_name'] ?? $schedule['day'];
                     $dayNumber = $this->convertDayToNumber($dayName);
 
+                    // Build schedule data - FIXED for new schema
                     $data = [
                         'faculty_id' => $schedule['faculty_id'],
                         'subject_id' => $schedule['subject_id'],
@@ -520,20 +523,18 @@ class SchedulerService
                         'day' => $dayNumber,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
+                        'class_type' => $schedule['class_type'] ?? 'Lecture',
+                        'year_level' => $schedule['year_level'] ?? null,
+                        'semester' => $schedule['semester'] ?? null,
+                        'schedule_date' => $schedule['schedule_date'] ?? null,
+                        'section' => $schedule['year_section'] ?? null,
+                        'is_active' => true,
                     ];
 
-                    if (Schema::hasColumn('schedules', 'schedule_date')) {
-                        $data['schedule_date'] = $schedule['schedule_date'] ?? null;
-                    }
-                    if (Schema::hasColumn('schedules', 'class_type')) {
-                        $data['class_type'] = $schedule['class_type'] ?? 'Lecture';
-                    }
-                    if (Schema::hasColumn('schedules', 'semester')) {
-                        $data['semester'] = $schedule['semester'] ?? null;
-                    }
-                    if (Schema::hasColumn('schedules', 'year_level')) {
-                        $data['year_level'] = $schedule['year_level'] ?? null;
-                    }
+                    // Add academic year if available
+                    $currentYear = now()->year;
+                    $nextYear = $currentYear + 1;
+                    $data['academic_year'] = "{$currentYear}-{$nextYear}";
 
                     Schedule::create($data);
 
@@ -541,7 +542,7 @@ class SchedulerService
 
                 } catch (Exception $e) {
                     $error = "Error saving schedule {$index}: " . $e->getMessage();
-                    Log::error($error, ['schedule' => $schedule]);
+                    Log::error($error, ['schedule' => $schedule, 'error' => $e->getTraceAsString()]);
                     $errors[] = $error;
                 }
             }
@@ -556,26 +557,50 @@ class SchedulerService
                     $startTime = $this->ensureTimeFormat($exam['start_time']);
                     $endTime = $this->ensureTimeFormat($exam['end_time']);
                     
-                    $dayName = $exam['day_name'] ?? $exam['day'];
+                    // FIXED: Extract day number from exam_date
+                    $examDate = Carbon::parse($exam['exam_date']);
+                    $dayName = $examDate->format('l'); // Gets full day name (Monday, Tuesday, etc.)
                     $dayNumber = $this->convertDayToNumber($dayName);
 
+                    // Save to examinations table
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
                         'exam_date' => $exam['exam_date'] ?? null,
-                        'day' => $dayNumber,
+                        'day' => $dayNumber, // FIXED: Use day number (1-7) instead of day name
                         'start_time' => $startTime,
                         'end_time' => $endTime,
                         'exam_type' => $exam['exam_type'] ?? 'Final',
-                        'year_section' => $exam['year_section'] ?? null
+                        'year_section' => $exam['year_section'] ?? null,
+                        'is_active' => true
+                    ]);
+
+                    // ALSO save to schedules table
+                    $currentYear = now()->year;
+                    $nextYear = $currentYear + 1;
+                    
+                    Schedule::create([
+                        'faculty_id' => $exam['faculty_id'],
+                        'subject_id' => $exam['subject_id'],
+                        'classroom_id' => $exam['classroom_id'],
+                        'day' => $dayNumber,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'class_type' => 'Lecture', // Use 'Lecture' since 'Examination' is not in ENUM
+                        'year_level' => $exam['year_level'] ?? null,
+                        'semester' => $exam['semester'] ?? null,
+                        'schedule_date' => $exam['exam_date'] ?? null,
+                        'section' => $exam['year_section'] ?? null,
+                        'academic_year' => "{$currentYear}-{$nextYear}",
+                        'is_active' => true,
                     ]);
 
                     $savedExams++;
 
                 } catch (Exception $e) {
                     $error = "Error saving exam {$index}: " . $e->getMessage();
-                    Log::error($error, ['exam' => $exam]);
+                    Log::error($error, ['exam' => $exam, 'trace' => $e->getTraceAsString()]);
                     $errors[] = $error;
                 }
             }
@@ -674,6 +699,33 @@ class SchedulerService
             return [
                 'success' => false,
                 'message' => 'Error clearing schedules: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function clearAllExaminations()
+    {
+        try {
+            DB::beginTransaction();
+            
+            $examCount = Examination::count();
+            
+            Examination::truncate();
+            
+            DB::commit();
+            
+            Log::info("Cleared {$examCount} examinations");
+            
+            return [
+                'success' => true,
+                'message' => "Successfully cleared {$examCount} examinations"
+            ];
+        } catch(Exception $e) {
+            DB::rollBack();
+            Log::error('Error clearing examinations: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error clearing examinations: ' . $e->getMessage()
             ];
         }
     }
