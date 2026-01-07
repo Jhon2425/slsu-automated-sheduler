@@ -71,7 +71,6 @@ class SchedulerService
                     'subjects.units',
                     'subjects.year_level',
                     'subjects.semester',
-                    'subjects.enrolled_student',
                     'subjects.program_id'
                 )
                 ->whereNotNull('subjects.units')
@@ -304,7 +303,7 @@ class SchedulerService
             foreach ($availableSlots as $timeSlot) {
                 foreach ($shuffledClassrooms as $classroom) {
                     if ($this->isSlotAvailableForAssignment($existingSchedules, $day, $timeSlot['start'], $timeSlot['end'], $classroom->id, $assignment)) {
-                        $yearSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+                        $yearSection = $assignment->year_level . '-A';
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
@@ -349,7 +348,7 @@ class SchedulerService
 
     private function isSlotAvailableForAssignment($schedules, $day, $startTime, $endTime, $classroomId, $assignment)
     {
-        $assignmentSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+        $assignmentSection = $assignment->year_level . '-A';
 
         foreach ($schedules as $schedule) {
             $scheduleDay = $schedule['day_name'] ?? $schedule['day'];
@@ -390,7 +389,7 @@ class SchedulerService
                     $specificExamDate = $this->getDateForDayInFuture($day, $weeksAhead);
 
                     if ($this->isExamSlotAvailableForAssignment($existingExams, $specificExamDate, $slot, $classroom->id, $assignment)) {
-                        $yearSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+                        $yearSection = $assignment->year_level . '-A';
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
@@ -420,7 +419,7 @@ class SchedulerService
 
     private function isExamSlotAvailableForAssignment($exams, $date, $slot, $classroomId, $assignment)
     {
-        $assignmentSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+        $assignmentSection = $assignment->year_level . '-A';
         
         foreach ($exams as $exam) {
             if ($exam['exam_date'] !== $date) continue;

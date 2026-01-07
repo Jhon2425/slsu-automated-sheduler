@@ -1,13 +1,19 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\ProfileController;
+
+// ================= ADMIN CONTROLLERS =================
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\FacultyController;
-use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ScheduleController;
+use App\Http\Controllers\Admin\ExaminationController;
+use App\Http\Controllers\Admin\ExamScheduleController;
+
+// ================= FACULTY CONTROLLERS =================
 use App\Http\Controllers\Faculty\FacultyDashboardController;
-use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,11 +25,11 @@ Route::middleware('guest')->group(function () {
     // Landing Page
     Route::get('/', fn () => view('welcome'))->name('welcome');
 
-    // ================= AUTH =================
+    // Authentication
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
 
-    // ================= ADMIN REGISTRATION =================
+    // Admin Registration
     Route::get('/register/admin', [AuthController::class, 'showRegisterAdmin'])
         ->name('register.admin');
 
@@ -37,10 +43,10 @@ Route::middleware('guest')->group(function () {
 */
 Route::middleware('auth')->group(function () {
 
-    // ================= LOGOUT =================
+    // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // ================= PROFILE =================
+    // Profile & Settings
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/settings', fn () => view('settings'))->name('settings');
 
@@ -58,7 +64,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])
             ->name('dashboard');
 
-        // ================= FACULTY MANAGEMENT =================
+        /*
+        |---------------- FACULTY MANAGEMENT ----------------
+        */
         Route::prefix('faculty')->name('faculty.')->group(function () {
 
             Route::get('/', [FacultyController::class, 'index'])->name('index');
@@ -69,30 +77,93 @@ Route::middleware('auth')->group(function () {
             Route::put('/{faculty}', [FacultyController::class, 'update'])->name('update');
             Route::delete('/{faculty}', [FacultyController::class, 'destroy'])->name('destroy');
 
-            Route::get('/{faculty}/subjects', [FacultyController::class, 'getSubjects'])->name('subjects');
-            Route::post('/{faculty}/assign-subjects', [FacultyController::class, 'assignSubjects'])->name('assign-subjects');
+            Route::get('/{faculty}/subjects', [FacultyController::class, 'getSubjects'])
+                ->name('subjects');
+
+            Route::post('/{faculty}/assign-subjects', [FacultyController::class, 'assignSubjects'])
+                ->name('assign-subjects');
         });
 
-        // ================= SUBJECT MANAGEMENT =================
-        Route::resource('subjects', SubjectController::class)->except(['show']);
+        /*
+        |---------------- SUBJECT / EXAM SCHEDULE MANAGEMENT ----------------
+        */
+        Route::resource('subjects', ExamScheduleController::class)
+            ->except(['show']);
 
-        // ================= SCHEDULE MANAGEMENT =================
+        /*
+        |---------------- CLASS SCHEDULE MANAGEMENT ----------------
+        */
         Route::prefix('schedules')->name('schedules.')->group(function () {
 
             Route::get('/', [ScheduleController::class, 'index'])->name('index');
-            Route::post('/generate-preview', [ScheduleController::class, 'generatePreview'])->name('generate-preview');
-            Route::post('/confirm', [ScheduleController::class, 'confirm'])->name('confirm');
 
-            Route::get('/previous', [ScheduleController::class, 'viewPrevious'])->name('previous');
-            Route::get('/calendar-data', [ScheduleController::class, 'getCalendarData'])->name('calendar-data');
-            Route::get('/data', [ScheduleController::class, 'getScheduleData'])->name('data');
+            Route::post('/generate-preview', [ScheduleController::class, 'generatePreview'])
+                ->name('generate-preview');
 
-            Route::get('/print', [ScheduleController::class, 'printSchedule'])->name('print');
-            Route::get('/download-pdf', [ScheduleController::class, 'downloadPDF'])->name('download-pdf');
+            Route::post('/confirm', [ScheduleController::class, 'confirm'])
+                ->name('confirm');
 
-            Route::post('/clear', [ScheduleController::class, 'clearAllSchedules'])->name('clear');
+            Route::get('/previous', [ScheduleController::class, 'viewPrevious'])
+                ->name('previous');
 
-            Route::get('/{id}', [ScheduleController::class, 'show'])->name('show');
+            Route::get('/calendar-data', [ScheduleController::class, 'getCalendarData'])
+                ->name('calendar-data');
+
+            Route::get('/data', [ScheduleController::class, 'getScheduleData'])
+                ->name('data');
+
+            Route::get('/print', [ScheduleController::class, 'printSchedule'])
+                ->name('print');
+
+            Route::get('/download-pdf', [ScheduleController::class, 'downloadPDF'])
+                ->name('download-pdf');
+
+            Route::get('/download-excel', [ScheduleController::class, 'downloadExcel'])
+                ->name('download-excel');
+
+            Route::post('/clear', [ScheduleController::class, 'clearAllSchedules'])
+                ->name('clear');
+
+            Route::get('/{id}', [ScheduleController::class, 'show'])
+                ->name('show');
+        });
+
+        /*
+        |---------------- EXAMINATION SCHEDULE MANAGEMENT ----------------
+        */
+        Route::prefix('examinations')->name('examinations.')->group(function () {
+
+            Route::get('/', [ExaminationController::class, 'index'])->name('index');
+
+            Route::post('/generate-preview', [ExaminationController::class, 'generatePreview'])
+                ->name('generate-preview');
+
+            Route::post('/confirm', [ExaminationController::class, 'confirm'])
+                ->name('confirm');
+
+            Route::get('/previous', [ExaminationController::class, 'viewPrevious'])
+                ->name('previous');
+
+            Route::get('/calendar-data', [ExaminationController::class, 'getCalendarData'])
+                ->name('calendar-data');
+
+            Route::get('/data', [ExaminationController::class, 'getExaminationData'])
+                ->name('data');
+
+            Route::get('/print', [ExaminationController::class, 'printExamination'])
+                ->name('print');
+
+            Route::get('/download-pdf', [ExaminationController::class, 'downloadPDF'])
+                ->name('download-pdf');
+
+            Route::get('/download-excel', [ExaminationController::class, 'downloadExcel'])
+                ->name('download-excel');
+
+            Route::post('/clear', [ExaminationController::class, 'clearAllExaminations'])
+                ->name('clear');
+
+            Route::get('/{id}', [ExaminationController::class, 'show'])
+                ->name('show');
         });
     });
 
