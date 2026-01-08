@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\ExaminationController;
 use App\Http\Controllers\Admin\ExamScheduleController;
+use App\Http\Controllers\Admin\ArchiveController;
 
 // ================= FACULTY CONTROLLERS =================
 use App\Http\Controllers\Faculty\FacultyDashboardController;
@@ -173,6 +174,13 @@ Route::middleware('auth')->group(function () {
             Route::get('/{id}', [ExaminationController::class, 'show'])
                 ->name('show');
         });
+
+        /*
+        |---------------- VIEW GENERATED ARCHIVES ----------------
+        | View all previously generated schedules and examinations
+        */
+        Route::get('/view-generated-archives', [ArchiveController::class, 'index'])
+            ->name('archives.index');
     });
 
     /*

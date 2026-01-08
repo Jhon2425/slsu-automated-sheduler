@@ -183,15 +183,15 @@
                         <p class="text-sm text-white/70 leading-relaxed">Create class schedules</p>
                     </a>
                     
-                    <!-- Download Reports -->
-                    <a href="{{ route('admin.schedules.previous') }}"
+                   <!-- Download Reports / View Generated Archives -->
+                    <a href="{{ route('admin.archives.index') }}"
                         class="action-card glass-card rounded-xl p-6 text-center group hover:scale-105 transition-all duration-300">
                         <div class="icon-wrapper bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-5 mx-auto mb-4 w-20 h-20 flex items-center justify-center shadow-lg">
-                            <i class="fas fa-file-pdf text-white text-3xl"></i>
+                            <i class="fas fa-archive text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
                             <p class="font-bold text-white text-lg mb-2">View Generated Archives</p>
-                            <p class="text-xs text-white/70 leading-relaxed">Export as PDF</p>
+                            <p class="text-xs text-white/70 leading-relaxed">View all saved schedules</p>
                         </div>
                     </a>
                 </div>
