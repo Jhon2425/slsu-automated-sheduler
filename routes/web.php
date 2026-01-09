@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ArchiveController;
 
 // ================= FACULTY CONTROLLERS =================
 use App\Http\Controllers\Faculty\FacultyDashboardController;
+use App\Http\Controllers\Faculty\TeachingLoadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,18 @@ Route::middleware('auth')->group(function () {
 
     // Profile & Settings
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Password Update
+    Route::put('/password', [\App\Http\Controllers\Auth\PasswordController::class, 'update'])->name('password.update');
+    
+    // Email Verification
+    Route::post('/email/verification-notification', function (Illuminate\Http\Request $request) {
+        $request->user()->sendEmailVerificationNotification();
+        return back()->with('status', 'verification-link-sent');
+    })->middleware('throttle:6,1')->name('verification.send');
+    
     Route::get('/settings', fn () => view('settings'))->name('settings');
 
     /*
@@ -193,9 +206,11 @@ Route::middleware('auth')->group(function () {
         ->name('faculty.')
         ->group(function () {
 
+        // Dashboard
         Route::get('/dashboard', [FacultyDashboardController::class, 'index'])
             ->name('dashboard');
 
+        // Class Schedule Routes
         Route::get('/my-schedule', [FacultyDashboardController::class, 'mySchedule'])
             ->name('schedule.my');
 
@@ -206,6 +221,25 @@ Route::middleware('auth')->group(function () {
             ->name('schedule.download');
 
         Route::get('/schedule/download-pdf', [FacultyDashboardController::class, 'downloadPDF'])
-            ->name('schedule.download-legacy');
+            ->name('schedule.download-pdf');
+
+        /*
+        |---------------- TEACHING LOAD MANAGEMENT ----------------
+        | Faculty Teaching Load Document (Official Format)
+        */
+        Route::prefix('teaching-load')->name('teaching-load.')->group(function () {
+            
+            // View Teaching Load
+            Route::get('/', [TeachingLoadController::class, 'index'])
+                ->name('index');
+            
+            // Download Teaching Load PDF
+            Route::get('/download-pdf', [TeachingLoadController::class, 'downloadPdf'])
+                ->name('download-pdf');
+            
+            // Filter by Academic Year and Semester (optional)
+            Route::get('/filter', [TeachingLoadController::class, 'index'])
+                ->name('filter');
+        });
     });
 });
