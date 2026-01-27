@@ -3,6 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- FAVICON -->
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">    
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=1">
+    <link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">   
+    
     <title>SLSU - Login</title>
 
     <!-- Tailwind CSS -->

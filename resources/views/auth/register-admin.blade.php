@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
+
+    <!-- FAVICON -->
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=1">
+    <link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">
+
     <title>SLSU - Admin Registration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

@@ -4,7 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'SLSU Scheduler') }}</title>
+
+    <!-- FAVICON -->
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=1">
+    <link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">
+
+
+
+    <!-- Title -->
+    <title>Southern Luzon University</title>    
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
