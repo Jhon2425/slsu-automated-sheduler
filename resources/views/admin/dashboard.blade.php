@@ -576,6 +576,34 @@
                 min-height: 180px;
             }
         }
+
+/* ✅ Disable shimmer on STAT CARDS */
+.stat-card::before,
+.stat-card:hover::before {
+    display: none !important;
+}
+
+.stat-card:hover .icon-container {
+    transform: none !important;
+}
+
+.stat-card.hover-lift:hover {
+    transform: none !important;
+    box-shadow: none !important; /* optional: remove hover shadow too */
+}
+
+.glass-item:hover {
+    transform: none !important;
+    box-shadow: none !important;  /* optional */
+    background: rgba(255, 255, 255, 0.08) !important; /* keep original */
+    border-color: rgba(255, 255, 255, 0.1) !important; /* keep original */
+}
+
+.glass-item.hover-lift:hover {
+    transform: none !important;
+    box-shadow: none !important; /* optional */
+}
+
     </style>
 
     <script>
