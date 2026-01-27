@@ -11,21 +11,41 @@ return new class extends Migration
         Schema::create('schedules', function (Blueprint $table) {
             $table->id();
 
-            // Foreign keys
-            $table->foreignId('program_id')->constrained('programs')->onDelete('cascade');
-            $table->foreignId('faculty_enrollment_id')->nullable()->constrained('faculty_enrollments')->onDelete('cascade');
-            $table->foreignId('faculty_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('subject_id')->nullable()->constrained('subjects')->onDelete('set null');
+            // Core Foreign Keys - Direct references (SIMPLIFIED)
+            $table->foreignId('faculty_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('subject_id')->constrained('subjects')->onDelete('cascade');
+            $table->foreignId('classroom_id')->constrained('classrooms')->onDelete('cascade');
 
-            // Schedule details
-            $table->string('year_level')->nullable(); // replaced section
-            $table->string('class_type')->nullable(); // Lecture/Lab
-            $table->time('start_time')->nullable();
-            $table->time('end_time')->nullable();
-            $table->tinyInteger('day')->nullable()->comment('Day index: 0=Sunday, 1=Monday,... 6=Saturday');
-            $table->string('semester')->nullable();
+            // Optional: Link back to the faculty_subject assignment
+            $table->foreignId('faculty_subject_id')->nullable()->constrained('faculty_subjects')->onDelete('set null');
+
+            // Schedule Time Details
+            $table->tinyInteger('day')->comment('Day number: 1=Monday, 2=Tuesday... 7=Sunday');
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->date('schedule_date')->nullable()->comment('Specific date for this schedule');
+
+            // Class Information
+            $table->enum('class_type', ['Lecture', 'Laboratory'])->default('Lecture');
+            $table->string('year_level')->nullable()->comment('e.g., 1, 2, 3, 4');
+            $table->string('semester')->nullable()->comment('e.g., 1st Semester, 2nd Semester');
+
+            // Optional: Section/Group information
+            $table->string('section')->nullable()->comment('e.g., A, B, C or combined like 1-A');
+
+            // Optional: Academic Year
+            $table->string('academic_year')->nullable()->comment('e.g., 2024-2025');
+
+            // Status
+            $table->boolean('is_active')->default(true);
 
             $table->timestamps();
+
+            // Indexes for better query performance
+            $table->index(['faculty_id', 'day', 'start_time', 'end_time']);
+            $table->index(['classroom_id', 'day', 'start_time', 'end_time']);
+            $table->index(['subject_id', 'year_level']);
+            $table->index('is_active');
         });
     }
 

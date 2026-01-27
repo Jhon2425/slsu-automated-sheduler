@@ -11,6 +11,9 @@ class FacultySubject extends Model
 
     protected $table = 'faculty_subjects';
 
+    /**
+     * Mass assignable attributes
+     */
     protected $fillable = [
         'faculty_id',
         'subject_id',
@@ -19,13 +22,20 @@ class FacultySubject extends Model
         'laboratory_units',
     ];
 
+    /**
+     * Attribute casting
+     */
     protected $casts = [
-        'lecture_units' => 'decimal:1',
-        'laboratory_units' => 'decimal:1',
+        'lecture_units'     => 'decimal:1',
+        'laboratory_units'  => 'decimal:1',
     ];
 
+    /* =========================================================
+     |  Relationships
+     | ========================================================= */
+
     /**
-     * Get the faculty for this assignment
+     * Assigned faculty (User)
      */
     public function faculty()
     {
@@ -33,7 +43,7 @@ class FacultySubject extends Model
     }
 
     /**
-     * Get the subject for this assignment
+     * Subject being taught
      */
     public function subject()
     {
@@ -41,18 +51,23 @@ class FacultySubject extends Model
     }
 
     /**
-     * Get the program for this assignment
+     * Program where subject is offered
      */
     public function program()
     {
         return $this->belongsTo(Program::class);
     }
 
+    /* =========================================================
+     |  Accessors
+     | ========================================================= */
+
     /**
-     * Get total units
+     * Total teaching units (lecture + laboratory)
      */
-    public function getTotalUnitsAttribute()
+    public function getTotalUnitsAttribute(): float
     {
-        return ($this->lecture_units ?? 0) + ($this->laboratory_units ?? 0);
+        return (float) ($this->lecture_units ?? 0)
+             + (float) ($this->laboratory_units ?? 0);
     }
 }

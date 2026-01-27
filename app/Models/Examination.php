@@ -9,25 +9,44 @@ class Examination extends Model
 {
     use HasFactory;
 
-    protected $table = 'examinations';
-
     protected $fillable = [
         'faculty_id',
         'subject_id',
         'classroom_id',
         'exam_date',
+        'day',           // IMPORTANT: Add this field to fillable
         'start_time',
         'end_time',
-        'year_level',
-        'semester',
+        'exam_type',
+        'year_section',
+        'is_active',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships (optional but recommended)
-    |--------------------------------------------------------------------------
-    */
+    protected $casts = [
+        'exam_date' => 'date',
+        'start_time' => 'datetime:H:i:s',
+        'end_time' => 'datetime:H:i:s',
+        'is_active' => 'boolean',
+    ];
 
+    // Map day numbers to day names
+    protected $dayMap = [
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+        7 => 'Sunday',
+    ];
+
+    // Accessor: Convert day number to day name
+    public function getDayNameAttribute()
+    {
+        return $this->dayMap[$this->day] ?? 'Unknown';
+    }
+
+    // Relationships
     public function faculty()
     {
         return $this->belongsTo(User::class, 'faculty_id');

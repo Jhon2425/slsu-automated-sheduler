@@ -54,10 +54,14 @@ class SchedulerService
 
     /**
      * Generate schedule preview with conflict prevention
+     * FIXED: Now uses lecture_units and laboratory_units from faculty_subjects table
      */
     public function generateSchedulePreview()
     {
         try {
+            Log::info('=== SCHEDULE GENERATION START ===');
+            
+            // FIXED: Get data from faculty_subjects with lecture_units and laboratory_units
             $facultyAssignments = DB::table('faculty_subjects')
                 ->join('users', 'faculty_subjects.faculty_id', '=', 'users.id')
                 ->join('subjects', 'faculty_subjects.subject_id', '=', 'subjects.id')
@@ -65,23 +69,27 @@ class SchedulerService
                     'faculty_subjects.id as assignment_id',
                     'faculty_subjects.faculty_id',
                     'faculty_subjects.subject_id',
+                    'faculty_subjects.lecture_units',
+                    'faculty_subjects.laboratory_units',
                     'users.name as faculty_name',
                     'subjects.subject_name',
                     'subjects.course_code',
-                    'subjects.units',
                     'subjects.year_level',
                     'subjects.semester',
-                    'subjects.enrolled_student',
-                    'subjects.program_id'
+                    DB::raw('(COALESCE(faculty_subjects.lecture_units, 0) + COALESCE(faculty_subjects.laboratory_units, 0)) as total_units')
                 )
-                ->whereNotNull('subjects.units')
-                ->where('subjects.units', '>', 0)
+                ->havingRaw('total_units > 0')
                 ->get();
+
+            Log::info('Faculty Assignments Query Result', [
+                'count' => $facultyAssignments->count(),
+                'sample_data' => $facultyAssignments->take(2)->toArray()
+            ]);
 
             if ($facultyAssignments->isEmpty()) {
                 return [
                     'success' => false,
-                    'message' => 'No faculty-subject assignments found. Assign subjects first.',
+                    'message' => 'No faculty-subject assignments found. Please assign subjects to faculty first in the Faculty Subjects section.',
                     'schedules' => [],
                     'examinations' => [],
                     'conflicts' => []
@@ -119,10 +127,14 @@ class SchedulerService
             $subjectDayUsage = [];
 
             foreach ($facultyAssignments as $assignment) {
-                $units = (float) $assignment->units;
-                if ($units < 1) continue;
+                $lectureUnits = (float) ($assignment->lecture_units ?? 0);
+                $labUnits = (float) ($assignment->laboratory_units ?? 0);
+                $totalUnits = $lectureUnits + $labUnits;
 
-                $distribution = $this->getClassDistribution($units);
+                if ($totalUnits < 1) continue;
+
+                // FIXED: Use lecture_units and laboratory_units directly
+                $distribution = $this->getClassDistributionFromFacultySubject($lectureUnits, $labUnits);
 
                 $scheduled = false;
                 $attemptCount = 0;
@@ -152,7 +164,7 @@ class SchedulerService
                             $subjectDayUsage[$subjectKey][] = $session['day_name'];
                         }
 
-                        $exam = $this->generateExaminationForAssignment($assignment, $classrooms, $examinations);
+                        $exam = $this->generateExaminationForAssignment($assignment, $classrooms, $examinations, $totalUnits);
                         if ($exam) $examinations[] = $exam;
                     }
                 }
@@ -162,7 +174,9 @@ class SchedulerService
                         'assignment_id' => $assignment->assignment_id,
                         'faculty' => $assignment->faculty_name,
                         'subject' => $assignment->subject_name . ' (' . $assignment->course_code . ')',
-                        'units' => $units,
+                        'lecture_units' => $lectureUnits,
+                        'laboratory_units' => $labUnits,
+                        'total_units' => $totalUnits,
                         'reason' => 'Could not find available time slots after ' . $maxAttempts . ' attempts.'
                     ];
                 }
@@ -179,6 +193,12 @@ class SchedulerService
                 $exam['end_time'] = substr($exam['end_time'], 0, 5);
                 return $exam;
             }, $examinations);
+
+            Log::info('=== SCHEDULE GENERATION COMPLETE ===', [
+                'schedules' => count($schedules),
+                'exams' => count($examinations),
+                'conflicts' => count($conflicts)
+            ]);
 
             return [
                 'success' => true,
@@ -208,14 +228,31 @@ class SchedulerService
     }
 
     /**
-     * Get class distribution based on units
-     * Rules:
-     * - 1 unit Lecture = 1 hour
-     * - 1 unit Laboratory = 3 hours
-     * - 2 units = 2 hours Lecture only
-     * - 3 units = 2 hours Lecture + 3 hours Laboratory
-     * - 4 units = 2 hours Lecture + 6 hours Laboratory (2 units lab)
-     * - 5+ units = all Lecture hours
+     * NEW METHOD: Get class distribution from faculty_subjects lecture and lab units
+     * Each lecture unit = 1 hour
+     * Each laboratory unit = 3 hours
+     */
+    private function getClassDistributionFromFacultySubject($lectureUnits, $labUnits)
+    {
+        $distribution = [];
+        
+        // Add lecture sessions if lecture units exist
+        if ($lectureUnits > 0) {
+            $lectureHours = (int)$lectureUnits; // 1 unit = 1 hour
+            $distribution[] = ['type' => 'Lecture', 'hours' => $lectureHours];
+        }
+        
+        // Add laboratory sessions if lab units exist
+        if ($labUnits > 0) {
+            $labHours = (int)($labUnits * 3); // 1 lab unit = 3 hours
+            $distribution[] = ['type' => 'Laboratory', 'hours' => $labHours];
+        }
+        
+        return $distribution;
+    }
+
+    /**
+     * OLD METHOD: Keep for backward compatibility but not used anymore
      */
     private function getClassDistribution($units)
     {
@@ -223,33 +260,27 @@ class SchedulerService
         
         switch ($units) {
             case 2: 
-                // 2 units = 2 hours lecture only
                 return [['type' => 'Lecture', 'hours' => 2]];
                 
             case 3: 
-                // 3 units = 2 units lecture (2 hours) + 1 unit laboratory (3 hours)
                 return [
                     ['type' => 'Lecture', 'hours' => 2],
                     ['type' => 'Laboratory', 'hours' => 3]
                 ];
                 
             case 4: 
-                // 4 units = 2 units lecture (2 hours) + 2 units laboratory (6 hours)
                 return [
                     ['type' => 'Lecture', 'hours' => 2],
                     ['type' => 'Laboratory', 'hours' => 6]
                 ];
                 
             case 5: 
-                // 5 units = all lecture (5 hours)
                 return [['type' => 'Lecture', 'hours' => 5]];
                 
             case 6:
-                // 6 units = all lecture (6 hours)
                 return [['type' => 'Lecture', 'hours' => 6]];
                 
             default: 
-                // Any other units = all lecture hours
                 return [['type' => 'Lecture', 'hours' => $units]];
         }
     }
@@ -304,13 +335,15 @@ class SchedulerService
             foreach ($availableSlots as $timeSlot) {
                 foreach ($shuffledClassrooms as $classroom) {
                     if ($this->isSlotAvailableForAssignment($existingSchedules, $day, $timeSlot['start'], $timeSlot['end'], $classroom->id, $assignment)) {
-                        $yearSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+                        $yearSection = $assignment->year_level . '-A';
+
+                        // Calculate total units for display
+                        $totalUnits = (float)($assignment->lecture_units ?? 0) + (float)($assignment->laboratory_units ?? 0);
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
                             'subject_id'      => $assignment->subject_id,
                             'classroom_id'    => $classroom->id,
-                            'program_id'      => $assignment->program_id ?? null,
                             'day'             => $day,
                             'day_name'        => $day,
                             'start_time'      => $timeSlot['start'],
@@ -320,7 +353,9 @@ class SchedulerService
                             'faculty_name'    => $assignment->faculty_name,
                             'course_subject'  => $assignment->subject_name,
                             'course_code'     => $assignment->course_code,
-                            'units'           => $assignment->units,
+                            'units'           => $totalUnits,
+                            'lecture_units'   => $assignment->lecture_units ?? 0,
+                            'laboratory_units' => $assignment->laboratory_units ?? 0,
                             'year_section'    => $yearSection,
                             'classroom_name'  => $classroom->room_name ?? $classroom->name ?? 'Room ' . $classroom->id,
                             'year_level'      => $assignment->year_level,
@@ -349,7 +384,7 @@ class SchedulerService
 
     private function isSlotAvailableForAssignment($schedules, $day, $startTime, $endTime, $classroomId, $assignment)
     {
-        $assignmentSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+        $assignmentSection = $assignment->year_level . '-A';
 
         foreach ($schedules as $schedule) {
             $scheduleDay = $schedule['day_name'] ?? $schedule['day'];
@@ -370,7 +405,7 @@ class SchedulerService
         return ($start1 < $end2) && ($end1 > $start2);
     }
 
-    private function generateExaminationForAssignment($assignment, $classrooms, $existingExams)
+    private function generateExaminationForAssignment($assignment, $classrooms, $existingExams, $totalUnits)
     {
         $weeksAhead = rand(8, 10);
         $shuffledDays = $this->daysOfWeek; 
@@ -390,7 +425,7 @@ class SchedulerService
                     $specificExamDate = $this->getDateForDayInFuture($day, $weeksAhead);
 
                     if ($this->isExamSlotAvailableForAssignment($existingExams, $specificExamDate, $slot, $classroom->id, $assignment)) {
-                        $yearSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+                        $yearSection = $assignment->year_level . '-A';
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
@@ -405,7 +440,7 @@ class SchedulerService
                             'faculty_name'    => $assignment->faculty_name,
                             'course_subject'  => $assignment->subject_name,
                             'course_code'     => $assignment->course_code,
-                            'units'           => $assignment->units,
+                            'units'           => $totalUnits,
                             'year_section'    => $yearSection,
                             'classroom_name'  => $classroom->room_name ?? $classroom->name ?? 'Room ' . $classroom->id,
                             'year_level'      => $assignment->year_level
@@ -420,7 +455,7 @@ class SchedulerService
 
     private function isExamSlotAvailableForAssignment($exams, $date, $slot, $classroomId, $assignment)
     {
-        $assignmentSection = $assignment->year_level . '-' . ($assignment->enrolled_student ?? 'A');
+        $assignmentSection = $assignment->year_level . '-A';
         
         foreach ($exams as $exam) {
             if ($exam['exam_date'] !== $date) continue;
@@ -443,9 +478,6 @@ class SchedulerService
         return Carbon::now()->addWeeks($weeks)->next($dayName)->format('Y-m-d');
     }
 
-    /**
-     * Save schedules with DAY NAME TO NUMBER CONVERSION
-     */
     public function saveSchedule($schedules, $examinations = [])
     {
         try {
@@ -462,6 +494,7 @@ class SchedulerService
 
             foreach ($schedules as $index => $schedule) {
                 try {
+                    // Validate required fields
                     if (empty($schedule['faculty_id'])) {
                         $errors[] = "Schedule {$index}: Missing faculty_id";
                         continue;
@@ -482,32 +515,26 @@ class SchedulerService
                     $dayName = $schedule['day_name'] ?? $schedule['day'];
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Build data array with only existing columns
+                    // Build schedule data - FIXED for new schema
                     $data = [
                         'faculty_id' => $schedule['faculty_id'],
                         'subject_id' => $schedule['subject_id'],
                         'classroom_id' => $schedule['classroom_id'],
-                        'day' => $dayNumber, // Store as number
+                        'day' => $dayNumber,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
+                        'class_type' => $schedule['class_type'] ?? 'Lecture',
+                        'year_level' => $schedule['year_level'] ?? null,
+                        'semester' => $schedule['semester'] ?? null,
+                        'schedule_date' => $schedule['schedule_date'] ?? null,
+                        'section' => $schedule['year_section'] ?? null,
+                        'is_active' => true,
                     ];
 
-                    // Add optional fields only if they exist in the table
-                    if (Schema::hasColumn('schedules', 'program_id')) {
-                        $data['program_id'] = $schedule['program_id'] ?? null;
-                    }
-                    if (Schema::hasColumn('schedules', 'schedule_date')) {
-                        $data['schedule_date'] = $schedule['schedule_date'] ?? null;
-                    }
-                    if (Schema::hasColumn('schedules', 'class_type')) {
-                        $data['class_type'] = $schedule['class_type'] ?? 'Lecture';
-                    }
-                    if (Schema::hasColumn('schedules', 'semester')) {
-                        $data['semester'] = $schedule['semester'] ?? null;
-                    }
-                    if (Schema::hasColumn('schedules', 'year_level')) {
-                        $data['year_level'] = $schedule['year_level'] ?? null;
-                    }
+                    // Add academic year if available
+                    $currentYear = now()->year;
+                    $nextYear = $currentYear + 1;
+                    $data['academic_year'] = "{$currentYear}-{$nextYear}";
 
                     Schedule::create($data);
 
@@ -515,7 +542,7 @@ class SchedulerService
 
                 } catch (Exception $e) {
                     $error = "Error saving schedule {$index}: " . $e->getMessage();
-                    Log::error($error, ['schedule' => $schedule]);
+                    Log::error($error, ['schedule' => $schedule, 'error' => $e->getTraceAsString()]);
                     $errors[] = $error;
                 }
             }
@@ -530,27 +557,50 @@ class SchedulerService
                     $startTime = $this->ensureTimeFormat($exam['start_time']);
                     $endTime = $this->ensureTimeFormat($exam['end_time']);
                     
-                    // Convert day name to number
-                    $dayName = $exam['day_name'] ?? $exam['day'];
+                    // FIXED: Extract day number from exam_date
+                    $examDate = Carbon::parse($exam['exam_date']);
+                    $dayName = $examDate->format('l'); // Gets full day name (Monday, Tuesday, etc.)
                     $dayNumber = $this->convertDayToNumber($dayName);
 
+                    // Save to examinations table
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
                         'exam_date' => $exam['exam_date'] ?? null,
-                        'day' => $dayNumber, // Store as number
+                        'day' => $dayNumber, // FIXED: Use day number (1-7) instead of day name
                         'start_time' => $startTime,
                         'end_time' => $endTime,
                         'exam_type' => $exam['exam_type'] ?? 'Final',
-                        'year_section' => $exam['year_section'] ?? null
+                        'year_section' => $exam['year_section'] ?? null,
+                        'is_active' => true
+                    ]);
+
+                    // ALSO save to schedules table
+                    $currentYear = now()->year;
+                    $nextYear = $currentYear + 1;
+                    
+                    Schedule::create([
+                        'faculty_id' => $exam['faculty_id'],
+                        'subject_id' => $exam['subject_id'],
+                        'classroom_id' => $exam['classroom_id'],
+                        'day' => $dayNumber,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'class_type' => 'Lecture', // Use 'Lecture' since 'Examination' is not in ENUM
+                        'year_level' => $exam['year_level'] ?? null,
+                        'semester' => $exam['semester'] ?? null,
+                        'schedule_date' => $exam['exam_date'] ?? null,
+                        'section' => $exam['year_section'] ?? null,
+                        'academic_year' => "{$currentYear}-{$nextYear}",
+                        'is_active' => true,
                     ]);
 
                     $savedExams++;
 
                 } catch (Exception $e) {
                     $error = "Error saving exam {$index}: " . $e->getMessage();
-                    Log::error($error, ['exam' => $exam]);
+                    Log::error($error, ['exam' => $exam, 'trace' => $e->getTraceAsString()]);
                     $errors[] = $error;
                 }
             }
@@ -649,6 +699,33 @@ class SchedulerService
             return [
                 'success' => false,
                 'message' => 'Error clearing schedules: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function clearAllExaminations()
+    {
+        try {
+            DB::beginTransaction();
+            
+            $examCount = Examination::count();
+            
+            Examination::truncate();
+            
+            DB::commit();
+            
+            Log::info("Cleared {$examCount} examinations");
+            
+            return [
+                'success' => true,
+                'message' => "Successfully cleared {$examCount} examinations"
+            ];
+        } catch(Exception $e) {
+            DB::rollBack();
+            Log::error('Error clearing examinations: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error clearing examinations: ' . $e->getMessage()
             ];
         }
     }

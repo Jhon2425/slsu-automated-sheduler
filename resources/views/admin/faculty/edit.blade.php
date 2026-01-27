@@ -90,10 +90,10 @@
                                 <select name="civil_status" required
                                         class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                                     <option value="">Select Status</option>
-                                    <option value="Single" {{ old('civil_status', $faculty->civil_status) == 'Single' ? 'selected' : '' }}>Single</option>
-                                    <option value="Married" {{ old('civil_status', $faculty->civil_status) == 'Married' ? 'selected' : '' }}>Married</option>
-                                    <option value="Widowed" {{ old('civil_status', $faculty->civil_status) == 'Widowed' ? 'selected' : '' }}>Widowed</option>
-                                    <option value="Divorced" {{ old('civil_status', $faculty->civil_status) == 'Divorced' ? 'selected' : '' }}>Divorced</option>
+                                    <option value="Single" {{ old('civil_status', $faculty->faculty->civil_status ?? '') == 'Single' ? 'selected' : '' }}>Single</option>
+                                    <option value="Married" {{ old('civil_status', $faculty->faculty->civil_status ?? '') == 'Married' ? 'selected' : '' }}>Married</option>
+                                    <option value="Widowed" {{ old('civil_status', $faculty->faculty->civil_status ?? '') == 'Widowed' ? 'selected' : '' }}>Widowed</option>
+                                    <option value="Divorced" {{ old('civil_status', $faculty->faculty->civil_status ?? '') == 'Divorced' ? 'selected' : '' }}>Divorced</option>
                                 </select>
                             </div>
 
@@ -102,7 +102,9 @@
                                 <label class="block text-white font-semibold mb-2">
                                     <i class="fas fa-calendar mr-2"></i>Birthdate <span class="text-red-400">*</span>
                                 </label>
-                                <input type="date" name="birthdate" value="{{ old('birthdate', $faculty->birthdate) }}" required
+                                <input type="date" name="birthdate" 
+                                       value="{{ old('birthdate', $faculty->faculty->birthdate ? date('Y-m-d', strtotime($faculty->faculty->birthdate)) : '') }}" 
+                                       required
                                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             </div>
                         </div>
@@ -115,9 +117,9 @@
                             <select name="employment_status" required
                                     class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                                 <option value="">Select Status</option>
-                                <option value="Full-Time" {{ old('employment_status', $faculty->employment_status) == 'Full-Time' ? 'selected' : '' }}>Full-Time</option>
-                                <option value="Part-Time" {{ old('employment_status', $faculty->employment_status) == 'Part-Time' ? 'selected' : '' }}>Part-Time</option>
-                                <option value="Contractual" {{ old('employment_status', $faculty->employment_status) == 'Contractual' ? 'selected' : '' }}>Contractual</option>
+                                <option value="Full-Time" {{ old('employment_status', $faculty->faculty->employment_status ?? '') == 'Full-Time' ? 'selected' : '' }}>Full-Time</option>
+                                <option value="Part-Time" {{ old('employment_status', $faculty->faculty->employment_status ?? '') == 'Part-Time' ? 'selected' : '' }}>Part-Time</option>
+                                <option value="Contractual" {{ old('employment_status', $faculty->faculty->employment_status ?? '') == 'Contractual' ? 'selected' : '' }}>Contractual</option>
                             </select>
                         </div>
 
@@ -127,7 +129,7 @@
                                 <i class="fas fa-home mr-2"></i>Home Address <span class="text-red-400">*</span>
                             </label>
                             <textarea name="home_address" rows="3" required
-                                      class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">{{ old('home_address', $faculty->home_address) }}</textarea>
+                                      class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">{{ old('home_address', $faculty->faculty->home_address ?? '') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -153,10 +155,10 @@
                             <select name="degree_earned" required
                                     class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                                 <option value="">Select Degree</option>
-                                <option value="Bachelor's Degree" {{ old('degree_earned', $faculty->degree_earned) == "Bachelor's Degree" ? 'selected' : '' }}>Bachelor's Degree</option>
-                                <option value="Master's Degree" {{ old('degree_earned', $faculty->degree_earned) == "Master's Degree" ? 'selected' : '' }}>Master's Degree</option>
-                                <option value="Doctorate Degree" {{ old('degree_earned', $faculty->degree_earned) == 'Doctorate Degree' ? 'selected' : '' }}>Doctorate Degree</option>
-                                <option value="Professional Degree" {{ old('degree_earned', $faculty->degree_earned) == 'Professional Degree' ? 'selected' : '' }}>Professional Degree</option>
+                                <option value="Bachelor's Degree" {{ old('degree_earned', $faculty->faculty->degree_earned ?? '') == "Bachelor's Degree" ? 'selected' : '' }}>Bachelor's Degree</option>
+                                <option value="Master's Degree" {{ old('degree_earned', $faculty->faculty->degree_earned ?? '') == "Master's Degree" ? 'selected' : '' }}>Master's Degree</option>
+                                <option value="Doctorate Degree" {{ old('degree_earned', $faculty->faculty->degree_earned ?? '') == 'Doctorate Degree' ? 'selected' : '' }}>Doctorate Degree</option>
+                                <option value="Professional Degree" {{ old('degree_earned', $faculty->faculty->degree_earned ?? '') == 'Professional Degree' ? 'selected' : '' }}>Professional Degree</option>
                             </select>
                         </div>
 
@@ -166,7 +168,8 @@
                                 <label class="block text-white font-semibold mb-2">
                                     <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
                                 </label>
-                                <input type="number" name="year_graduated" value="{{ old('year_graduated', $faculty->year_graduated) }}" 
+                                <input type="number" name="year_graduated" 
+                                       value="{{ old('year_graduated', $faculty->faculty->year_graduated ?? '') }}" 
                                        min="1950" max="{{ date('Y') }}" required
                                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             </div>
@@ -176,7 +179,9 @@
                                 <label class="block text-white font-semibold mb-2">
                                     <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
                                 </label>
-                                <input type="text" name="course" value="{{ old('course', $faculty->course) }}" required
+                                <input type="text" name="course" 
+                                       value="{{ old('course', $faculty->faculty->course ?? '') }}" 
+                                       required
                                        placeholder="e.g., Computer Science"
                                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             </div>
@@ -187,7 +192,9 @@
                             <label class="block text-white font-semibold mb-2">
                                 <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
                             </label>
-                            <input type="text" name="school_graduated" value="{{ old('school_graduated', $faculty->school_graduated) }}" required
+                            <input type="text" name="school_graduated" 
+                                   value="{{ old('school_graduated', $faculty->faculty->school_graduated ?? '') }}" 
+                                   required
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                         </div>
                     </div>
@@ -352,18 +359,29 @@
     <script>
         // Available subjects, programs, and existing faculty subjects data
         const availableSubjects = @json($subjects ?? []);
-        const existingSubjects = @json($existingSubjects ?? []);
+        const existingSubjects = @json($faculty->faculty->facultySubjects ?? []);
         const programs = @json($programs ?? []);
         let subjectRowCounter = 0;
 
+        // Debug logging
+        console.log('=== FACULTY EDIT DEBUG ===');
+        console.log('Available subjects:', availableSubjects);
+        console.log('Existing subjects:', existingSubjects);
+        console.log('Programs:', programs);
+
         // Load existing subjects on page load
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Existing subjects:', existingSubjects);
+            console.log('DOM loaded, loading existing subjects...');
+            console.log('Existing subjects count:', existingSubjects.length);
             
             if (existingSubjects && existingSubjects.length > 0) {
-                existingSubjects.forEach(subject => {
+                console.log('Adding', existingSubjects.length, 'existing subject rows');
+                existingSubjects.forEach((subject, index) => {
+                    console.log('Adding subject row', index, ':', subject);
                     addSubjectRow(subject);
                 });
+            } else {
+                console.log('No existing subjects found');
             }
         });
 
@@ -380,11 +398,14 @@
             
             // Build subject options HTML
             const subjectOptions = availableSubjects.map(subject => {
-                const selected = existingData && existingData.id === subject.id ? 'selected' : '';
+                const selected = existingData && existingData.subject_id === subject.id ? 'selected' : '';
                 return `<option value="${subject.id}" 
-                        data-code="${subject.course_code}" 
-                        data-units="${subject.units || ''}"
-                        data-name="${subject.subject_name}"
+                        data-code="${subject.course_code || ''}" 
+                        data-name="${subject.subject_name || ''}"
+                        data-year="${subject.year_level || ''}"
+                        data-semester="${subject.semester || ''}"
+                        data-lecture="${subject.lecture_units || subject.lec || ''}"
+                        data-laboratory="${subject.laboratory_units || subject.lab || ''}"
                         ${selected}>
                     ${subject.subject_name} (${subject.course_code})
                 </option>`;
@@ -392,8 +413,8 @@
 
             // Build program options HTML
             const programOptions = programs.map(program => {
-                const selected = existingData && existingData.pivot && existingData.pivot.program_id === program.id ? 'selected' : '';
-                return `<option value="${program.id}" ${selected}>${program.program_name}</option>`;
+                const selected = existingData && existingData.program_id === program.id ? 'selected' : '';
+                return `<option value="${program.id}" ${selected}>${program.name || program.program_name}</option>`;
             }).join('');
             
             row.innerHTML = `
@@ -421,45 +442,73 @@
                     </select>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Subject Code (Auto-filled) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Subject Code (Auto-filled, readonly) -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-code mr-2"></i>Subject Code
                         </label>
                         <input type="text" 
                                id="${rowId}-code"
-                               value="${existingData?.course_code || ''}"
+                               value="${existingData?.subject?.course_code || ''}"
                                readonly
                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Lecture Units -->
+                    <!-- Year Level (Auto-filled) -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-layer-group mr-2"></i>Year Level
+                        </label>
+                        <input type="text" 
+                               id="${rowId}-year"
+                               name="subjects[${rowIndex}][year_level]"
+                               value="${existingData?.subject?.year_level || ''}"
+                               readonly
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Semester (Auto-filled) -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-calendar-alt mr-2"></i>Semester
+                        </label>
+                        <input type="text" 
+                               id="${rowId}-semester"
+                               name="subjects[${rowIndex}][semester]"
+                               value="${existingData?.subject?.semester || ''}"
+                               readonly
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                    </div>
+
+                    <!-- Lecture Units (Editable) -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units
                         </label>
                         <input type="number" 
+                               id="${rowId}-lecture"
                                name="subjects[${rowIndex}][lecture_units]" 
-                               value="${existingData?.pivot?.lecture_units || ''}"
+                               value="${existingData?.lecture_units || existingData?.subject?.lecture_units || ''}"
                                min="0" 
                                step="0.5"
-                               placeholder="0.0"
-                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     </div>
 
-                    <!-- Laboratory Units -->
+                    <!-- Laboratory Units (Editable) -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-flask mr-2"></i>Laboratory Units
                         </label>
                         <input type="number" 
+                               id="${rowId}-laboratory"
                                name="subjects[${rowIndex}][laboratory_units]" 
-                               value="${existingData?.pivot?.laboratory_units || ''}"
+                               value="${existingData?.laboratory_units || existingData?.subject?.laboratory_units || ''}"
                                min="0" 
                                step="0.5"
-                               placeholder="0.0"
-                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     </div>
                 </div>
 
@@ -482,8 +531,17 @@
         function updateSubjectDetails(select, rowId) {
             const selectedOption = select.options[select.selectedIndex];
             const code = selectedOption.getAttribute('data-code');
+            const year = selectedOption.getAttribute('data-year');
+            const semester = selectedOption.getAttribute('data-semester');
+            const lecture = selectedOption.getAttribute('data-lecture');
+            const laboratory = selectedOption.getAttribute('data-laboratory');
             
+            // Update all fields including lecture and laboratory units
             document.getElementById(`${rowId}-code`).value = code || '';
+            document.getElementById(`${rowId}-year`).value = year || '';
+            document.getElementById(`${rowId}-semester`).value = semester || '';
+            document.getElementById(`${rowId}-lecture`).value = lecture || '';
+            document.getElementById(`${rowId}-laboratory`).value = laboratory || '';
         }
 
         function removeSubjectRow(rowId) {

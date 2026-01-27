@@ -13,7 +13,7 @@
             <i class="fas fa-chevron-right mx-3 text-xs text-white/50"></i>
 
             <span class="font-semibold text-white">
-                Class Schedules
+                Examination Schedules
             </span>
         </nav>
 
@@ -35,27 +35,27 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
                         <h1 class="text-4xl font-bold text-white flex items-center gap-3 drop-shadow-lg">
-                            <i class="fas fa-chalkboard-teacher"></i> Class Schedules
+                            <i class="fas fa-file-alt"></i> Examination Schedules
                         </h1>
-                        <p class="mt-3 text-white/90 text-lg drop-shadow">View and manage regular class schedules</p>
+                        <p class="mt-3 text-white/90 text-lg drop-shadow">View and manage examination schedules</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <button onclick="generateSchedule()"
-                            class="bg-purple-500/30 backdrop-blur-md hover:bg-purple-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
-                            <i class="fas fa-magic mr-2"></i>Generate Schedule
+                            class="bg-orange-500/30 backdrop-blur-md hover:bg-orange-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
+                            <i class="fas fa-magic mr-2"></i>Generate Exam Schedule
                         </button>
-                        <a href="{{ route('admin.schedules.download-pdf') }}"
+                        <a href="{{ route('admin.examinations.download-pdf') }}"
                             class="bg-red-500/30 backdrop-blur-md hover:bg-red-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
                             <i class="fas fa-file-pdf mr-2"></i>Download PDF
                         </a>
-                        <a href="{{ route('admin.schedules.download-excel') }}"
+                        <a href="{{ route('admin.examinations.download-excel') }}"
                             class="bg-green-500/30 backdrop-blur-md hover:bg-green-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
                             <i class="fas fa-file-excel mr-2"></i>Download Excel
                         </a>
-                        <form action="{{ route('admin.schedules.clear') }}" method="POST" onsubmit="return confirm('Are you sure you want to clear all schedules?');" class="inline">
+                        <form action="{{ route('admin.examinations.clear') }}" method="POST" onsubmit="return confirm('Are you sure you want to clear all examination schedules?');" class="inline">
                             @csrf
                             <button type="submit"
-                                class="bg-orange-500/30 backdrop-blur-md hover:bg-orange-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
+                                class="bg-red-600/30 backdrop-blur-md hover:bg-red-600/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
                                 <i class="fas fa-trash mr-2"></i>Clear All
                             </button>
                         </form>
@@ -63,7 +63,7 @@
                 </div>
             </div>
 
-            @if(isset($schedules) && $schedules->count() > 0)
+            @if(isset($examinations) && $examinations->count() > 0)
                 <!-- Timetable View -->
                 <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6">
                     <div class="timetable-wrapper overflow-x-auto">
@@ -92,10 +92,13 @@
                                         
                                         $occupiedCells = [];
                                         
-                                        foreach($schedules as $schedule) {
-                                            $day = $schedule->day_name;
-                                            $startTime = substr($schedule->start_time, 0, 5);
-                                            $endTime = substr($schedule->end_time, 0, 5);
+                                        foreach($examinations as $exam) {
+                                            // Use the day_name accessor from the model
+                                            $day = $exam->day_name;
+                                            
+                                            // Format times properly
+                                            $startTime = is_string($exam->start_time) ? substr($exam->start_time, 0, 5) : $exam->start_time->format('H:i');
+                                            $endTime = is_string($exam->end_time) ? substr($exam->end_time, 0, 5) : $exam->end_time->format('H:i');
                                             
                                             $startHour = (int)substr($startTime, 0, 2);
                                             $startMin = (int)substr($startTime, 3, 2);
@@ -108,8 +111,8 @@
                                             }
                                             
                                             if(isset($schedulesByDayAndTime[$day][$startTime])) {
-                                                $schedule->calculated_rowspan = max(1, $duration);
-                                                $schedulesByDayAndTime[$day][$startTime][] = $schedule;
+                                                $exam->calculated_rowspan = max(1, $duration);
+                                                $schedulesByDayAndTime[$day][$startTime][] = $exam;
                                                 
                                                 for($i = 1; $i < $duration; $i++) {
                                                     $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
@@ -148,36 +151,40 @@
                                                         continue;
                                                     }
                                                     
-                                                    $daySchedules = $schedulesByDayAndTime[$day][$time];
+                                                    $dayExams = $schedulesByDayAndTime[$day][$time];
                                                 @endphp
                                                 
                                                 <td class="bg-white/5 border border-white/20 time-slot timetable-cell align-top" 
-                                                    @if(count($daySchedules) > 0 && isset($daySchedules[0]->calculated_rowspan))
-                                                        rowspan="{{ $daySchedules[0]->calculated_rowspan }}"
+                                                    @if(count($dayExams) > 0 && isset($dayExams[0]->calculated_rowspan))
+                                                        rowspan="{{ $dayExams[0]->calculated_rowspan }}"
                                                     @endif>
-                                                    @if(count($daySchedules) > 0)
+                                                    @if(count($dayExams) > 0)
                                                         <div style="display: flex; gap: 4px; height: 100%; padding: 4px;">
-                                                            @foreach($daySchedules as $schedule)
+                                                            @foreach($dayExams as $exam)
                                                                 @php
-                                                                    if(!isset($subjectColors[$schedule->subject_id])) {
-                                                                        $subjectColors[$schedule->subject_id] = $colors[$colorIndex % count($colors)];
+                                                                    if(!isset($subjectColors[$exam->subject_id])) {
+                                                                        $subjectColors[$exam->subject_id] = $colors[$colorIndex % count($colors)];
                                                                         $colorIndex++;
                                                                     }
-                                                                    $color = $subjectColors[$schedule->subject_id];
-                                                                    $rowspan = $schedule->calculated_rowspan ?? 1;
+                                                                    $color = $subjectColors[$exam->subject_id];
+                                                                    $rowspan = $exam->calculated_rowspan ?? 1;
                                                                     $blockHeight = ($rowspan * 150) - 8;
+                                                                    
+                                                                    // Format display times
+                                                                    $displayStartTime = is_string($exam->start_time) ? date('g:i A', strtotime($exam->start_time)) : $exam->start_time->format('g:i A');
+                                                                    $displayEndTime = is_string($exam->end_time) ? date('g:i A', strtotime($exam->end_time)) : $exam->end_time->format('g:i A');
                                                                 @endphp
                                                                 
                                                                 <div class="schedule-block schedule-block-{{ $color }}" 
                                                                      style="flex: 1; min-width: 0; height: {{ $blockHeight }}px;">
-                                                                    <div class="schedule-text font-bold text-xs truncate">{{ $schedule->subject->course_code ?? 'N/A' }}</div>
-                                                                    <div class="schedule-text text-xs truncate">{{ $schedule->subject->subject_name ?? 'N/A' }}</div>
-                                                                    <div class="schedule-text text-xs truncate">{{ $schedule->classroom->room_name ?? 'N/A' }}</div>
-                                                                    <div class="schedule-text text-xs truncate">{{ $schedule->faculty->name ?? 'N/A' }}</div>
-                                                                    <div class="schedule-text text-xs">{{ $schedule->class_type === 'Laboratory' ? 'Lab' : 'Lec' }}</div>
-                                                                    <div class="schedule-text text-xs">Yr {{ $schedule->year_level }}</div>
+                                                                    <div class="schedule-text font-bold text-xs truncate">{{ $exam->subject->course_code ?? 'N/A' }}</div>
+                                                                    <div class="schedule-text text-xs truncate">{{ $exam->subject->subject_name ?? 'N/A' }}</div>
+                                                                    <div class="schedule-text text-xs truncate">{{ $exam->classroom->room_name ?? 'N/A' }}</div>
+                                                                    <div class="schedule-text text-xs truncate">{{ $exam->faculty->name ?? 'N/A' }}</div>
+                                                                    <div class="schedule-text text-xs font-bold text-yellow-300">EXAMINATION</div>
+                                                                    <div class="schedule-text text-xs">{{ $exam->exam_type ?? 'Final' }}</div>
                                                                     <div class="schedule-text text-xs opacity-80">
-                                                                        {{ date('g:i A', strtotime($schedule->start_time)) }} - {{ date('g:i A', strtotime($schedule->end_time)) }}
+                                                                        {{ $displayStartTime }} - {{ $displayEndTime }}
                                                                     </div>
                                                                 </div>
                                                             @endforeach
@@ -195,18 +202,18 @@
 
                 <!-- Pagination -->
                 <div class="mt-6">
-                    {{ $schedules->links() }}
+                    {{ $examinations->links() }}
                 </div>
             @else
                 <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl p-16 text-center border border-white/20">
                     <div class="bg-white/20 backdrop-blur-sm rounded-full w-32 h-32 mx-auto flex items-center justify-center mb-6 border border-white/30">
                         <i class="fas fa-calendar-times text-white/60 text-6xl"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-3 drop-shadow-lg">No Class Schedules Found</h3>
-                    <p class="text-white/80 mb-8 text-lg drop-shadow">Generate class schedules to get started with your academic planning.</p>
+                    <h3 class="text-2xl font-bold text-white mb-3 drop-shadow-lg">No Examination Schedules Found</h3>
+                    <p class="text-white/80 mb-8 text-lg drop-shadow">Generate examination schedules for midterm and final exams.</p>
                     <button onclick="generateSchedule()"
-                        class="bg-purple-500/30 backdrop-blur-md hover:bg-purple-500/40 text-white px-10 py-4 rounded-xl font-semibold text-lg shadow-lg border border-white/30 transition-all">
-                        <i class="fas fa-magic mr-2"></i>Generate Schedule Now
+                        class="bg-orange-500/30 backdrop-blur-md hover:bg-orange-500/40 text-white px-10 py-4 rounded-xl font-semibold text-lg shadow-lg border border-white/30 transition-all">
+                        <i class="fas fa-magic mr-2"></i>Generate Exam Schedule Now
                     </button>
                 </div>
             @endif
@@ -218,10 +225,10 @@
         <div class="relative top-10 mx-auto p-8 border border-white/30 w-11/12 max-w-7xl shadow-2xl rounded-2xl bg-white/10 backdrop-blur-xl mb-10">
             <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/20">
                 <h3 class="text-3xl font-bold text-white flex items-center gap-3 drop-shadow-lg">
-                    <div class="bg-gradient-to-r from-blue-500/30 to-indigo-500/30 backdrop-blur-sm rounded-xl p-3 border border-white/30">
-                        <i class="fas fa-chalkboard-teacher text-white"></i>
+                    <div class="bg-gradient-to-r from-orange-500/30 to-red-500/30 backdrop-blur-sm rounded-xl p-3 border border-white/30">
+                        <i class="fas fa-file-alt text-white"></i>
                     </div>
-                    <span>Class Schedule Preview</span>
+                    <span>Examination Schedule Preview</span>
                 </h3>
                 <button onclick="closePreviewModal()" class="text-white/70 hover:text-white transition p-2 hover:bg-white/10 rounded-lg backdrop-blur-sm">
                     <i class="fas fa-times text-2xl"></i>
@@ -230,7 +237,7 @@
             
             <div id="loadingIndicator" class="hidden text-center py-12">
                 <i class="fas fa-spinner fa-spin text-white text-6xl mb-4"></i>
-                <p class="text-white text-xl">Generating class schedule...</p>
+                <p class="text-white text-xl">Generating examination schedule...</p>
             </div>
 
             <div id="conflictsAlert" class="hidden bg-yellow-500/20 backdrop-blur-md border border-yellow-500/50 text-white px-6 py-4 rounded-xl mb-6">
@@ -250,7 +257,7 @@
             </div>
         </div>
     </div>
-   <style>
+    <style>
     .time-slot {
         height: 150px;
         min-height: 150px;
@@ -285,7 +292,7 @@
     .timetable-wrapper {
         display: block;
         width: 100%;
-        overflow-x: auto;
+        overflow-x-auto;
     }
 
     .timetable-container {
@@ -355,8 +362,8 @@
         backdrop-filter: blur(12px);
     }
 </style>
-    <script>
-    let generatedSchedules = null;
+   <script>
+    let generatedExaminations = null;
     let responseData = null;
 
     const subjectColors = [
@@ -378,14 +385,14 @@
         conflictsAlert.classList.add('hidden');
 
         try {
-            const res = await fetch('{{ route("admin.schedules.generate-preview") }}', {
+            const res = await fetch('{{ route("admin.examinations.generate-preview") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type':'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 },
                 body: JSON.stringify({
-                    schedule_type: 'regular'
+                    schedule_type: 'examination'
                 })
             });
             
@@ -396,21 +403,21 @@
 
             if(data.success){
                 responseData = data;
-                generatedSchedules = data.schedules;
+                generatedExaminations = data.examinations;
                 
                 if (data.conflicts && data.conflicts.length > 0) {
                     displayConflicts(data.conflicts);
                 }
                 
-                displayTimetable(data.schedules);
+                displayTimetable(data.examinations);
             } else {
                 alert(data.message || 'Failed to generate preview');
                 closePreviewModal();
             }
         } catch(e) {
-            console.error('Error generating schedule:', e);
+            console.error('Error generating examination schedule:', e);
             loading.classList.add('hidden');
-            alert('Error generating schedule: ' + e.message);
+            alert('Error generating examination schedule: ' + e.message);
             closePreviewModal();
         }
     }
@@ -450,12 +457,12 @@
         return Math.max(1, duration);
     }
 
-    function displayTimetable(schedules) {
+    function displayTimetable(examinations) {
         const subjectMap = new Map();
         const container = document.getElementById('previewContent');
         
-        if (!schedules || schedules.length === 0) {
-            container.innerHTML = '<div class="text-center text-white py-8">No schedules to display</div>';
+        if (!examinations || examinations.length === 0) {
+            container.innerHTML = '<div class="text-center text-white py-8">No examination schedules to display</div>';
             return;
         }
         
@@ -472,17 +479,17 @@
             });
         });
 
-        schedules.forEach(schedule => {
-            const day = schedule.day_name || schedule.day;
-            const startTime = schedule.start_time;
-            const endTime = schedule.end_time;
+        examinations.forEach(exam => {
+            const day = exam.day_name || exam.day;
+            const startTime = exam.start_time;
+            const endTime = exam.end_time;
             
             const duration = calculateDuration(startTime, endTime);
             
-            schedule.calculated_rowspan = duration;
+            exam.calculated_rowspan = duration;
             
             if (schedulesByDayAndTime[day] && schedulesByDayAndTime[day][startTime]) {
-                schedulesByDayAndTime[day][startTime].push(schedule);
+                schedulesByDayAndTime[day][startTime].push(exam);
                 
                 for(let i = 1; i < duration; i++) {
                     const nextTimeIndex = timeSlots.indexOf(startTime) + i;
@@ -517,27 +524,27 @@
                     return;
                 }
                 
-                const schedulesAtThisTime = schedulesByDayAndTime[day][time] || [];
-                const rowspan = schedulesAtThisTime.length > 0 ? schedulesAtThisTime[0].calculated_rowspan : 1;
+                const examsAtThisTime = schedulesByDayAndTime[day][time] || [];
+                const rowspan = examsAtThisTime.length > 0 ? examsAtThisTime[0].calculated_rowspan : 1;
                 
                 html += `<td class="bg-white/5 border border-white/20 time-slot timetable-cell align-top" ${rowspan > 1 ? `rowspan="${rowspan}"` : ''}>`;
                 
-                if (schedulesAtThisTime.length > 0) {
+                if (examsAtThisTime.length > 0) {
                     html += `<div style="display: flex; gap: 4px; height: 100%; padding: 4px;">`;
                     
-                    schedulesAtThisTime.forEach(schedule => {
-                        const color = getSubjectColor(schedule.subject_id, subjectMap);
+                    examsAtThisTime.forEach(exam => {
+                        const color = getSubjectColor(exam.subject_id, subjectMap);
                         const blockHeight = (rowspan * 150) - 8;
                         
                         html += `
                             <div class="schedule-block schedule-block-${color}" style="flex: 1; min-width: 0; height: ${blockHeight}px;">
-                                <div class="schedule-text font-bold text-xs truncate">${schedule.course_code || 'N/A'}</div>
-                                <div class="schedule-text text-xs truncate">${schedule.course_subject || schedule.subject_name || 'N/A'}</div>
-                                <div class="schedule-text text-xs truncate">${schedule.classroom_name || 'N/A'}</div>
-                                <div class="schedule-text text-xs truncate">${schedule.faculty_name || 'N/A'}</div>
-                                <div class="schedule-text text-xs">${schedule.class_type || 'Lec'}</div>
-                                <div class="schedule-text text-xs">Yr ${schedule.year_level || 'N/A'}</div>
-                                <div class="schedule-text text-xs opacity-80">${formatTimeSimple(schedule.start_time)} - ${formatTimeSimple(schedule.end_time)}</div>
+                                <div class="schedule-text font-bold text-xs truncate">${exam.course_code || 'N/A'}</div>
+                                <div class="schedule-text text-xs truncate">${exam.course_subject || exam.subject_name || 'N/A'}</div>
+                                <div class="schedule-text text-xs truncate">${exam.classroom_name || 'N/A'}</div>
+                                <div class="schedule-text text-xs truncate">${exam.faculty_name || 'N/A'}</div>
+                                <div class="schedule-text text-xs font-bold text-yellow-300">EXAMINATION</div>
+                                <div class="schedule-text text-xs">${exam.exam_type || 'Final'}</div>
+                                <div class="schedule-text text-xs opacity-80">${formatTimeSimple(exam.start_time)} - ${formatTimeSimple(exam.end_time)}</div>
                             </div>`;
                     });
                     
@@ -558,7 +565,7 @@
     function closePreviewModal() {
         document.getElementById('previewModal').classList.add('hidden');
         responseData = null;
-        generatedSchedules = null;
+        generatedExaminations = null;
     }
 
     function formatTimeSimple(time) {
@@ -571,8 +578,8 @@
     }
 
     async function confirmSchedule(){
-        if(!responseData || !generatedSchedules) {
-            alert('No schedules to save');
+        if(!responseData || !generatedExaminations) {
+            alert('No examination schedules to save');
             return;
         }
 
@@ -582,18 +589,18 @@
 
         try{
             const payload = {
-                schedule_type: 'regular',
-                schedules: generatedSchedules
+                schedule_type: 'examination',
+                examinations: generatedExaminations
             };
 
             console.log('Sending payload:', {
                 schedule_type: payload.schedule_type,
-                schedule_count: payload.schedules.length
+                exam_count: payload.examinations.length
             });
             
-            console.log('First schedule sample:', payload.schedules[0]);
+            console.log('First exam sample:', payload.examinations[0]);
 
-            const res = await fetch('{{ route("admin.schedules.confirm") }}', {
+            const res = await fetch('{{ route("admin.examinations.confirm") }}', {
                 method:'POST',
                 headers:{
                     'Content-Type':'application/json',
@@ -618,7 +625,7 @@
             console.log('Confirmation response:', data);
             
             if(data.success) {
-                const message = data.message || 'Schedule saved successfully!';
+                const message = data.message || 'Examination schedule saved successfully!';
                 if (data.errors && data.errors.length > 0) {
                     console.warn('Some items had errors:', data.errors);
                     alert(message + '\n\nNote: Some items had errors (see console for details)');
@@ -627,15 +634,15 @@
                 }
                 window.location.reload();
             } else {
-                const errorMsg = data.message || 'Failed to save schedules';
+                const errorMsg = data.message || 'Failed to save examination schedules';
                 console.error('Save failed:', data);
                 alert('Error: ' + errorMsg);
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirm & Save';
             }
         }catch(e){
-            console.error('Error saving schedule:', e);
-            alert('Error saving schedule: ' + e.message + '\n\nCheck the browser console (F12) for more details.');
+            console.error('Error saving examination schedule:', e);
+            alert('Error saving examination schedule: ' + e.message + '\n\nCheck the browser console (F12) for more details.');
             confirmBtn.disabled = false;
             confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirm & Save';
         }
