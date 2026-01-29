@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <!-- FAVICON -->
-    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">
-    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=1">
-    <link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">
-
+    
+    <!-- Favicon -->
+    <link rel="icon" href="{{ asset('images/slsu-logo.ico') }}" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/slsu-logo.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/slsu-logo.png') }}">
+    
     <title>SLSU Automated Scheduler - Tiaong Campus</title>
     <script src="//unpkg.com/alpinejs" defer></script>
     <style>
@@ -886,7 +886,7 @@
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0">
         </div>
-        -->
+
         <div x-cloak 
              class="modal" 
              @click.stop
@@ -906,7 +906,7 @@
             <button class="close-btn" @click="showRoleModal = false">Close</button>
         </div>
     </div>
-
+        -->
     <script>
         function heroPage() {
             return {

@@ -154,9 +154,6 @@
                                         <i class="fas fa-envelope mr-2"></i>Email
                                     </th>
                                     <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
-                                        <i class="fas fa-book mr-2"></i>Subjects
-                                    </th>
-                                    <th class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                         <i class="fas fa-cog mr-2"></i>Actions
                                     </th>
                                 </tr>
@@ -171,9 +168,10 @@
                                                 #{{ $faculty->id }}
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4">
+                                        <td class="px-6 py-4 align-middle">
                                             <div class="flex items-center">
-                                                <div class="rounded-full p-3 mr-3 shadow-lg" style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
+                                                <div class="rounded-full p-3 mr-3 shadow-lg"
+                                                    style="background: linear-gradient(135deg, #6D9773 0%, #5a7d60 100%);">
                                                     <i class="fas fa-user text-white"></i>
                                                 </div>
                                                 <div>
@@ -189,34 +187,12 @@
                                                 <i class="fas fa-envelope mr-2 text-white/60"></i>{{ $faculty->email }}
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 text-center">
-                                            @if($faculty->subjects_count > 0)
-                                                <button onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '#{{ $faculty->id }}')"
-                                                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold cursor-pointer hover:scale-110 transition-transform" 
-                                                        style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">
-                                                    <i class="fas fa-book mr-1 text-xs"></i>
-                                                    {{ $faculty->subjects_count }}
-                                                </button>
-                                            @else
-                                                <button onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '#{{ $faculty->id }}')"
-                                                        class="text-sm text-white/40 hover:text-white/70 transition-colors inline-flex items-center">
-                                                    <i class="fas fa-plus-circle mr-1 text-xs"></i>Assign
-                                                </button>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <div class="flex justify-center gap-2">
-                                                <!-- Assign Subjects -->
-                                                <button onclick="openSubjectModal({{ $faculty->id }}, '{{ $faculty->name }}', '#{{ $faculty->id }}')"
-                                                        class="action-button bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg" 
-                                                        title="Assign Subjects">
-                                                    <i class="fas fa-book"></i>
-                                                </button>
-
+                                        <td class="px-6 py-4 align-middle">
+                                            <div class="flex items-center justify-center gap-3 h-full">
                                                 <!-- Edit Faculty -->
                                                 <a href="{{ route('admin.faculty.edit', $faculty->id) }}" 
-                                                   class="action-button bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-lg" 
-                                                   title="Edit Faculty">
+                                                class="action-button bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-lg" 
+                                                title="Edit Faculty">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
 
@@ -227,7 +203,7 @@
                                                     <button type="submit" 
                                                             class="action-button bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg" 
                                                             title="Delete Faculty"
-                                                            onclick="return confirm('Are you sure you want to delete {{ $faculty->name }}? This action cannot be undone.');">
+                                                            onclick="return confirm('Are you sure you want to delete {{ $faculty->name }}?');">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>

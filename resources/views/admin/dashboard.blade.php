@@ -17,7 +17,7 @@
                     </h1>
                     
                     <p class="text-white/80 text-lg mt-2 animate-fade-in-delayed">
-                        Welcome back,
+                        Welcome,
                         <span class="font-semibold text-white animate-glow">
                             {{ auth()->user()->name }}
                         </span>!
@@ -196,53 +196,6 @@
                     </a>
                 </div>
             </div>
-            
-            <!-- System Statistics -->
-            <div class="glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.6s;">
-                <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
-                    <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-xl p-2 mr-3">
-                        <i class="fas fa-chart-bar text-white"></i>
-                    </div>
-                    System Statistics
-                </h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="glass-item rounded-xl p-4 hover-lift">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-users text-blue-400 text-2xl"></i>
-                            <span class="badge-info">AVG</span>
-                        </div>
-                        <p class="text-2xl font-bold text-white mb-1">{{ $avgClassSize ?? 'N/A' }}</p>
-                        <p class="text-white/70 text-xs">Average Class Size</p>
-                    </div>
-                    <div class="glass-item rounded-xl p-4 hover-lift">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-clock text-purple-400 text-2xl"></i>
-                            <span class="badge-info">TOTAL</span>
-                        </div>
-                        <p class="text-2xl font-bold text-white mb-1">{{ $totalHours ?? 'N/A' }}h</p>
-                        <p class="text-white/70 text-xs">Scheduled Hours</p>
-                    </div>
-                    <div class="glass-item rounded-xl p-4 hover-lift">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-flask text-green-400 text-2xl"></i>
-                            <span class="badge-success">{{ $labCount ?? 0 }}</span>
-                        </div>
-                        <p class="text-2xl font-bold text-white mb-1">Lab</p>
-                        <p class="text-white/70 text-xs">Laboratory Classes</p>
-                    </div>
-                    <div class="glass-item rounded-xl p-4 hover-lift">
-                        <div class="flex items-center justify-between mb-2">
-                            <i class="fas fa-book-open text-yellow-400 text-2xl"></i>
-                            <span class="badge-warning">{{ $lectureCount ?? 0 }}</span>
-                        </div>
-                        <p class="text-2xl font-bold text-white mb-1">Lecture</p>
-                        <p class="text-white/70 text-xs">Lecture Classes</p>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-    </div>
     
     <style>
         /* Glass Card Effect */
