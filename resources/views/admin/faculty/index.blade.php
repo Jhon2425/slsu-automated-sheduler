@@ -189,6 +189,13 @@
                                         </td>
                                         <td class="px-6 py-4 align-middle">
                                             <div class="flex items-center justify-center gap-3 h-full">
+                                                <!-- View Subjects Button -->
+                                                <button onclick="openViewSubjectsModal({{ $faculty->id }}, '{{ addslashes($faculty->name) }}', '#{{ $faculty->id }}')" 
+                                                        class="action-button bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg" 
+                                                        title="View Assigned Subjects">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+
                                                 <!-- Edit Faculty -->
                                                 <a href="{{ route('admin.faculty.edit', $faculty->id) }}" 
                                                 class="action-button bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-lg" 
@@ -233,6 +240,43 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- View Subjects Modal -->
+    <div id="viewSubjectsModal" class="modal-overlay" style="display: none;" onclick="closeViewSubjectsModal()">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center">
+                        <i class="fas fa-book-open mr-3"></i>Assigned Subjects
+                    </h2>
+                    <p class="text-white/70 text-sm mt-1">
+                        <span id="viewModalFacultyName"></span> (<span id="viewModalFacultyId"></span>)
+                    </p>
+                </div>
+                <button onclick="closeViewSubjectsModal()" class="text-white/70 hover:text-white transition-colors">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div id="viewSubjectLoading" class="text-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-white/70 mb-4"></i>
+                    <p class="text-white/70">Loading subjects...</p>
+                </div>
+
+                <div id="viewSubjectContent" style="display: none;">
+                    <div id="viewSubjectsList" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <!-- Subjects will be loaded here -->
+                    </div>
+                </div>
+
+                <div id="viewSubjectError" style="display: none;" class="text-center py-12">
+                    <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
+                    <p class="text-white/70">Failed to load subjects. Please try again.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -377,22 +421,44 @@
             accent-color: #6D9773;
         }
 
+        /* View Subject Card Styles */
+        .view-subject-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .view-subject-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+        }
+
         /* Scrollbar Styles */
-        #subjectsList::-webkit-scrollbar {
+        #subjectsList::-webkit-scrollbar,
+        #viewSubjectsList::-webkit-scrollbar {
             width: 8px;
         }
 
-        #subjectsList::-webkit-scrollbar-track {
+        #subjectsList::-webkit-scrollbar-track,
+        #viewSubjectsList::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 4px;
         }
 
-        #subjectsList::-webkit-scrollbar-thumb {
+        #subjectsList::-webkit-scrollbar-thumb,
+        #viewSubjectsList::-webkit-scrollbar-thumb {
             background: rgba(109, 151, 115, 0.5);
             border-radius: 4px;
         }
 
-        #subjectsList::-webkit-scrollbar-thumb:hover {
+        #subjectsList::-webkit-scrollbar-thumb:hover,
+        #viewSubjectsList::-webkit-scrollbar-thumb:hover {
             background: rgba(109, 151, 115, 0.7);
         }
 
@@ -688,6 +754,122 @@
     <script>
         let currentFacultyId = null;
 
+        // View Subjects Modal Functions
+        function openViewSubjectsModal(facultyId, facultyName, facultyIdLabel) {
+            document.getElementById('viewModalFacultyName').textContent = facultyName;
+            document.getElementById('viewModalFacultyId').textContent = facultyIdLabel;
+            document.getElementById('viewSubjectsModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Reset states
+            document.getElementById('viewSubjectLoading').style.display = 'block';
+            document.getElementById('viewSubjectContent').style.display = 'none';
+            document.getElementById('viewSubjectError').style.display = 'none';
+            
+            // Fetch assigned subjects
+            fetchAssignedSubjects(facultyId);
+        }
+
+        function closeViewSubjectsModal() {
+            document.getElementById('viewSubjectsModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function fetchAssignedSubjects(facultyId) {
+            try {
+                console.log('Fetching assigned subjects for faculty:', facultyId);
+                
+                const response = await fetch(`/admin/faculty/${facultyId}/assigned-subjects`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received data:', data);
+                
+                if (data.success === false) {
+                    throw new Error(data.message || 'Failed to fetch assigned subjects');
+                }
+                
+                displayAssignedSubjects(data.subjects || []);
+                
+            } catch (error) {
+                console.error('Error fetching assigned subjects:', error);
+                document.getElementById('viewSubjectLoading').style.display = 'none';
+                document.getElementById('viewSubjectError').style.display = 'block';
+                document.getElementById('viewSubjectError').querySelector('p').textContent = 
+                    'Error: ' + error.message;
+            }
+        }
+
+        function displayAssignedSubjects(subjects) {
+            const viewSubjectsList = document.getElementById('viewSubjectsList');
+            
+            if (subjects.length === 0) {
+                viewSubjectsList.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style="background: rgba(59, 130, 246, 0.15);">
+                            <i class="fas fa-book-open text-5xl text-blue-400"></i>
+                        </div>
+                        <h4 class="text-xl font-bold text-white mb-2">No Subjects Assigned</h4>
+                        <p class="text-white/60 text-sm">This faculty member has no assigned subjects yet.</p>
+                    </div>
+                `;
+            } else {
+                viewSubjectsList.innerHTML = subjects.map((subject, index) => `
+                    <div class="view-subject-card" style="animation: fadeInUp 0.4s ease-out ${index * 0.05}s both;">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <h4 class="text-white font-bold text-lg mb-1">${subject.subject_name}</h4>
+                                <p class="text-xs text-white/60">
+                                    <i class="fas fa-code mr-1"></i>${subject.course_code}
+                                </p>
+                            </div>
+                            <span class="text-xs px-3 py-1 rounded-full font-semibold" 
+                                  style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                ${subject.units} ${subject.units > 1 ? 'units' : 'unit'}
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-white/10">
+                            <div class="text-center">
+                                <div class="text-white/60 text-xs mb-1">
+                                    <i class="fas fa-calendar"></i>
+                                </div>
+                                <div class="text-white text-sm font-semibold">${subject.semester}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-white/60 text-xs mb-1">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
+                                <div class="text-white text-sm font-semibold">Year ${subject.year_level}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-white/60 text-xs mb-1">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="text-white text-sm font-semibold">${subject.enrolled_student || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('viewSubjectLoading').style.display = 'none';
+            document.getElementById('viewSubjectContent').style.display = 'block';
+        }
+
+        // Assignment Modal Functions
         function openSubjectModal(facultyId, facultyName, facultyIdLabel) {
             currentFacultyId = facultyId;
             document.getElementById('modalFacultyName').textContent = facultyName;
@@ -832,10 +1014,15 @@
             }
         });
 
-        // Close modal with Escape key
+        // Close modals with Escape key
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && document.getElementById('subjectModal').style.display === 'flex') {
-                closeSubjectModal();
+            if (e.key === 'Escape') {
+                if (document.getElementById('viewSubjectsModal').style.display === 'flex') {
+                    closeViewSubjectsModal();
+                }
+                if (document.getElementById('subjectModal').style.display === 'flex') {
+                    closeSubjectModal();
+                }
             }
         });
     </script>

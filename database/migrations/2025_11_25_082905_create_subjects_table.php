@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('subject_name');
             $table->integer('lec')->default(0); // Lecture units
             $table->integer('lab')->default(0); // Laboratory units
-            $table->integer('total')->default(0); // Total units
+            $table->integer('units')->default(0); // Total units
             $table->string('pre_req')->nullable(); // Pre-requisite
             $table->integer('year_level'); // 1, 2, 3, or 4
             $table->string('semester'); // First Semester, Second Semester

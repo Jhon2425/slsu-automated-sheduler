@@ -11,9 +11,6 @@ class FacultySubject extends Model
 
     protected $table = 'faculty_subjects';
 
-    /**
-     * Mass assignable attributes
-     */
     protected $fillable = [
         'faculty_id',
         'subject_id',
@@ -22,12 +19,9 @@ class FacultySubject extends Model
         'laboratory_units',
     ];
 
-    /**
-     * Attribute casting
-     */
     protected $casts = [
-        'lecture_units'     => 'decimal:1',
-        'laboratory_units'  => 'decimal:1',
+        'lecture_units'    => 'decimal:1',
+        'laboratory_units' => 'decimal:1',
     ];
 
     /* =========================================================
@@ -35,11 +29,11 @@ class FacultySubject extends Model
      | ========================================================= */
 
     /**
-     * Assigned faculty (User)
+     * Faculty profile (NOT User)
      */
     public function faculty()
     {
-        return $this->belongsTo(User::class, 'faculty_id');
+        return $this->belongsTo(Faculty::class);
     }
 
     /**

@@ -13,8 +13,9 @@ class RoomsTableSeeder extends Seeder
         $rooms = [
             ['room_name' => 'COMLAB 1', 'capacity' => 30, 'type' => 'Laboratory'],
             ['room_name' => 'COMLAB 2', 'capacity' => 30, 'type' => 'Laboratory'],
-            ['room_name' => 'CLASSROOM 1', 'capacity' => 40, 'type' => 'Lecture'],
-            ['room_name' => 'CLASSROOM 2', 'capacity' => 40, 'type' => 'Lecture'],
+            ['room_name' => 'ROOM C203', 'capacity' => 40, 'type' => 'Lecture'],
+            ['room_name' => 'ROOM C204', 'capacity' => 40, 'type' => 'Lecture'], 
+            ['room_name' => 'DRILON HALL', 'capacity' => 40, 'type' => 'Lecture'],
         ];
 
         foreach ($rooms as $room) {

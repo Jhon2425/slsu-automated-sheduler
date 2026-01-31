@@ -3,474 +3,329 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Faculty;
 use App\Models\FacultySubject;
-use App\Models\Subject;
 use App\Models\Program;
+use App\Models\Subject;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 
 class FacultyController extends Controller
 {
     /**
-     * Display a listing of faculty members
+     * Display faculty list
      */
     public function index()
     {
-        $facultyRoleId = DB::table('roles')->where('name', 'faculty')->value('id');
-        
-        $faculties = User::where('role_id', $facultyRoleId)
-            ->with(['faculty', 'faculty.facultySubjects.subject'])
-            ->orderBy('name')
-            ->paginate(20);
+        $faculties = User::whereHas('faculty')
+            ->with([
+                'faculty' => function ($q) {
+                    $q->withCount('facultySubjects');
+                }
+            ])
+            ->get();
 
         return view('admin.faculty.index', compact('faculties'));
     }
 
     /**
-     * Show the form for creating a new faculty member
+     * Show the create form
      */
     public function create()
     {
-        $subjects = Subject::orderBy('subject_name')->get();
-        
-        // Try to get programs - handle if table/column doesn't exist
-        try {
-            $programs = Program::orderBy('name')->get();
-        } catch (\Exception $e) {
-            Log::warning('Could not load programs: ' . $e->getMessage());
-            $programs = collect(); // Empty collection
-        }
-        
+        $subjects = Subject::all();
+        $programs = Program::all();
+
         return view('admin.faculty.create', compact('subjects', 'programs'));
     }
 
     /**
-     * Store a newly created faculty member
+     * Store new faculty
      */
     public function store(Request $request)
     {
-        // Validate input
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'civil_status' => 'nullable|string',
-            'birthdate' => 'nullable|date',
-            'employment_status' => 'nullable|string',
-            'home_address' => 'nullable|string',
-            'degree_earned' => 'nullable|string',
-            'year_graduated' => 'nullable|string',
-            'course' => 'nullable|string',
-            'school_graduated' => 'nullable|string',
-            'subjects.*.subject_id' => 'nullable|exists:subjects,id',
-            'subjects.*.lecture_units' => 'nullable|numeric|min:0',
-            'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|confirmed|min:8',
+
+            'civil_status'       => 'required|string',
+            'birthdate'          => 'required|date',
+            'employment_status'  => 'required|string',
+            'home_address'       => 'required|string',
+            'degree_earned'      => 'required|string',
+            'year_graduated'     => 'required|integer',
+            'course'             => 'required|string',
+            'school_graduated'   => 'required|string',
+
+            'subjects'                       => 'nullable|array',
+            'subjects.*.subject_id'          => 'required_with:subjects|exists:subjects,id',
+            'subjects.*.program_id'          => 'nullable|exists:programs,id',
+            'subjects.*.lecture_units'       => 'nullable|numeric|min:0',
+            'subjects.*.laboratory_units'    => 'nullable|numeric|min:0',
         ]);
 
-        try {
-            DB::beginTransaction();
+        DB::transaction(function () use ($request) {
 
-            // Get faculty role
-            $facultyRoleId = DB::table('roles')->where('name', 'faculty')->value('id');
-
-            if (!$facultyRoleId) {
-                throw new \Exception('Faculty role not found');
-            }
-
-            // Create User
+            // 1️⃣ Create User
             $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'role_id' => $facultyRoleId,
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
             ]);
 
-            // Create Faculty profile
-            Faculty::create([
-                'user_id' => $user->id,
-                'name' => $validated['name'],
-                'civil_status' => $request->civil_status,
-                'birthdate' => $request->birthdate,
-                'employment_status' => $request->employment_status,
-                'home_address' => $request->home_address,
-                'degree_earned' => $request->degree_earned,
-                'year_graduated' => $request->year_graduated,
-                'course' => $request->course,
-                'school_graduated' => $request->school_graduated,
+            // 2️⃣ Create Faculty Profile
+            $faculty = Faculty::create([
+                'user_id'            => $user->id,
+                'name'               => $request->name, // fixed for "Field 'name' doesn't have a default value"
+                'civil_status'       => $request->civil_status,
+                'birthdate'          => $request->birthdate,
+                'employment_status'  => $request->employment_status,
+                'home_address'       => $request->home_address,
+                'degree_earned'      => $request->degree_earned,
+                'year_graduated'     => $request->year_graduated,
+                'course'             => $request->course,
+                'school_graduated'   => $request->school_graduated,
             ]);
 
-            // Assign subjects if provided - WITH DUPLICATE CHECK
-            $assignedSubjects = [];
-            
-            if ($request->has('subjects')) {
-                foreach ($request->subjects as $subjectData) {
-                    if (!empty($subjectData['subject_id'])) {
-                        $subjectId = $subjectData['subject_id'];
-                        
-                        // Skip if already assigned in this request
-                        if (in_array($subjectId, $assignedSubjects)) {
-                            Log::warning("Duplicate subject assignment skipped", [
-                                'faculty_id' => $user->id,
-                                'subject_id' => $subjectId
-                            ]);
-                            continue;
-                        }
-                        
-                        // Check if already exists in database
-                        $exists = FacultySubject::where('faculty_id', $user->id)
-                            ->where('subject_id', $subjectId)
-                            ->exists();
-                        
-                        if ($exists) {
-                            Log::warning("Subject already assigned to faculty", [
-                                'faculty_id' => $user->id,
-                                'subject_id' => $subjectId
-                            ]);
-                            continue;
-                        }
-                        
-                        // Create the assignment
-                        FacultySubject::create([
-                            'faculty_id' => $user->id,
-                            'subject_id' => $subjectId,
-                            'program_id' => $subjectData['program_id'] ?? null,
-                            'lecture_units' => $subjectData['lecture_units'] ?? 0,
-                            'laboratory_units' => $subjectData['laboratory_units'] ?? 0,
-                        ]);
-                        
-                        // Mark as assigned
-                        $assignedSubjects[] = $subjectId;
-                    }
+            // 3️⃣ Assign Subjects (optional)
+            if ($request->filled('subjects')) {
+                foreach ($request->subjects as $subject) {
+                    FacultySubject::create([
+                        'faculty_id'       => $faculty->id,
+                        'subject_id'       => $subject['subject_id'],
+                        'program_id'       => $subject['program_id'] ?? null,
+                        'lecture_units'    => $subject['lecture_units'] ?? 0,
+                        'laboratory_units' => $subject['laboratory_units'] ?? 0,
+                    ]);
                 }
             }
+        });
 
-            DB::commit();
-
-            Log::info('Faculty created successfully', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'subjects_assigned' => count($assignedSubjects)
-            ]);
-
-            return redirect()
-                ->route('admin.faculty.index')
-                ->with('success', 'Faculty member created successfully!');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Error creating faculty', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', 'Error creating faculty: ' . $e->getMessage());
-        }
+        return redirect()
+            ->route('admin.faculty.index')
+            ->with('success', 'Faculty created successfully!');
     }
 
     /**
-     * Show the form for editing the specified faculty member
+     * Show edit form
      */
-    public function edit($id)
+    public function edit(User $faculty)
     {
-        $facultyRoleId = DB::table('roles')->where('name', 'faculty')->value('id');
-        
-        $faculty = User::where('role_id', $facultyRoleId)
-            ->with(['faculty.facultySubjects.subject'])
-            ->findOrFail($id);
-
-        $subjects = Subject::orderBy('subject_name')->get();
-        
-        // Try to get programs - handle if table/column doesn't exist
-        try {
-            $programs = Program::orderBy('name')->get();
-        } catch (\Exception $e) {
-            Log::warning('Could not load programs: ' . $e->getMessage());
-            $programs = collect(); // Empty collection
-        }
-        
-        // Debug log to check what's being loaded
-        Log::info('Faculty Edit - Loading subjects', [
-            'faculty_id' => $id,
-            'faculty_subjects_count' => $faculty->faculty->facultySubjects->count(),
-            'faculty_subjects' => $faculty->faculty->facultySubjects->toArray()
+        $faculty->load([
+            'faculty.facultySubjects.subject',
+            'faculty.facultySubjects.program',
         ]);
-        
-        return view('admin.faculty.edit', compact('faculty', 'subjects', 'programs'));
+
+        $subjects = Subject::all();
+        $programs = Program::all();
+
+        return view('admin.faculty.edit', [
+            'faculty'          => $faculty,
+            'subjects'         => $subjects,
+            'programs'         => $programs,
+            'existingSubjects' => $faculty->faculty->facultySubjects,
+        ]);
     }
 
     /**
-     * Update the specified faculty member
+     * Update faculty subjects
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, User $faculty)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'civil_status' => 'nullable|string',
-            'birthdate' => 'nullable|date',
-            'employment_status' => 'nullable|string',
-            'home_address' => 'nullable|string',
-            'degree_earned' => 'nullable|string',
-            'year_graduated' => 'nullable|string',
-            'course' => 'nullable|string',
-            'school_graduated' => 'nullable|string',
-            'subjects.*.subject_id' => 'nullable|exists:subjects,id',
+        $request->validate([
+            'subjects' => 'required|array|min:1',
+            'subjects.*.subject_id' => 'required|exists:subjects,id',
+            'subjects.*.program_id' => 'nullable|exists:programs,id',
             'subjects.*.lecture_units' => 'nullable|numeric|min:0',
             'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
         ]);
 
-        try {
-            DB::beginTransaction();
+        $facultyProfile = $faculty->faculty;
 
-            $user = User::findOrFail($id);
-            
-            // Update user
-            $user->update([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-            ]);
+        DB::transaction(function () use ($request, $facultyProfile) {
+            FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
 
-            // Update password if provided
-            if ($request->filled('password')) {
-                $user->update([
-                    'password' => Hash::make($validated['password'])
+            foreach ($request->subjects as $data) {
+                FacultySubject::create([
+                    'faculty_id'       => $facultyProfile->id,
+                    'subject_id'       => $data['subject_id'],
+                    'program_id'       => $data['program_id'] ?? null,
+                    'lecture_units'    => $data['lecture_units'] ?? 0,
+                    'laboratory_units' => $data['laboratory_units'] ?? 0,
                 ]);
             }
+        });
 
-            // Update faculty profile
-            $user->faculty->update([
-                'name' => $validated['name'],
-                'civil_status' => $request->civil_status,
-                'birthdate' => $request->birthdate,
-                'employment_status' => $request->employment_status,
-                'home_address' => $request->home_address,
-                'degree_earned' => $request->degree_earned,
-                'year_graduated' => $request->year_graduated,
-                'course' => $request->course,
-                'school_graduated' => $request->school_graduated,
-            ]);
-
-            // Update subject assignments if provided
-            if ($request->has('subjects')) {
-                // Clear existing assignments
-                FacultySubject::where('faculty_id', $user->id)->delete();
-                
-                // Assign new subjects - WITH DUPLICATE CHECK
-                $assignedSubjects = [];
-                $createdCount = 0;
-
-                foreach ($request->subjects as $subjectData) {
-                    if (!empty($subjectData['subject_id'])) {
-                        $subjectId = $subjectData['subject_id'];
-                        
-                        // Skip if already assigned in this request
-                        if (in_array($subjectId, $assignedSubjects)) {
-                            Log::warning("Duplicate subject assignment skipped during update", [
-                                'faculty_id' => $user->id,
-                                'subject_id' => $subjectId
-                            ]);
-                            continue;
-                        }
-
-                        FacultySubject::create([
-                            'faculty_id' => $user->id,
-                            'subject_id' => $subjectId,
-                            'program_id' => $subjectData['program_id'] ?? null,
-                            'lecture_units' => $subjectData['lecture_units'] ?? 0,
-                            'laboratory_units' => $subjectData['laboratory_units'] ?? 0,
-                        ]);
-
-                        $assignedSubjects[] = $subjectId;
-                        $createdCount++;
-                    }
-                }
-
-                Log::info('Subject assignments updated', [
-                    'faculty_id' => $user->id,
-                    'subjects_assigned' => $createdCount
-                ]);
-            }
-
-            DB::commit();
-
-            Log::info('Faculty updated successfully', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'subjects_updated' => isset($createdCount) ? $createdCount : 0
-            ]);
-
-            return redirect()
-                ->route('admin.faculty.index')
-                ->with('success', 'Faculty member updated successfully!');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Error updating faculty', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', 'Error updating faculty: ' . $e->getMessage());
-        }
+        return redirect()
+            ->route('admin.faculty.edit', $faculty->id)
+            ->with('success', 'Faculty subjects updated successfully!');
     }
 
     /**
-     * Remove the specified faculty member
+     * Delete faculty member
      */
-    public function destroy($id)
+    public function destroy(User $faculty)
     {
         try {
-            DB::beginTransaction();
-
-            $user = User::findOrFail($id);
-            
-            // Delete related records first
-            if ($user->faculty) {
-                FacultySubject::where('faculty_id', $user->id)->delete();
-                $user->faculty->delete();
-            }
-            
-            // Delete user
-            $user->delete();
-
-            DB::commit();
-
-            Log::info('Faculty deleted successfully', [
-                'user_id' => $id
-            ]);
+            DB::transaction(function () use ($faculty) {
+                // Delete faculty profile and related data
+                if ($faculty->faculty) {
+                    // Delete faculty subjects
+                    FacultySubject::where('faculty_id', $faculty->faculty->id)->delete();
+                    
+                    // Delete faculty profile
+                    $faculty->faculty->delete();
+                }
+                
+                // Delete user
+                $faculty->delete();
+            });
 
             return redirect()
                 ->route('admin.faculty.index')
                 ->with('success', 'Faculty member deleted successfully!');
-
         } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Error deleting faculty', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
             return redirect()
-                ->back()
-                ->with('error', 'Error deleting faculty: ' . $e->getMessage());
+                ->route('admin.faculty.index')
+                ->with('error', 'Failed to delete faculty member: ' . $e->getMessage());
         }
     }
 
     /**
-     * Get subjects for a specific faculty member (AJAX)
+     * Get all subjects for assignment modal (with current assignments marked)
      */
     public function getSubjects($id)
     {
         try {
-            $facultySubjects = FacultySubject::where('faculty_id', $id)
-                ->with('subject')
-                ->get();
+            $user = User::findOrFail($id);
+            $facultyProfile = $user->faculty;
+
+            if (!$facultyProfile) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Faculty profile not found'
+                ], 404);
+            }
+
+            // Get all subjects
+            $subjects = Subject::orderBy('subject_name')->get();
+
+            // Get IDs of subjects already assigned to this faculty
+            $assignedSubjects = $facultyProfile->facultySubjects()
+                ->pluck('subject_id')
+                ->toArray();
 
             return response()->json([
                 'success' => true,
-                'subjects' => $facultySubjects
+                'subjects' => $subjects,
+                'assignedSubjects' => $assignedSubjects
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Error getting faculty subjects', [
-                'faculty_id' => $id,
-                'message' => $e->getMessage()
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Error loading subjects'
+                'message' => 'Failed to fetch subjects: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Assign subjects to faculty member (AJAX)
+     * Get assigned subjects for viewing only
      */
-    public function assignSubjects(Request $request, $id)
+    public function getAssignedSubjects($id)
     {
-        $validated = $request->validate([
-            'subjects' => 'required|array',
-            'subjects.*.subject_id' => 'required|exists:subjects,id',
-            'subjects.*.lecture_units' => 'nullable|numeric|min:0',
-            'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
-            'subjects.*.program_id' => 'nullable|exists:programs,id',
-        ]);
-
         try {
-            DB::beginTransaction();
-
             $user = User::findOrFail($id);
+            $facultyProfile = $user->faculty;
 
-            // Clear existing assignments
-            FacultySubject::where('faculty_id', $user->id)->delete();
-
-            // Assign new subjects - WITH DUPLICATE CHECK
-            $assignedSubjects = [];
-            $createdCount = 0;
-
-            foreach ($validated['subjects'] as $subjectData) {
-                $subjectId = $subjectData['subject_id'];
-                
-                // Skip if already assigned in this request
-                if (in_array($subjectId, $assignedSubjects)) {
-                    Log::warning("Duplicate subject assignment skipped", [
-                        'faculty_id' => $user->id,
-                        'subject_id' => $subjectId
-                    ]);
-                    continue;
-                }
-
-                FacultySubject::create([
-                    'faculty_id' => $user->id,
-                    'subject_id' => $subjectId,
-                    'program_id' => $subjectData['program_id'] ?? null,
-                    'lecture_units' => $subjectData['lecture_units'] ?? 0,
-                    'laboratory_units' => $subjectData['laboratory_units'] ?? 0,
-                ]);
-
-                $assignedSubjects[] = $subjectId;
-                $createdCount++;
+            if (!$facultyProfile) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Faculty profile not found'
+                ], 404);
             }
 
-            DB::commit();
-
-            Log::info('Subjects assigned successfully', [
-                'faculty_id' => $user->id,
-                'subjects_assigned' => $createdCount
-            ]);
+            // Get subjects assigned to this faculty with their details
+            $subjects = $facultyProfile->facultySubjects()
+                ->with('subject')
+                ->get()
+                ->map(function ($facultySubject) {
+                    $subject = $facultySubject->subject;
+                    return [
+                        'id' => $subject->id,
+                        'subject_name' => $subject->subject_name,
+                        'course_code' => $subject->course_code,
+                        'units' => $subject->units,
+                        'semester' => $subject->semester,
+                        'year_level' => $subject->year_level,
+                        'enrolled_student' => $subject->enrolled_student ?? 0,
+                        'lecture_units' => $facultySubject->lecture_units,
+                        'laboratory_units' => $facultySubject->laboratory_units,
+                    ];
+                });
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully assigned {$createdCount} subjects"
+                'subjects' => $subjects
             ]);
-
         } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Error assigning subjects', [
-                'faculty_id' => $id,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Error assigning subjects: ' . $e->getMessage()
+                'message' => 'Failed to fetch assigned subjects: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Assign subjects to faculty (simplified version for modal)
+     */
+    public function assignSubjects(Request $request, $id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            $facultyProfile = $user->faculty;
+
+            if (!$facultyProfile) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Faculty profile not found'
+                ], 404);
+            }
+
+            // Validate the request
+            $request->validate([
+                'subjects' => 'nullable|array',
+                'subjects.*' => 'exists:subjects,id'
+            ]);
+
+            DB::transaction(function () use ($request, $facultyProfile) {
+                // Delete existing assignments
+                FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
+
+                // Add new assignments
+                if ($request->filled('subjects')) {
+                    foreach ($request->subjects as $subjectId) {
+                        FacultySubject::create([
+                            'faculty_id' => $facultyProfile->id,
+                            'subject_id' => $subjectId,
+                            'program_id' => null,
+                            'lecture_units' => 0,
+                            'laboratory_units' => 0,
+                        ]);
+                    }
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subjects assigned successfully.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign subjects: ' . $e->getMessage()
             ], 500);
         }
     }
