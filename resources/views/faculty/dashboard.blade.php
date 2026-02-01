@@ -38,7 +38,7 @@
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <!-- Total Contact Hours -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 hover:scale-105 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-blue-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-clock text-3xl text-white"></i>
@@ -50,7 +50,7 @@
                 </div>
 
                 <!-- Total Units -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 hover:scale-105 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-green-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-book text-3xl text-white"></i>
@@ -68,7 +68,7 @@
                 </div>
 
                 <!-- Number of Subjects -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 hover:scale-105 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-purple-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-chalkboard-teacher text-3xl text-white"></i>
@@ -80,7 +80,7 @@
                 </div>
 
                 <!-- Programs Enrolled -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 hover:scale-105 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-pink-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-graduation-cap text-3xl text-white"></i>
