@@ -369,32 +369,28 @@ select option:hover {
     </style>
 
     <script>
-        // Available subjects data (you'll need to pass this from controller)
         const availableSubjects = @json($subjects ?? []);
-        const availablePrograms = @json($programs ?? []);
         let subjectRowCounter = 0;
-
+        
         function addSubjectRow() {
             const container = document.getElementById('subjects-container');
+
+            // IMPORTANT: you are using subjectRowCounter++ pattern
             const rowId = `subject-row-${subjectRowCounter++}`;
-            
+
             const row = document.createElement('div');
             row.id = rowId;
             row.className = 'glass-item p-6 rounded-xl space-y-4';
             row.style.background = 'rgba(255, 255, 255, 0.08)';
             row.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-            
-            // Build program options
-            const programOptions = availablePrograms.map(program => 
-                `<option value="${program.id}">${program.name || program.program || program.title || 'Program ' + program.id}</option>`
-            ).join('');
-            
+
+            // NOTE: subjectRowCounter is already incremented above, so this is the "display/index"
             row.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h4 class="text-white font-semibold">
                         <i class="fas fa-book mr-2"></i>Subject ${subjectRowCounter}
                     </h4>
-                    <button type="button" onclick="removeSubjectRow('${rowId}')" 
+                    <button type="button" onclick="removeSubjectRow('${rowId}')"
                             class="text-red-400 hover:text-red-300 transition">
                         <i class="fas fa-times-circle text-xl"></i>
                     </button>
@@ -405,15 +401,13 @@ select option:hover {
                     <label class="block text-white font-medium mb-2">
                         <i class="fas fa-list mr-2"></i>Select Subject
                     </label>
-                    <select name="subjects[${subjectRowCounter}][subject_id]" 
+                    <select name="subjects[${subjectRowCounter}][subject_id]"
                             onchange="updateSubjectDetails(this, '${rowId}')"
                             class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="">Choose a subject</option>
                         ${availableSubjects.map(subject => `
-                            <option value="${subject.id}" 
-                                    data-code="${subject.course_code || ''}" 
-                                    data-units="${subject.units || subject.total || ''}"
-                                    data-name="${subject.subject_name || ''}"
+                            <option value="${subject.id}"
+                                    data-code="${subject.course_code || ''}"
                                     data-year="${subject.year_level || subject.year || ''}"
                                     data-semester="${subject.semester || ''}"
                                     data-lecture="${subject.lec || subject.lecture_units || ''}"
@@ -425,97 +419,111 @@ select option:hover {
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Subject Code (Auto-filled) -->
+                    <!-- Subject Code -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-code mr-2"></i>Subject Code
                         </label>
-                        <input type="text" 
-                               id="${rowId}-code"
-                               readonly
-                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                        <input type="text"
+                            id="${rowId}-code"
+                            readonly
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Year Level (Auto-filled) -->
+                    <!-- Year Level -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-layer-group mr-2"></i>Year Level
                         </label>
-                        <input type="text" 
-                               id="${rowId}-year"
-                               name="subjects[${subjectRowCounter}][year_level]"
-                               readonly
-                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                        <input type="text"
+                            id="${rowId}-year"
+                            name="subjects[${subjectRowCounter}][year_level]"
+                            readonly
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Semester (Auto-filled) -->
+                    <!-- Semester -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-calendar-alt mr-2"></i>Semester
                         </label>
-                        <input type="text" 
-                               id="${rowId}-semester"
-                               name="subjects[${subjectRowCounter}][semester]"
-                               readonly
-                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                        <input type="text"
+                            id="${rowId}-semester"
+                            name="subjects[${subjectRowCounter}][semester]"
+                            readonly
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Lecture Units (Auto-filled) -->
+                    <!-- Lecture Units -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units
                         </label>
-                        <input type="number" 
-                               id="${rowId}-lecture"
-                               name="subjects[${subjectRowCounter}][lecture_units]" 
-                               min="0" 
-                               step="0.5"
-                               readonly
-                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                        <input type="number"
+                            id="${rowId}-lecture"
+                            name="subjects[${subjectRowCounter}][lecture_units]"
+                            min="0"
+                            step="0.5"
+                            readonly
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Laboratory Units (Auto-filled) -->
+                    <!-- Laboratory Units -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-flask mr-2"></i>Laboratory Units
                         </label>
-                        <input type="number" 
-                               id="${rowId}-laboratory"
-                               name="subjects[${subjectRowCounter}][laboratory_units]" 
-                               min="0" 
-                               step="0.5"
-                               readonly
-                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                        <input type="number"
+                            id="${rowId}-laboratory"
+                            name="subjects[${subjectRowCounter}][laboratory_units]"
+                            min="0"
+                            step="0.5"
+                            readonly
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>
 
-                <!-- Program Selection -->
-                <div>
-                    <label class="block text-white font-medium mb-2">
-                        <i class="fas fa-graduation-cap mr-2"></i>Program
-                    </label>
-                    <select name="subjects[${subjectRowCounter}][program_id]"
+                <!-- ✅ Availability + Date & Time -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Availability -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-user-check mr-2"></i>Availability
+                        </label>
+                        <select name="subjects[${subjectRowCounter}][availability]"
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Availability</option>
+                            <option value="Available">Available</option>
+                            <option value="Unavailable">Unavailable</option>
+                        </select>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-clock mr-2"></i>Date &amp; Time
+                        </label>
+                        <input type="datetime-local"
+                            name="subjects[${subjectRowCounter}][availability_datetime]"
                             class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="">Select Program (Optional)</option>
-                        ${programOptions}
-                    </select>
+                    </div>
                 </div>
             `;
-            
+
             container.appendChild(row);
         }
 
         function updateSubjectDetails(select, rowId) {
             const selectedOption = select.options[select.selectedIndex];
+
             const code = selectedOption.getAttribute('data-code');
             const year = selectedOption.getAttribute('data-year');
             const semester = selectedOption.getAttribute('data-semester');
             const lecture = selectedOption.getAttribute('data-lecture');
             const laboratory = selectedOption.getAttribute('data-laboratory');
-            
-            // Update all fields including lecture and laboratory units
+
             document.getElementById(`${rowId}-code`).value = code || '';
             document.getElementById(`${rowId}-year`).value = year || '';
             document.getElementById(`${rowId}-semester`).value = semester || '';
@@ -531,4 +539,5 @@ select option:hover {
             }
         }
     </script>
+
 </x-app-layout>

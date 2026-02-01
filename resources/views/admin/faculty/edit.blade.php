@@ -360,14 +360,12 @@
         // Available subjects, programs, and existing faculty subjects data
         const availableSubjects = @json($subjects ?? []);
         const existingSubjects = @json($faculty->faculty->facultySubjects ?? []);
-        const programs = @json($programs ?? []);
         let subjectRowCounter = 0;
 
         // Debug logging
         console.log('=== FACULTY EDIT DEBUG ===');
         console.log('Available subjects:', availableSubjects);
         console.log('Existing subjects:', existingSubjects);
-        console.log('Programs:', programs);
 
         // Load existing subjects on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -409,12 +407,6 @@
                         ${selected}>
                     ${subject.subject_name} (${subject.course_code})
                 </option>`;
-            }).join('');
-
-            // Build program options HTML
-            const programOptions = programs.map(program => {
-                const selected = existingData && existingData.program_id === program.id ? 'selected' : '';
-                return `<option value="${program.id}" ${selected}>${program.name || program.program_name}</option>`;
             }).join('');
             
             row.innerHTML = `
@@ -470,58 +462,75 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Semester (Auto-filled) -->
+                    <!-- Semester -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-calendar-alt mr-2"></i>Semester
                         </label>
                         <input type="text" 
-                               id="${rowId}-semester"
-                               name="subjects[${rowIndex}][semester]"
-                               value="${existingData?.subject?.semester || ''}"
-                               readonly
-                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                            id="${rowId}-semester"
+                            name="subjects[${rowIndex}][semester]"
+                            value="${existingData?.subject?.semester || ''}"
+                            readonly
+                            class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Lecture Units (Editable) -->
+                    <!-- Lecture Units -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units
                         </label>
                         <input type="number" 
-                               id="${rowId}-lecture"
-                               name="subjects[${rowIndex}][lecture_units]" 
-                               value="${existingData?.lecture_units || existingData?.subject?.lecture_units || ''}"
-                               min="0" 
-                               step="0.5"
-                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            id="${rowId}-lecture"
+                            name="subjects[${rowIndex}][lecture_units]" 
+                            value="${existingData?.lecture_units || existingData?.subject?.lecture_units || ''}"
+                            min="0" 
+                            step="0.5"
+                            class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     </div>
 
-                    <!-- Laboratory Units (Editable) -->
+                    <!-- Laboratory Units -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-flask mr-2"></i>Laboratory Units
                         </label>
                         <input type="number" 
-                               id="${rowId}-laboratory"
-                               name="subjects[${rowIndex}][laboratory_units]" 
-                               value="${existingData?.laboratory_units || existingData?.subject?.laboratory_units || ''}"
-                               min="0" 
-                               step="0.5"
-                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            id="${rowId}-laboratory"
+                            name="subjects[${rowIndex}][laboratory_units]" 
+                            value="${existingData?.laboratory_units || existingData?.subject?.laboratory_units || ''}"
+                            min="0" 
+                            step="0.5"
+                            class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     </div>
                 </div>
 
-                <!-- Program Selection -->
-                <div>
-                    <label class="block text-white font-medium mb-2">
-                        <i class="fas fa-graduation-cap mr-2"></i>Program
-                    </label>
-                    <select name="subjects[${rowIndex}][program_id]"
+
+                <!-- Availability + Date & Time -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">            
+                    <!-- Availability -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-user-check mr-2"></i>Availability <span class="text-red-400">*</span>
+                        </label>
+                        <select name="subjects[${rowIndex}][availability]" required
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Availability</option>
+                            <option value="Available" ${existingData?.availability === 'Available' ? 'selected' : ''}>Available</option>
+                            <option value="Unavailable" ${existingData?.availability === 'Unavailable' ? 'selected' : ''}>Unavailable</option>
+                        </select>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-clock mr-2"></i>Date &amp; Time <span class="text-red-400">*</span>
+                        </label>
+                        <input type="datetime-local"
+                            name="subjects[${rowIndex}][availability_datetime]"
+                            value="${existingData?.availability_datetime ? formatDatetimeLocal(existingData.availability_datetime) : ''}"
+                            required
                             class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="">Select Program (Optional)</option>
-                        ${programOptions}
-                    </select>
+                    </div>
                 </div>
             `;
             
@@ -535,14 +544,20 @@
             const semester = selectedOption.getAttribute('data-semester');
             const lecture = selectedOption.getAttribute('data-lecture');
             const laboratory = selectedOption.getAttribute('data-laboratory');
-            
-            // Update all fields including lecture and laboratory units
+
+            // Always update readonly fields
             document.getElementById(`${rowId}-code`).value = code || '';
             document.getElementById(`${rowId}-year`).value = year || '';
             document.getElementById(`${rowId}-semester`).value = semester || '';
-            document.getElementById(`${rowId}-lecture`).value = lecture || '';
-            document.getElementById(`${rowId}-laboratory`).value = laboratory || '';
+
+            // Only set lecture/lab if the input is empty (so we don't overwrite user edits)
+            const lecEl = document.getElementById(`${rowId}-lecture`);
+            const labEl = document.getElementById(`${rowId}-laboratory`);
+
+            if (!lecEl.value) lecEl.value = lecture || '';
+            if (!labEl.value) labEl.value = laboratory || '';
         }
+
 
         function removeSubjectRow(rowId) {
             const row = document.getElementById(rowId);
@@ -553,5 +568,22 @@
                 }
             }
         }
+
+        function formatDatetimeLocal(value) {
+            if (!value) return '';
+
+            // If Laravel gives "YYYY-MM-DD HH:MM:SS", convert to "YYYY-MM-DDTHH:MM:SS"
+            if (typeof value === 'string' && value.includes(' ') && !value.includes('T')) {
+                value = value.replace(' ', 'T');
+            }
+
+            const d = new Date(value);
+            if (isNaN(d.getTime())) return '';
+
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        
     </script>
 </x-app-layout>

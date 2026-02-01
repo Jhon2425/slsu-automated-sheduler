@@ -65,7 +65,7 @@
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <!-- Total Faculty -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.1s;">
+                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.1s;">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">Total Faculty</p>
@@ -83,7 +83,7 @@
                 </div>
 
                 <!-- Faculty with Subjects -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.15s;">
+                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.15s;">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">With Subjects</p>
@@ -101,7 +101,7 @@
                 </div>
 
                 <!-- Total Subjects Assigned -->
-                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 hover-lift animate-fade-in-up" style="animation-delay: 0.2s;">
+                <div class="stat-card glass-card rounded-2xl shadow-xl p-6 animate-fade-in-up" style="animation-delay: 0.2s;">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">Total Subjects</p>
@@ -402,21 +402,6 @@
             overflow: hidden;
         }
 
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.7s;
-        }
-
-        .stat-card:hover::before {
-            left: 100%;
-        }
-
         /* Progress Bar */
         .progress-bar {
             height: 3px;
@@ -457,10 +442,6 @@
         /* Icon Container Animation */
         .icon-container {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .stat-card:hover .icon-container {
-            transform: rotate(10deg) scale(1.1);
         }
 
         /* Action Button */
