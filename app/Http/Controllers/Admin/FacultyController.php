@@ -67,46 +67,55 @@ class FacultyController extends Controller
             'subjects.*.laboratory_units'    => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request) {
+        try {
+            DB::transaction(function () use ($request) {
 
-            // 1️⃣ Create User
-            $user = User::create([
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => Hash::make($request->password),
-            ]);
+                // 1️⃣ Create User
+                $user = User::create([
+                    'name'     => $request->name,
+                    'email'    => $request->email,
+                    'password' => Hash::make($request->password),
+                ]);
 
-            // 2️⃣ Create Faculty Profile
-            $faculty = Faculty::create([
-                'user_id'            => $user->id,
-                'name'               => $request->name, // fixed for "Field 'name' doesn't have a default value"
-                'civil_status'       => $request->civil_status,
-                'birthdate'          => $request->birthdate,
-                'employment_status'  => $request->employment_status,
-                'home_address'       => $request->home_address,
-                'degree_earned'      => $request->degree_earned,
-                'year_graduated'     => $request->year_graduated,
-                'course'             => $request->course,
-                'school_graduated'   => $request->school_graduated,
-            ]);
+                // 2️⃣ Create Faculty Profile
+                $faculty = Faculty::create([
+                    'user_id'            => $user->id,
+                    'name'               => $request->name,
+                    'civil_status'       => $request->civil_status,
+                    'birthdate'          => $request->birthdate,
+                    'employment_status'  => $request->employment_status,
+                    'home_address'       => $request->home_address,
+                    'degree_earned'      => $request->degree_earned,
+                    'year_graduated'     => $request->year_graduated,
+                    'course'             => $request->course,
+                    'school_graduated'   => $request->school_graduated,
+                ]);
 
-            // 3️⃣ Assign Subjects (optional)
-            if ($request->filled('subjects')) {
-                foreach ($request->subjects as $subject) {
-                    FacultySubject::create([
-                        'faculty_id'       => $faculty->id,
-                        'subject_id'       => $subject['subject_id'],
-                        'program_id'       => $subject['program_id'] ?? null,
-                        'lecture_units'    => $subject['lecture_units'] ?? 0,
-                        'laboratory_units' => $subject['laboratory_units'] ?? 0,
-                    ]);
+                // 3️⃣ Assign Subjects (optional)
+                if ($request->filled('subjects')) {
+                    foreach ($request->subjects as $subject) {
+                        FacultySubject::create([
+                            'faculty_id'       => $faculty->id,
+                            'subject_id'       => $subject['subject_id'],
+                            'program_id'       => $subject['program_id'] ?? null,
+                            'lecture_units'    => $subject['lecture_units'] ?? 0,
+                            'laboratory_units' => $subject['laboratory_units'] ?? 0,
+                        ]);
+                    }
                 }
-            }
-        });
+            });
 
-        return redirect()
-            ->route('admin.faculty.index')
-            ->with('success', 'Faculty created successfully!');
+            return redirect()
+                ->route('admin.faculty.index')
+                ->with('success', 'Faculty created successfully!');
+
+        } catch (\Exception $e) {
+            // Catch any DB or validation errors
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Failed to create faculty: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -145,23 +154,32 @@ class FacultyController extends Controller
 
         $facultyProfile = $faculty->faculty;
 
-        DB::transaction(function () use ($request, $facultyProfile) {
-            FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
+        try {
+            DB::transaction(function () use ($request, $facultyProfile) {
+                // Delete old assignments
+                FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
 
-            foreach ($request->subjects as $data) {
-                FacultySubject::create([
-                    'faculty_id'       => $facultyProfile->id,
-                    'subject_id'       => $data['subject_id'],
-                    'program_id'       => $data['program_id'] ?? null,
-                    'lecture_units'    => $data['lecture_units'] ?? 0,
-                    'laboratory_units' => $data['laboratory_units'] ?? 0,
-                ]);
-            }
-        });
+                // Add new assignments
+                foreach ($request->subjects as $data) {
+                    FacultySubject::create([
+                        'faculty_id'       => $facultyProfile->id,
+                        'subject_id'       => $data['subject_id'],
+                        'program_id'       => $data['program_id'] ?? null,
+                        'lecture_units'    => $data['lecture_units'] ?? 0,
+                        'laboratory_units' => $data['laboratory_units'] ?? 0,
+                    ]);
+                }
+            });
 
-        return redirect()
-            ->route('admin.faculty.edit', $faculty->id)
-            ->with('success', 'Faculty subjects updated successfully!');
+            return redirect()
+                ->route('admin.faculty.edit', $faculty->id)
+                ->with('success', 'Faculty subjects updated successfully!');
+
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'Failed to update faculty subjects: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -171,15 +189,12 @@ class FacultyController extends Controller
     {
         try {
             DB::transaction(function () use ($faculty) {
-                // Delete faculty profile and related data
                 if ($faculty->faculty) {
-                    // Delete faculty subjects
+                    // Delete related subjects
                     FacultySubject::where('faculty_id', $faculty->faculty->id)->delete();
-                    
                     // Delete faculty profile
                     $faculty->faculty->delete();
                 }
-                
                 // Delete user
                 $faculty->delete();
             });
@@ -187,6 +202,7 @@ class FacultyController extends Controller
             return redirect()
                 ->route('admin.faculty.index')
                 ->with('success', 'Faculty member deleted successfully!');
+
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.faculty.index')
@@ -195,116 +211,80 @@ class FacultyController extends Controller
     }
 
     /**
-     * Get all subjects for assignment modal (with current assignments marked)
+     * Fetch all subjects (for modal)
      */
     public function getSubjects($id)
     {
-        try {
-            $user = User::findOrFail($id);
-            $facultyProfile = $user->faculty;
+        $user = User::findOrFail($id);
+        $facultyProfile = $user->faculty;
 
-            if (!$facultyProfile) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Faculty profile not found'
-                ], 404);
-            }
-
-            // Get all subjects
-            $subjects = Subject::orderBy('subject_name')->get();
-
-            // Get IDs of subjects already assigned to this faculty
-            $assignedSubjects = $facultyProfile->facultySubjects()
-                ->pluck('subject_id')
-                ->toArray();
-
-            return response()->json([
-                'success' => true,
-                'subjects' => $subjects,
-                'assignedSubjects' => $assignedSubjects
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch subjects: ' . $e->getMessage()
-            ], 500);
+        if (!$facultyProfile) {
+            return response()->json(['success' => false, 'message' => 'Faculty profile not found'], 404);
         }
+
+        $subjects = Subject::orderBy('subject_name')->get();
+        $assignedSubjects = $facultyProfile->facultySubjects()->pluck('subject_id')->toArray();
+
+        return response()->json([
+            'success' => true,
+            'subjects' => $subjects,
+            'assignedSubjects' => $assignedSubjects
+        ]);
     }
 
     /**
-     * Get assigned subjects for viewing only
+     * Get assigned subjects with details
      */
     public function getAssignedSubjects($id)
     {
-        try {
-            $user = User::findOrFail($id);
-            $facultyProfile = $user->faculty;
+        $user = User::findOrFail($id);
+        $facultyProfile = $user->faculty;
 
-            if (!$facultyProfile) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Faculty profile not found'
-                ], 404);
-            }
-
-            // Get subjects assigned to this faculty with their details
-            $subjects = $facultyProfile->facultySubjects()
-                ->with('subject')
-                ->get()
-                ->map(function ($facultySubject) {
-                    $subject = $facultySubject->subject;
-                    return [
-                        'id' => $subject->id,
-                        'subject_name' => $subject->subject_name,
-                        'course_code' => $subject->course_code,
-                        'units' => $subject->units,
-                        'semester' => $subject->semester,
-                        'year_level' => $subject->year_level,
-                        'enrolled_student' => $subject->enrolled_student ?? 0,
-                        'lecture_units' => $facultySubject->lecture_units,
-                        'laboratory_units' => $facultySubject->laboratory_units,
-                    ];
-                });
-
-            return response()->json([
-                'success' => true,
-                'subjects' => $subjects
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch assigned subjects: ' . $e->getMessage()
-            ], 500);
+        if (!$facultyProfile) {
+            return response()->json(['success' => false, 'message' => 'Faculty profile not found'], 404);
         }
+
+        $subjects = $facultyProfile->facultySubjects()
+            ->with('subject')
+            ->get()
+            ->map(fn($fs) => [
+                'id' => $fs->subject->id,
+                'subject_name' => $fs->subject->subject_name,
+                'course_code' => $fs->subject->course_code,
+                'units' => $fs->subject->units,
+                'semester' => $fs->subject->semester,
+                'year_level' => $fs->subject->year_level,
+                'enrolled_student' => $fs->subject->enrolled_student ?? 0,
+                'lecture_units' => $fs->lecture_units,
+                'laboratory_units' => $fs->laboratory_units,
+            ]);
+
+        return response()->json(['success' => true, 'subjects' => $subjects]);
     }
 
     /**
-     * Assign subjects to faculty (simplified version for modal)
+     * Assign subjects (simplified)
      */
     public function assignSubjects(Request $request, $id)
     {
+        $user = User::findOrFail($id);
+        $facultyProfile = $user->faculty;
+
+        if (!$facultyProfile) {
+            return response()->json(['success' => false, 'message' => 'Faculty profile not found'], 404);
+        }
+
+        $request->validate([
+            'subjects' => 'nullable|array',
+            'subjects.*' => 'exists:subjects,id'
+        ]);
+
         try {
-            $user = User::findOrFail($id);
-            $facultyProfile = $user->faculty;
-
-            if (!$facultyProfile) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Faculty profile not found'
-                ], 404);
-            }
-
-            // Validate the request
-            $request->validate([
-                'subjects' => 'nullable|array',
-                'subjects.*' => 'exists:subjects,id'
-            ]);
-
             DB::transaction(function () use ($request, $facultyProfile) {
-                // Delete existing assignments
+                // Delete old assignments
                 FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
 
-                // Add new assignments
+                // Add new ones
                 if ($request->filled('subjects')) {
                     foreach ($request->subjects as $subjectId) {
                         FacultySubject::create([
@@ -318,15 +298,10 @@ class FacultyController extends Controller
                 }
             });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Subjects assigned successfully.'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Subjects assigned successfully.']);
+
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to assign subjects: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to assign subjects: ' . $e->getMessage()], 500);
         }
     }
 }

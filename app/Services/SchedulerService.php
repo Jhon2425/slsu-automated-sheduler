@@ -55,13 +55,16 @@ class SchedulerService
     /**
      * Generate schedule preview with conflict prevention
      * FIXED: Now uses lecture_units and laboratory_units from faculty_subjects table
+     * FIXED: Filters out admin users from faculty assignments
      */
     public function generateSchedulePreview()
     {
         try {
             Log::info('=== SCHEDULE GENERATION START ===');
             
-            // FIXED: Get data from faculty_subjects with lecture_units and laboratory_units
+            // Get data from faculty_subjects with lecture_units and laboratory_units
+            // faculty_subjects.faculty_id directly references users.id
+            // Include ALL assignments (even admin) - we'll handle display in the view
             $facultyAssignments = DB::table('faculty_subjects')
                 ->join('users', 'faculty_subjects.faculty_id', '=', 'users.id')
                 ->join('subjects', 'faculty_subjects.subject_id', '=', 'subjects.id')
@@ -94,6 +97,16 @@ class SchedulerService
                     'examinations' => [],
                     'conflicts' => []
                 ];
+            }
+
+            // Check for admin assignments and add warning
+            $adminAssignments = $facultyAssignments->filter(function($assignment) {
+                return $assignment->faculty_id == 1;
+            });
+
+            $warnings = [];
+            if ($adminAssignments->count() > 0) {
+                $warnings[] = "Warning: Found {$adminAssignments->count()} subject(s) assigned to Admin User. Please reassign to faculty members in the Faculty Subjects section.";
             }
 
             $classrooms = Classroom::all();
@@ -197,15 +210,22 @@ class SchedulerService
             Log::info('=== SCHEDULE GENERATION COMPLETE ===', [
                 'schedules' => count($schedules),
                 'exams' => count($examinations),
-                'conflicts' => count($conflicts)
+                'conflicts' => count($conflicts),
+                'warnings' => count($warnings)
             ]);
+
+            $message = count($schedules) . ' schedule sessions generated successfully';
+            if (count($warnings) > 0) {
+                $message .= '. ' . implode(' ', $warnings);
+            }
 
             return [
                 'success' => true,
                 'schedules' => $schedules,
                 'examinations' => $examinations,
                 'conflicts' => $conflicts,
-                'message' => count($schedules) . ' schedule sessions generated successfully',
+                'warnings' => $warnings,
+                'message' => $message,
                 'stats' => [
                     'total_schedules' => count($schedules),
                     'total_exams' => count($examinations),

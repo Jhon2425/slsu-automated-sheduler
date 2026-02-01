@@ -11,31 +11,46 @@ return new class extends Migration
         Schema::table('faculty_subjects', function (Blueprint $table) {
 
             // Program (optional but recommended)
-            $table->foreignId('program_id')
-                  ->nullable()
-                  ->after('subject_id')
-                  ->constrained('programs')
-                  ->nullOnDelete();
+            if (!Schema::hasColumn('faculty_subjects', 'program_id')) {
+                $table->foreignId('program_id')
+                      ->nullable()
+                      ->after('subject_id')
+                      ->constrained('programs')
+                      ->nullOnDelete();
+            }
 
-            // Teaching load
-            $table->decimal('lecture_units', 4, 1)
-                  ->default(0)
-                  ->after('program_id');
+            // Availability fields
+            if (!Schema::hasColumn('faculty_subjects', 'availability')) {
+                $table->string('availability')->nullable()->after('laboratory_units');
+            }
 
-            $table->decimal('laboratory_units', 4, 1)
-                  ->default(0)
-                  ->after('lecture_units');
+            if (!Schema::hasColumn('faculty_subjects', 'start_time')) {
+                $table->time('start_time')->nullable()->after('availability');
+            }
+
+            if (!Schema::hasColumn('faculty_subjects', 'end_time')) {
+                $table->time('end_time')->nullable()->after('start_time');
+            }
+
+            if (!Schema::hasColumn('faculty_subjects', 'date')) {
+                $table->date('date')->nullable()->after('end_time');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('faculty_subjects', function (Blueprint $table) {
-            $table->dropForeign(['program_id']);
+            if (Schema::hasColumn('faculty_subjects', 'program_id')) {
+                $table->dropForeign(['program_id']);
+                $table->dropColumn('program_id');
+            }
+
             $table->dropColumn([
-                'program_id',
-                'lecture_units',
-                'laboratory_units'
+                'availability',
+                'start_time',
+                'end_time',
+                'date'
             ]);
         });
     }
