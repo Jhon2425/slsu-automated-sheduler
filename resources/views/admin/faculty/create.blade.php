@@ -371,12 +371,13 @@ select option:hover {
     <script>
         const availableSubjects = @json($subjects ?? []);
         let subjectRowCounter = 0;
-        
+
         function addSubjectRow() {
             const container = document.getElementById('subjects-container');
 
-            // IMPORTANT: you are using subjectRowCounter++ pattern
-            const rowId = `subject-row-${subjectRowCounter++}`;
+            // ✅ FIX: stable index for this row
+            const rowIndex = subjectRowCounter++;
+            const rowId = `subject-row-${rowIndex}`;
 
             const row = document.createElement('div');
             row.id = rowId;
@@ -384,11 +385,10 @@ select option:hover {
             row.style.background = 'rgba(255, 255, 255, 0.08)';
             row.style.border = '1px solid rgba(255, 255, 255, 0.1)';
 
-            // NOTE: subjectRowCounter is already incremented above, so this is the "display/index"
             row.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h4 class="text-white font-semibold">
-                        <i class="fas fa-book mr-2"></i>Subject ${subjectRowCounter}
+                        <i class="fas fa-book mr-2"></i>Subject ${rowIndex + 1}
                     </h4>
                     <button type="button" onclick="removeSubjectRow('${rowId}')"
                             class="text-red-400 hover:text-red-300 transition">
@@ -401,7 +401,7 @@ select option:hover {
                     <label class="block text-white font-medium mb-2">
                         <i class="fas fa-list mr-2"></i>Select Subject
                     </label>
-                    <select name="subjects[${subjectRowCounter}][subject_id]"
+                    <select name="subjects[${rowIndex}][subject_id]"
                             onchange="updateSubjectDetails(this, '${rowId}')"
                             class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="">Choose a subject</option>
@@ -437,7 +437,7 @@ select option:hover {
                         </label>
                         <input type="text"
                             id="${rowId}-year"
-                            name="subjects[${subjectRowCounter}][year_level]"
+                            name="subjects[${rowIndex}][year_level]"
                             readonly
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
@@ -451,7 +451,7 @@ select option:hover {
                         </label>
                         <input type="text"
                             id="${rowId}-semester"
-                            name="subjects[${subjectRowCounter}][semester]"
+                            name="subjects[${rowIndex}][semester]"
                             readonly
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
@@ -463,7 +463,7 @@ select option:hover {
                         </label>
                         <input type="number"
                             id="${rowId}-lecture"
-                            name="subjects[${subjectRowCounter}][lecture_units]"
+                            name="subjects[${rowIndex}][lecture_units]"
                             min="0"
                             step="0.5"
                             readonly
@@ -477,7 +477,7 @@ select option:hover {
                         </label>
                         <input type="number"
                             id="${rowId}-laboratory"
-                            name="subjects[${subjectRowCounter}][laboratory_units]"
+                            name="subjects[${rowIndex}][laboratory_units]"
                             min="0"
                             step="0.5"
                             readonly
@@ -485,29 +485,61 @@ select option:hover {
                     </div>
                 </div>
 
-                <!-- ✅ Availability + Date & Time -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- ✅ Availability + Date + Time (EQUAL WIDTHS, ONE LINE) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <!-- Availability -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-user-check mr-2"></i>Availability
                         </label>
-                        <select name="subjects[${subjectRowCounter}][availability]"
+                        <select name="subjects[${rowIndex}][availability]"
                                 class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                            <option value="">Select Availability</option>
-                            <option value="Available">Available</option>
-                            <option value="Unavailable">Unavailable</option>
+                            <option value="">Select Day</option>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
                         </select>
                     </div>
 
-                    <!-- Date & Time -->
+                    <!-- Date -->
                     <div>
                         <label class="block text-white font-medium mb-2">
-                            <i class="fas fa-clock mr-2"></i>Date &amp; Time
+                            <i class="fas fa-calendar-day mr-2"></i>Date
                         </label>
-                        <input type="datetime-local"
-                            name="subjects[${subjectRowCounter}][availability_datetime]"
+                        <input type="date"
+                            name="subjects[${rowIndex}][date]"
                             class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+
+                    <!-- Time Slot -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-clock mr-2"></i>Time Slot
+                        </label>
+                        <select name="subjects[${rowIndex}][time_slot]"
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Time</option>
+
+                            <option value="07:30-08:30">7:30 AM - 8:30 AM</option>
+                            <option value="08:30-09:30">8:30 AM - 9:30 AM</option>
+                            <option value="09:30-10:30">9:30 AM - 10:30 AM</option>
+                            <option value="10:30-11:30">10:30 AM - 11:30 AM</option>
+                            <option value="11:30-12:30">11:30 AM - 12:30 PM</option>
+                            <option value="12:30-13:30">12:30 PM - 1:30 PM</option>
+                            <option value="13:30-14:30">1:30 PM - 2:30 PM</option>
+                            <option value="14:30-15:30">2:30 PM - 3:30 PM</option>
+                            <option value="15:30-16:30">3:30 PM - 4:30 PM</option>
+                            <option value="16:30-17:30">4:30 PM - 5:30 PM</option>
+                            <option value="17:30-18:30">5:30 PM - 6:30 PM</option>
+                            <option value="18:30-19:30">6:30 PM - 7:30 PM</option>
+                            <option value="19:30-20:30">7:30 PM - 8:30 PM</option>
+                            <option value="20:30-21:30">8:30 PM - 9:30 PM</option>
+                            <option value="21:30-22:30">9:30 PM - 10:30 PM</option>
+                        </select>
                     </div>
                 </div>
             `;
@@ -538,6 +570,11 @@ select option:hover {
                 setTimeout(() => row.remove(), 300);
             }
         }
+
+        // ✅ IMPORTANT: inline onclick needs these functions in global scope
+        window.addSubjectRow = addSubjectRow;
+        window.updateSubjectDetails = updateSubjectDetails;
+        window.removeSubjectRow = removeSubjectRow;
     </script>
 
 </x-app-layout>
