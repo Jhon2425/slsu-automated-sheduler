@@ -266,56 +266,52 @@
     </div>
 
     <style>
-        .glass-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .glass-card select {
+        background-color: rgba(255, 255, 255, 0.85);
+        color: #000000;
+        border: 2px solid #10b981;
         }
 
         select, input, textarea {
             color-scheme: dark;
         }
 
-/* Main select box */
-select {
-    background-color: rgba(255, 255, 255, 0.85); /* white background */
-    color: #000000; /* black text */
-    border: 2px solid #10b981; /* green border maintained */
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    outline: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
+        /* Main select box */
+        select {
+            background-color: rgba(255, 255, 255, 0.85); /* white background */
+            color: #000000; /* black text */
+            border: 2px solid #10b981; /* green border maintained */
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            outline: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
 
-/* Keep green border on focus */
-select:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
-    background-color: rgba(255, 255, 255, 0.85);
-    color: #000000;
-}
+        /* Keep green border on focus */
+        select:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+            background-color: rgba(255, 255, 255, 0.85);
+            color: #000000;
+        }
 
-/* Dropdown list options - completely neutral */
-select option {
-    background-color: #ffffff; /* plain white background */
-    color: #000000; /* black text */
-    border: none; /* remove any border */
-    box-shadow: none; /* remove any shadow or “select status” */
-}
+        /* Dropdown list options - completely neutral */
+        select option {
+            background-color: #ffffff; /* plain white background */
+            color: #000000; /* black text */
+            border: none; /* remove any border */
+            box-shadow: none; /* remove any shadow or “select status” */
+        }
 
-/* Optional: simple hover effect */
-select option:hover {
-    background-color: rgba(156, 163, 175, 0.2); /* very light gray hover */
-    color: #000000;
-}
-
-
+        /* Optional: simple hover effect */
+        select option:hover {
+            background-color: rgba(156, 163, 175, 0.2); /* very light gray hover */
+            color: #000000;
+        }
    
-
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -408,10 +404,10 @@ select option:hover {
                         ${availableSubjects.map(subject => `
                             <option value="${subject.id}"
                                     data-code="${subject.course_code || ''}"
-                                    data-year="${subject.year_level || subject.year || ''}"
-                                    data-semester="${subject.semester || ''}"
-                                    data-lecture="${subject.lec || subject.lecture_units || ''}"
-                                    data-laboratory="${subject.lab || subject.laboratory_units || ''}">
+                                    data-year="${subject.year_level || ''}"
+                                    data-lecture="${subject.lecture_units || ''}"
+                                    data-laboratory="${subject.laboratory_units || ''}"
+                                    data-semester="${subject.semester || ''}">
                                 ${subject.subject_name} (${subject.course_code})
                             </option>
                         `).join('')}
@@ -485,12 +481,13 @@ select option:hover {
                     </div>
                 </div>
 
-                <!-- ✅ Availability + Date + Time (EQUAL WIDTHS, ONE LINE) -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <!-- Availability -->
+                <!-- ✅ Availability + Time Slot (FIXED GRID) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+
+                    <!-- Day -->
                     <div>
                         <label class="block text-white font-medium mb-2">
-                            <i class="fas fa-user-check mr-2"></i>Availability
+                            <i class="fas fa-user-check mr-2"></i>Day
                         </label>
                         <select name="subjects[${rowIndex}][availability]"
                                 class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -505,16 +502,6 @@ select option:hover {
                         </select>
                     </div>
 
-                    <!-- Date -->
-                    <div>
-                        <label class="block text-white font-medium mb-2">
-                            <i class="fas fa-calendar-day mr-2"></i>Date
-                        </label>
-                        <input type="date"
-                            name="subjects[${rowIndex}][date]"
-                            class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                    </div>
-
                     <!-- Time Slot -->
                     <div>
                         <label class="block text-white font-medium mb-2">
@@ -523,7 +510,6 @@ select option:hover {
                         <select name="subjects[${rowIndex}][time_slot]"
                                 class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                             <option value="">Select Time</option>
-
                             <option value="07:30-08:30">7:30 AM - 8:30 AM</option>
                             <option value="08:30-09:30">8:30 AM - 9:30 AM</option>
                             <option value="09:30-10:30">9:30 AM - 10:30 AM</option>
@@ -541,6 +527,7 @@ select option:hover {
                             <option value="21:30-22:30">9:30 PM - 10:30 PM</option>
                         </select>
                     </div>
+
                 </div>
             `;
 
