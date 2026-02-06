@@ -91,15 +91,15 @@ Route::middleware('auth')->group(function () {
             Route::put('/{faculty}', [FacultyController::class, 'update'])->name('update');
             Route::delete('/{faculty}', [FacultyController::class, 'destroy'])->name('destroy');
 
-            // NEW: Get all subjects for assignment modal
+            // Get all subjects for assignment modal
             Route::get('/{faculty}/subjects', [FacultyController::class, 'getSubjects'])
                 ->name('subjects');
 
-            // NEW: Get assigned subjects for view modal
+            // Get assigned subjects for view modal
             Route::get('/{faculty}/assigned-subjects', [FacultyController::class, 'getAssignedSubjects'])
                 ->name('assigned-subjects');
 
-            // NEW: Assign subjects to faculty
+            // Assign subjects to faculty
             Route::post('/{faculty}/assign-subjects', [FacultyController::class, 'assignSubjects'])
                 ->name('assign-subjects');
         });

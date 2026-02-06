@@ -9,7 +9,7 @@ class FacultySubject extends Model
 {
     use HasFactory;
 
-    protected $table = 'faculty_subjects';
+    protected $table = 'faculty_subject';
 
     protected $fillable = [
         'faculty_id',
@@ -17,51 +17,22 @@ class FacultySubject extends Model
         'program_id',
         'lecture_units',
         'laboratory_units',
+        'year_level',
+        'semester',
     ];
 
     protected $casts = [
-        'lecture_units'    => 'decimal:1',
-        'laboratory_units' => 'decimal:1',
+        'lecture_units' => 'float',
+        'laboratory_units' => 'float',
     ];
 
-    /* =========================================================
-     |  Relationships
-     | ========================================================= */
-
-    /**
-     * Faculty profile (NOT User)
-     */
     public function faculty()
     {
         return $this->belongsTo(Faculty::class);
     }
 
-    /**
-     * Subject being taught
-     */
     public function subject()
     {
         return $this->belongsTo(Subject::class);
-    }
-
-    /**
-     * Program where subject is offered
-     */
-    public function program()
-    {
-        return $this->belongsTo(Program::class);
-    }
-
-    /* =========================================================
-     |  Accessors
-     | ========================================================= */
-
-    /**
-     * Total teaching units (lecture + laboratory)
-     */
-    public function getTotalUnitsAttribute(): float
-    {
-        return (float) ($this->lecture_units ?? 0)
-             + (float) ($this->laboratory_units ?? 0);
     }
 }

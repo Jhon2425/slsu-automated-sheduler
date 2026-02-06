@@ -274,7 +274,7 @@
 
                 <div id="viewSubjectError" style="display: none;" class="text-center py-12">
                     <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
-                    <p class="text-white/70">Failed to load subjects. Please try again.</p>
+                    <p class="text-white/70" id="viewSubjectErrorMessage">Failed to load subjects. Please try again.</p>
                 </div>
             </div>
         </div>
@@ -327,7 +327,7 @@
 
                 <div id="subjectError" style="display: none;" class="text-center py-12">
                     <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
-                    <p class="text-white/70">Failed to load subjects. Please try again.</p>
+                    <p class="text-white/70" id="subjectErrorMessage">Failed to load subjects. Please try again.</p>
                 </div>
             </div>
         </div>
@@ -737,6 +737,8 @@
 
         // View Subjects Modal Functions
         function openViewSubjectsModal(facultyId, facultyName, facultyIdLabel) {
+            console.log('Opening view modal for faculty:', facultyId);
+            
             document.getElementById('viewModalFacultyName').textContent = facultyName;
             document.getElementById('viewModalFacultyId').textContent = facultyIdLabel;
             document.getElementById('viewSubjectsModal').style.display = 'flex';
@@ -757,21 +759,29 @@
         }
 
         async function fetchAssignedSubjects(facultyId) {
+            // Construct URL using proper route
+            const url = `/admin/faculty/${facultyId}/assigned-subjects`;
+            
+            console.log('Fetching assigned subjects from:', url);
+            
             try {
-                console.log('Fetching assigned subjects for faculty:', facultyId);
-                
-                const response = await fetch(`/admin/faculty/${facultyId}/assigned-subjects`, {
+                const response = await fetch(url, {
+                    method: 'GET',
                     headers: {
                         'Accept': 'application/json',
+                        'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
-                    }
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
                 });
                 
                 console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('Error response:', errorText);
+                    console.error('Error response body:', errorText);
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
                 
@@ -788,7 +798,7 @@
                 console.error('Error fetching assigned subjects:', error);
                 document.getElementById('viewSubjectLoading').style.display = 'none';
                 document.getElementById('viewSubjectError').style.display = 'block';
-                document.getElementById('viewSubjectError').querySelector('p').textContent = 
+                document.getElementById('viewSubjectErrorMessage').textContent = 
                     'Error: ' + error.message;
             }
         }
@@ -822,7 +832,7 @@
                             </span>
                         </div>
                         
-                        <div class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-white/10">
+                        <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10">
                             <div class="text-center">
                                 <div class="text-white/60 text-xs mb-1">
                                     <i class="fas fa-calendar"></i>
@@ -834,12 +844,6 @@
                                     <i class="fas fa-layer-group"></i>
                                 </div>
                                 <div class="text-white text-sm font-semibold">Year ${subject.year_level}</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-white/60 text-xs mb-1">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="text-white text-sm font-semibold">${subject.enrolled_student || 0}</div>
                             </div>
                         </div>
                     </div>
@@ -874,14 +878,20 @@
         }
 
         async function fetchSubjects(facultyId) {
+            const url = `/admin/faculty/${facultyId}/subjects`;
+            
+            console.log('Fetching subjects from:', url);
+            
             try {
-                console.log('Fetching subjects for faculty:', facultyId);
-                
-                const response = await fetch(`/admin/faculty/${facultyId}/subjects`, {
+                const response = await fetch(url, {
+                    method: 'GET',
                     headers: {
                         'Accept': 'application/json',
+                        'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
-                    }
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'same-origin'
                 });
                 
                 console.log('Response status:', response.status);
@@ -905,7 +915,7 @@
                 console.error('Error fetching subjects:', error);
                 document.getElementById('subjectLoading').style.display = 'none';
                 document.getElementById('subjectError').style.display = 'block';
-                document.getElementById('subjectError').querySelector('p').textContent = 
+                document.getElementById('subjectErrorMessage').textContent = 
                     'Error: ' + error.message;
             }
         }
@@ -945,7 +955,6 @@
                                     <span><i class="fas fa-code mr-1"></i>${subject.course_code}</span>
                                     <span><i class="fas fa-calendar mr-1"></i>${subject.semester}</span>
                                     <span><i class="fas fa-layer-group mr-1"></i>Year ${subject.year_level}</span>
-                                    <span><i class="fas fa-users mr-1"></i>${subject.enrolled_student} students</span>
                                 </div>
                             </div>
                         </label>
@@ -958,40 +967,46 @@
         }
 
         // Handle form submission
-        document.getElementById('assignSubjectsForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        document.addEventListener('DOMContentLoaded', function() {
+            const assignForm = document.getElementById('assignSubjectsForm');
             
-            const formData = new FormData(this);
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalText = submitButton.innerHTML;
-            
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Assigning...';
-            
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
+            if (assignForm) {
+                assignForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    const submitButton = this.querySelector('button[type="submit"]');
+                    const originalText = submitButton.innerHTML;
+                    
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Assigning...';
+                    
+                    try {
+                        const response = await fetch(this.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            closeSubjectModal();
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Failed to assign subjects');
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalText;
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('An error occurred while assigning subjects');
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalText;
                     }
                 });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    closeSubjectModal();
-                    window.location.reload();
-                } else {
-                    alert(data.message || 'Failed to assign subjects');
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalText;
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while assigning subjects');
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalText;
             }
         });
 
@@ -1006,5 +1021,9 @@
                 }
             }
         });
+
+        // Log page load for debugging
+        console.log('Faculty index page loaded');
+        console.log('CSRF Token:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
     </script>
 </x-app-layout>

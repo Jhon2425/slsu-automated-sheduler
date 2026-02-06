@@ -30,43 +30,37 @@ class Faculty extends Model
         'year_graduated' => 'integer',
     ];
 
-    /**
-     * Get the user account associated with the faculty
-     */
+    /* ================= RELATIONSHIPS ================= */
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the subject assignments for the faculty
-     */
     public function facultySubjects()
     {
-        return $this->hasMany(FacultySubject::class);
+        return $this->hasMany(FacultySubject::class, 'faculty_id');
     }
 
-    /**
-     * Get the subjects through the pivot table
-     */
     public function subjects()
     {
-        return $this->belongsToMany(Subject::class, 'faculty_subject')
-            ->withPivot('program_id', 'lecture_units', 'laboratory_units')
-            ->withTimestamps();
+        return $this->belongsToMany(
+            Subject::class,
+            'faculty_subject',
+            'faculty_id',
+            'subject_id'
+        )
+        ->withPivot('program_id', 'lecture_units', 'laboratory_units')
+        ->withTimestamps();
     }
 
-    /**
-     * Get faculty age
-     */
+    /* ================= ACCESSORS ================= */
+
     public function getAgeAttribute()
     {
-        return $this->birthdate->age;
+        return $this->birthdate?->age;
     }
 
-    /**
-     * Get full degree display
-     */
     public function getFullDegreeAttribute()
     {
         return "{$this->degree_earned} in {$this->course}";
