@@ -50,8 +50,13 @@ class Faculty extends Model
             'faculty_id',
             'subject_id'
         )
-        ->withPivot('program_id', 'lecture_units', 'laboratory_units')
+        ->withPivot('program_id', 'lecture_units', 'laboratory_units', 'year_level', 'semester')
         ->withTimestamps();
+    }
+
+    public function unavailabilities()
+    {
+        return $this->hasMany(FacultyUnavailability::class, 'faculty_id');
     }
 
     /* ================= ACCESSORS ================= */

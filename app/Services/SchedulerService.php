@@ -379,4 +379,144 @@ class SchedulerService
             'semester' => $semester,
         ];
     }
+
+    /**
+     * ============================
+     * SAVE SCHEDULE & EXAMINATIONS
+     * ============================
+     */
+    public function saveSchedule(array $schedules = [], array $examinations = []): array
+    {
+        try {
+            DB::beginTransaction();
+            
+            $savedSchedules = 0;
+            $savedExams = 0;
+            $errors = [];
+
+            Log::info('Saving schedules and examinations', [
+                'schedules_count' => count($schedules),
+                'examinations_count' => count($examinations)
+            ]);
+
+            // Save schedules if provided
+            foreach ($schedules as $index => $scheduleData) {
+                try {
+                    Schedule::create([
+                        'faculty_id' => $scheduleData['faculty_id'],
+                        'subject_id' => $scheduleData['subject_id'],
+                        'classroom_id' => $scheduleData['classroom_id'],
+                        'day_name' => $scheduleData['day_name'],
+                        'start_time' => $scheduleData['start_time'],
+                        'end_time' => $scheduleData['end_time'],
+                        'class_type' => $scheduleData['class_type'] ?? 'Lecture',
+                        'year_section' => $scheduleData['year_section'] ?? null,
+                        'schedule_date' => $scheduleData['schedule_date'] ?? null,
+                    ]);
+                    $savedSchedules++;
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'type' => 'schedule',
+                        'index' => $index,
+                        'error' => $e->getMessage()
+                    ];
+                    Log::warning("Failed to save schedule at index {$index}: " . $e->getMessage());
+                }
+            }
+
+            // Save examinations if provided
+            foreach ($examinations as $index => $examData) {
+                try {
+                    Examination::create([
+                        'faculty_id' => $examData['faculty_id'],
+                        'subject_id' => $examData['subject_id'],
+                        'classroom_id' => $examData['classroom_id'],
+                        'exam_date' => $examData['exam_date'],
+                        'day_name' => $examData['day_name'] ?? null,
+                        'start_time' => $examData['start_time'],
+                        'end_time' => $examData['end_time'],
+                        'exam_type' => $examData['exam_type'] ?? 'Final',
+                        'year_section' => $examData['year_section'] ?? null,
+                    ]);
+                    $savedExams++;
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'type' => 'examination',
+                        'index' => $index,
+                        'error' => $e->getMessage(),
+                        'data' => $examData
+                    ];
+                    Log::warning("Failed to save examination at index {$index}: " . $e->getMessage());
+                }
+            }
+
+            DB::commit();
+
+            Log::info('Save complete', [
+                'saved_schedules' => $savedSchedules,
+                'saved_examinations' => $savedExams,
+                'errors_count' => count($errors)
+            ]);
+
+            $message = [];
+            if ($savedSchedules > 0) {
+                $message[] = "{$savedSchedules} schedules saved";
+            }
+            if ($savedExams > 0) {
+                $message[] = "{$savedExams} examinations saved";
+            }
+            if (!empty($errors)) {
+                $message[] = count($errors) . " errors occurred";
+            }
+
+            return [
+                'success' => ($savedSchedules > 0 || $savedExams > 0),
+                'message' => implode(', ', $message) ?: 'No items to save',
+                'saved_schedules' => $savedSchedules,
+                'saved_examinations' => $savedExams,
+                'errors' => $errors
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Save schedule error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Error saving: ' . $e->getMessage(),
+                'saved_schedules' => 0,
+                'saved_examinations' => 0,
+                'errors' => []
+            ];
+        }
+    }
+
+    /**
+     * ============================
+     * CLEAR ALL EXAMINATIONS
+     * ============================
+     */
+    public function clearAllExaminations(): array
+    {
+        try {
+            $count = Examination::count();
+            Examination::truncate();
+            
+            Log::info("Cleared {$count} examinations");
+            
+            return [
+                'success' => true,
+                'message' => "Cleared {$count} examination schedules"
+            ];
+        } catch (\Exception $e) {
+            Log::error('Clear examinations error: ' . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'message' => 'Error clearing examinations: ' . $e->getMessage()
+            ];
+        }
+    }
 }

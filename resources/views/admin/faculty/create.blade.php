@@ -203,6 +203,31 @@
                     </div>
                 </div>
 
+                <!-- Unavailability Schedule Section -->
+                <div class="glass-card rounded-2xl overflow-hidden shadow-xl animate-fade-in-up" style="animation-delay: 0.25s;">
+                    <div class="px-8 py-6" style="background: rgba(220, 38, 38, 0.15);">
+                        <h3 class="text-2xl font-bold text-white flex items-center">
+                            <div class="rounded-xl p-2 mr-3" style="background: rgba(220, 38, 38, 0.3);">
+                                <i class="fas fa-calendar-times"></i>
+                            </div>
+                            Unavailability Schedule
+                        </h3>
+                        <p class="text-sm text-white/80 mt-1">Set times when this faculty member is not available (optional)</p>
+                    </div>
+
+                    <div class="p-8">
+                        <div id="unavailabilities-container" class="space-y-4">
+                            <!-- Unavailability rows will be added here -->
+                        </div>
+
+                        <button type="button" onclick="addUnavailabilityRow()" 
+                                class="mt-4 px-6 py-3 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105"
+                                style="background: rgba(220, 38, 38, 0.3); border: 1px solid rgba(220, 38, 38, 0.5);">
+                            <i class="fas fa-plus-circle mr-2"></i>Add Unavailability
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Account Credentials Section -->
                 <div class="glass-card rounded-2xl overflow-hidden shadow-xl animate-fade-in-up" style="animation-delay: 0.3s;">
                     <div class="px-8 py-6" style="background: rgba(109, 151, 115, 0.15);">
@@ -266,21 +291,34 @@
     </div>
 
     <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-item {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
         .glass-card select {
-        background-color: rgba(255, 255, 255, 0.85);
-        color: #000000;
-        border: 2px solid #10b981;
+            background-color: rgba(255, 255, 255, 0.85);
+            color: #000000;
+            border: 2px solid #10b981;
         }
 
         select, input, textarea {
             color-scheme: dark;
         }
 
-        /* Main select box */
         select {
-            background-color: rgba(255, 255, 255, 0.85); /* white background */
-            color: #000000; /* black text */
-            border: 2px solid #10b981; /* green border maintained */
+            background-color: rgba(255, 255, 255, 0.85);
+            color: #000000;
+            border: 2px solid #10b981;
             border-radius: 0.75rem;
             padding: 0.75rem 1rem;
             outline: none;
@@ -290,7 +328,6 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        /* Keep green border on focus */
         select:focus {
             border-color: #10b981;
             box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
@@ -298,17 +335,15 @@
             color: #000000;
         }
 
-        /* Dropdown list options - completely neutral */
         select option {
-            background-color: #ffffff; /* plain white background */
-            color: #000000; /* black text */
-            border: none; /* remove any border */
-            box-shadow: none; /* remove any shadow or “select status” */
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            box-shadow: none;
         }
 
-        /* Optional: simple hover effect */
         select option:hover {
-            background-color: rgba(156, 163, 175, 0.2); /* very light gray hover */
+            background-color: rgba(156, 163, 175, 0.2);
             color: #000000;
         }
    
@@ -362,24 +397,43 @@
                 transform: translateX(-20px);
             }
         }
+
+        /* Read-only fields styling */
+        input[readonly] {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
     </style>
 
     <script>
         const availableSubjects = @json($subjects ?? []);
+        const availablePrograms = @json($programs ?? []);
         let subjectRowCounter = 0;
+        let unavailabilityRowCounter = 0;
+
+        // Debug: Log available subjects to verify data structure
+        console.log('Available subjects:', availableSubjects);
+        if (availableSubjects.length > 0) {
+            console.log('Sample subject data:', availableSubjects[0]);
+        }
+
+        // Time slots from 7:30 AM to 7:00 PM in 30-minute intervals
+        const timeSlots = [
+            '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', 
+            '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00',
+            '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'
+        ];
+
+        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
         function addSubjectRow() {
             const container = document.getElementById('subjects-container');
-
-            // ✅ FIX: stable index for this row
             const rowIndex = subjectRowCounter++;
             const rowId = `subject-row-${rowIndex}`;
 
             const row = document.createElement('div');
             row.id = rowId;
             row.className = 'glass-item p-6 rounded-xl space-y-4';
-            row.style.background = 'rgba(255, 255, 255, 0.08)';
-            row.style.border = '1px solid rgba(255, 255, 255, 0.1)';
 
             row.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
@@ -398,24 +452,26 @@
                         <i class="fas fa-list mr-2"></i>Select Subject
                     </label>
                     <select name="subjects[${rowIndex}][subject_id]"
-                            onchange="updateSubjectDetails(this, '${rowId}')"
+                            onchange="updateSubjectDetails(this, '${rowId}', ${rowIndex})"
+                            required
                             class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="">Choose a subject</option>
                         ${availableSubjects.map(subject => `
                             <option value="${subject.id}"
                                     data-code="${subject.course_code || ''}"
                                     data-year="${subject.year_level || ''}"
-                                    data-lecture="${subject.lecture_units || ''}"
-                                    data-laboratory="${subject.laboratory_units || ''}"
-                                    data-semester="${subject.semester || ''}">
+                                    data-lecture="${subject.lec || 0}"
+                                    data-laboratory="${subject.lab || 0}"
+                                    data-semester="${subject.semester || ''}"
+                                    data-prereq="${subject.pre_req || ''}">
                                 ${subject.subject_name} (${subject.course_code})
                             </option>
                         `).join('')}
                     </select>
                 </div>
 
+                <!-- Auto-filled fields (Read-only) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Subject Code -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-code mr-2"></i>Subject Code
@@ -426,12 +482,11 @@
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Year Level -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-layer-group mr-2"></i>Year Level
                         </label>
-                        <input type="text"
+                        <input type="number"
                             id="${rowId}-year"
                             name="subjects[${rowIndex}][year_level]"
                             readonly
@@ -440,7 +495,6 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Semester -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-calendar-alt mr-2"></i>Semester
@@ -452,7 +506,6 @@
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Lecture Units -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units
@@ -460,13 +513,11 @@
                         <input type="number"
                             id="${rowId}-lecture"
                             name="subjects[${rowIndex}][lecture_units]"
-                            min="0"
                             step="0.5"
                             readonly
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
-                    <!-- Laboratory Units -->
                     <div>
                         <label class="block text-white font-medium mb-2">
                             <i class="fas fa-flask mr-2"></i>Laboratory Units
@@ -474,80 +525,79 @@
                         <input type="number"
                             id="${rowId}-laboratory"
                             name="subjects[${rowIndex}][laboratory_units]"
-                            min="0"
                             step="0.5"
                             readonly
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>
 
-                <!-- ✅ Availability + Time Slot (FIXED GRID) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-
-                    <!-- Day -->
-                    <div>
-                        <label class="block text-white font-medium mb-2">
-                            <i class="fas fa-user-check mr-2"></i>Day
-                        </label>
-                        <select name="subjects[${rowIndex}][availability]"
-                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                            <option value="">Select Day</option>
-                            <option value="Monday">Monday</option>
-                            <option value="Tuesday">Tuesday</option>
-                            <option value="Wednesday">Wednesday</option>
-                            <option value="Thursday">Thursday</option>
-                            <option value="Friday">Friday</option>
-                            <option value="Saturday">Saturday</option>
-                            <option value="Sunday">Sunday</option>
-                        </select>
-                    </div>
-
-                    <!-- Time Slot -->
-                    <div>
-                        <label class="block text-white font-medium mb-2">
-                            <i class="fas fa-clock mr-2"></i>Time Slot
-                        </label>
-                        <select name="subjects[${rowIndex}][time_slot]"
-                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                            <option value="">Select Time</option>
-                            <option value="07:30-08:30">7:30 AM - 8:30 AM</option>
-                            <option value="08:30-09:30">8:30 AM - 9:30 AM</option>
-                            <option value="09:30-10:30">9:30 AM - 10:30 AM</option>
-                            <option value="10:30-11:30">10:30 AM - 11:30 AM</option>
-                            <option value="11:30-12:30">11:30 AM - 12:30 PM</option>
-                            <option value="12:30-13:30">12:30 PM - 1:30 PM</option>
-                            <option value="13:30-14:30">1:30 PM - 2:30 PM</option>
-                            <option value="14:30-15:30">2:30 PM - 3:30 PM</option>
-                            <option value="15:30-16:30">3:30 PM - 4:30 PM</option>
-                            <option value="16:30-17:30">4:30 PM - 5:30 PM</option>
-                            <option value="17:30-18:30">5:30 PM - 6:30 PM</option>
-                            <option value="18:30-19:30">6:30 PM - 7:30 PM</option>
-                            <option value="19:30-20:30">7:30 PM - 8:30 PM</option>
-                            <option value="20:30-21:30">8:30 PM - 9:30 PM</option>
-                            <option value="21:30-22:30">9:30 PM - 10:30 PM</option>
-                        </select>
-                    </div>
-
-                </div>
+                <!-- Hidden program ID field -->
+                <input type="hidden" id="${rowId}-program" name="subjects[${rowIndex}][program_id]">
             `;
 
             container.appendChild(row);
         }
 
-        function updateSubjectDetails(select, rowId) {
+        function updateSubjectDetails(select, rowId, rowIndex) {
             const selectedOption = select.options[select.selectedIndex];
 
+            if (!selectedOption.value) {
+                // Clear all fields if no subject selected
+                document.getElementById(`${rowId}-code`).value = '';
+                document.getElementById(`${rowId}-year`).value = '';
+                document.getElementById(`${rowId}-semester`).value = '';
+                document.getElementById(`${rowId}-lecture`).value = '';
+                document.getElementById(`${rowId}-laboratory`).value = '';
+                document.getElementById(`${rowId}-program`).value = '';
+                return;
+            }
+
+            // Get the full subject object for detailed debugging
+            const selectedSubject = availableSubjects.find(s => s.id == selectedOption.value);
+            console.log('Selected subject full object:', selectedSubject);
+
+            // Auto-fill from subject data
             const code = selectedOption.getAttribute('data-code');
             const year = selectedOption.getAttribute('data-year');
-            const semester = selectedOption.getAttribute('data-semester');
+            let semester = selectedOption.getAttribute('data-semester');
             const lecture = selectedOption.getAttribute('data-lecture');
             const laboratory = selectedOption.getAttribute('data-laboratory');
+            const program = selectedOption.getAttribute('data-program');
+
+            // Debug logging with more detail
+            console.log('Extracted data attributes:', {
+                code, 
+                year, 
+                semester, 
+                lecture: `"${lecture}" (type: ${typeof lecture})`,
+                laboratory: `"${laboratory}" (type: ${typeof laboratory})`,
+                program
+            });
+
+            // Format semester display (convert numeric to text if needed)
+            if (semester) {
+                if (semester === '1') {
+                    semester = '1st Semester';
+                } else if (semester === '2') {
+                    semester = '2nd Semester';
+                }
+            }
 
             document.getElementById(`${rowId}-code`).value = code || '';
             document.getElementById(`${rowId}-year`).value = year || '';
             document.getElementById(`${rowId}-semester`).value = semester || '';
-            document.getElementById(`${rowId}-lecture`).value = lecture || '';
-            document.getElementById(`${rowId}-laboratory`).value = laboratory || '';
+            document.getElementById(`${rowId}-lecture`).value = lecture || '0';
+            document.getElementById(`${rowId}-laboratory`).value = laboratory || '0';
+            document.getElementById(`${rowId}-program`).value = program || '';
+
+            // Verify all fields were set
+            console.log('Field values after update:', {
+                code: document.getElementById(`${rowId}-code`).value,
+                year: document.getElementById(`${rowId}-year`).value,
+                semester: document.getElementById(`${rowId}-semester`).value,
+                lecture: document.getElementById(`${rowId}-lecture`).value,
+                laboratory: document.getElementById(`${rowId}-laboratory`).value
+            });
         }
 
         function removeSubjectRow(rowId) {
@@ -558,10 +608,138 @@
             }
         }
 
-        // ✅ IMPORTANT: inline onclick needs these functions in global scope
+        function addUnavailabilityRow() {
+            const container = document.getElementById('unavailabilities-container');
+            const rowIndex = unavailabilityRowCounter++;
+            const rowId = `unavail-row-${rowIndex}`;
+
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'glass-item p-6 rounded-xl space-y-4';
+            row.style.background = 'rgba(220, 38, 38, 0.08)';
+            row.style.border = '1px solid rgba(220, 38, 38, 0.2)';
+
+            row.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-white font-semibold">
+                        <i class="fas fa-calendar-times mr-2"></i>Unavailability ${rowIndex + 1}
+                    </h4>
+                    <button type="button" onclick="removeUnavailabilityRow('${rowId}')"
+                            class="text-red-400 hover:text-red-300 transition">
+                        <i class="fas fa-times-circle text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Day Selection -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-calendar-day mr-2"></i>Day
+                        </label>
+                        <select name="unavailabilities[${rowIndex}][day]"
+                                required
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="">Select Day</option>
+                            ${daysOfWeek.map(day => `<option value="${day}">${day}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <!-- Time From -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-clock mr-2"></i>From
+                        </label>
+                        <select name="unavailabilities[${rowIndex}][time_from]"
+                                id="${rowId}-time-from"
+                                onchange="updateTimeToOptions('${rowId}', ${rowIndex})"
+                                required
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="">Select Time</option>
+                            ${timeSlots.map(time => `<option value="${time}">${formatTime(time)}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <!-- Time To -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-clock mr-2"></i>To
+                        </label>
+                        <select name="unavailabilities[${rowIndex}][time_to]"
+                                id="${rowId}-time-to"
+                                required
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="">Select Time</option>
+                            ${timeSlots.map(time => `<option value="${time}">${formatTime(time)}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Reason (Optional) -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-comment mr-2"></i>Reason (Optional)
+                    </label>
+                    <textarea name="unavailabilities[${rowIndex}][reason]"
+                              rows="2"
+                              placeholder="e.g., Teaching at another institution, Personal appointment"
+                              class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+                </div>
+            `;
+
+            container.appendChild(row);
+        }
+
+        function removeUnavailabilityRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => row.remove(), 300);
+            }
+        }
+
+        function formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours);
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+            return `${displayHour}:${minutes} ${period}`;
+        }
+
+        function updateTimeToOptions(rowId, rowIndex) {
+            const timeFromSelect = document.getElementById(`${rowId}-time-from`);
+            const timeToSelect = document.getElementById(`${rowId}-time-to`);
+            
+            if (!timeFromSelect.value) {
+                return;
+            }
+
+            const selectedFromIndex = timeSlots.indexOf(timeFromSelect.value);
+            const currentToValue = timeToSelect.value;
+
+            // Clear and rebuild time_to options
+            timeToSelect.innerHTML = '<option value="">Select Time</option>';
+            
+            // Only show times after the selected "from" time
+            timeSlots.forEach((time, index) => {
+                if (index > selectedFromIndex) {
+                    const option = document.createElement('option');
+                    option.value = time;
+                    option.textContent = formatTime(time);
+                    if (time === currentToValue) {
+                        option.selected = true;
+                    }
+                    timeToSelect.appendChild(option);
+                }
+            });
+        }
+
+        // Make functions globally available
         window.addSubjectRow = addSubjectRow;
         window.updateSubjectDetails = updateSubjectDetails;
         window.removeSubjectRow = removeSubjectRow;
+        window.addUnavailabilityRow = addUnavailabilityRow;
+        window.removeUnavailabilityRow = removeUnavailabilityRow;
+        window.updateTimeToOptions = updateTimeToOptions;
     </script>
 
 </x-app-layout>
