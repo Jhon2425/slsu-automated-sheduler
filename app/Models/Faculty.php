@@ -19,15 +19,10 @@ class Faculty extends Model
         'birthdate',
         'employment_status',
         'home_address',
-        'degree_earned',
-        'year_graduated',
-        'course',
-        'school_graduated',
     ];
 
     protected $casts = [
         'birthdate' => 'date',
-        'year_graduated' => 'integer',
     ];
 
     /* ================= RELATIONSHIPS ================= */
@@ -35,6 +30,11 @@ class Faculty extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function educationalBackgrounds()
+    {
+        return $this->hasMany(EducationalBackground::class, 'faculty_id');
     }
 
     public function facultySubjects()
@@ -66,8 +66,53 @@ class Faculty extends Model
         return $this->birthdate?->age;
     }
 
+    /**
+     * Get the highest degree earned
+     */
+    public function getHighestDegreeAttribute()
+    {
+        $educations = $this->educationalBackgrounds;
+        
+        if ($educations->isEmpty()) {
+            return null;
+        }
+
+        // Order by degree level (Doctorate > Master > Professional > Bachelor)
+        $degreeOrder = [
+            'Doctorate Degree' => 4,
+            'Master Degree' => 3,
+            'Professional Degree' => 2,
+            'Bachelor Degree' => 1,
+        ];
+
+        $highestEducation = $educations->sortByDesc(function($education) use ($degreeOrder) {
+            return $degreeOrder[$education->degree_earned] ?? 0;
+        })->first();
+
+        return $highestEducation;
+    }
+
+    /**
+     * Get full degree string for the highest degree
+     */
     public function getFullDegreeAttribute()
     {
-        return "{$this->degree_earned} in {$this->course}";
+        $highestDegree = $this->highest_degree;
+        
+        if (!$highestDegree) {
+            return 'No degree information';
+        }
+
+        return "{$highestDegree->degree_earned} in {$highestDegree->course}";
+    }
+
+    /**
+     * Get the primary/latest educational background
+     */
+    public function getPrimaryEducationAttribute()
+    {
+        return $this->educationalBackgrounds()
+            ->orderByDesc('year_graduated')
+            ->first();
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Faculty;
 use App\Models\FacultySubject;
 use App\Models\FacultyUnavailability;
+use App\Models\EducationalBackground;
 use App\Models\Program;
 use App\Models\Subject;
 use App\Models\User;
@@ -56,10 +57,13 @@ class FacultyController extends Controller
             'birthdate'          => 'required|date',
             'employment_status'  => 'required|string',
             'home_address'       => 'required|string',
-            'degree_earned'      => 'required|string',
-            'year_graduated'     => 'required|integer',
-            'course'             => 'required|string',
-            'school_graduated'   => 'required|string',
+            
+            // Educational backgrounds - at least one required
+            'education' => 'required|array|min:1',
+            'education.*.degree_earned' => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
+            'education.*.year_graduated' => 'required|integer|min:1950|max:' . date('Y'),
+            'education.*.course' => 'required|string|max:255',
+            'education.*.school_graduated' => 'required|string|max:255',
 
             'subjects'                       => 'nullable|array',
             'subjects.*.subject_id'          => 'required_with:subjects|exists:subjects,id',
@@ -95,13 +99,20 @@ class FacultyController extends Controller
                     'birthdate'          => $request->birthdate,
                     'employment_status'  => $request->employment_status,
                     'home_address'       => $request->home_address,
-                    'degree_earned'      => $request->degree_earned,
-                    'year_graduated'     => $request->year_graduated,
-                    'course'             => $request->course,
-                    'school_graduated'   => $request->school_graduated,
                 ]);
 
-                // 3️⃣ Assign Subjects (optional)
+                // 3️⃣ Create Educational Backgrounds
+                foreach ($request->education as $education) {
+                    EducationalBackground::create([
+                        'faculty_id' => $faculty->id,
+                        'degree_earned' => $education['degree_earned'],
+                        'year_graduated' => $education['year_graduated'],
+                        'course' => $education['course'],
+                        'school_graduated' => $education['school_graduated'],
+                    ]);
+                }
+
+                // 4️⃣ Assign Subjects (optional)
                 if ($request->filled('subjects')) {
                     foreach ($request->subjects as $subject) {
                         FacultySubject::create([
@@ -116,7 +127,7 @@ class FacultyController extends Controller
                     }
                 }
 
-                // 4️⃣ Add Unavailabilities (optional)
+                // 5️⃣ Add Unavailabilities (optional)
                 if ($request->filled('unavailabilities')) {
                     foreach ($request->unavailabilities as $unavail) {
                         FacultyUnavailability::create([
@@ -148,8 +159,9 @@ class FacultyController extends Controller
      */
     public function edit(User $faculty)
     {
-        // Load faculty data with subjects and unavailabilities
+        // Load faculty data with educational backgrounds, subjects and unavailabilities
         $faculty->load([
+            'faculty.educationalBackgrounds',
             'faculty.facultySubjects.subject',
             'faculty.unavailabilities'
         ]);
@@ -201,10 +213,14 @@ class FacultyController extends Controller
             'birthdate'          => 'required|date',
             'employment_status'  => 'required|string',
             'home_address'       => 'required|string',
-            'degree_earned'      => 'required|string',
-            'year_graduated'     => 'required|integer',
-            'course'             => 'required|string',
-            'school_graduated'   => 'required|string',
+            
+            // Educational backgrounds - at least one required
+            'education' => 'required|array|min:1',
+            'education.*.id' => 'nullable|exists:educational_backgrounds,id',
+            'education.*.degree_earned' => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
+            'education.*.year_graduated' => 'required|integer|min:1950|max:' . date('Y'),
+            'education.*.course' => 'required|string|max:255',
+            'education.*.school_graduated' => 'required|string|max:255',
 
             'subjects'                       => 'nullable|array',
             'subjects.*.subject_id'          => 'required_with:subjects|exists:subjects,id',
@@ -245,13 +261,43 @@ class FacultyController extends Controller
                     'birthdate'          => $request->birthdate,
                     'employment_status'  => $request->employment_status,
                     'home_address'       => $request->home_address,
-                    'degree_earned'      => $request->degree_earned,
-                    'year_graduated'     => $request->year_graduated,
-                    'course'             => $request->course,
-                    'school_graduated'   => $request->school_graduated,
                 ]);
 
-                // 3️⃣ Update Subjects - Delete old and create new
+                // 3️⃣ Handle Educational Backgrounds
+                $existingEducationIds = [];
+                
+                foreach ($request->education as $educationData) {
+                    if (isset($educationData['id'])) {
+                        // Update existing educational background
+                        $education = EducationalBackground::find($educationData['id']);
+                        if ($education && $education->faculty_id === $facultyProfile->id) {
+                            $education->update([
+                                'degree_earned' => $educationData['degree_earned'],
+                                'year_graduated' => $educationData['year_graduated'],
+                                'course' => $educationData['course'],
+                                'school_graduated' => $educationData['school_graduated'],
+                            ]);
+                            $existingEducationIds[] = $educationData['id'];
+                        }
+                    } else {
+                        // Create new educational background
+                        $newEducation = EducationalBackground::create([
+                            'faculty_id' => $facultyProfile->id,
+                            'degree_earned' => $educationData['degree_earned'],
+                            'year_graduated' => $educationData['year_graduated'],
+                            'course' => $educationData['course'],
+                            'school_graduated' => $educationData['school_graduated'],
+                        ]);
+                        $existingEducationIds[] = $newEducation->id;
+                    }
+                }
+
+                // Delete educational backgrounds that were removed
+                EducationalBackground::where('faculty_id', $facultyProfile->id)
+                    ->whereNotIn('id', $existingEducationIds)
+                    ->delete();
+
+                // 4️⃣ Update Subjects - Delete old and create new
                 FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
                 
                 if ($request->filled('subjects')) {
@@ -268,7 +314,7 @@ class FacultyController extends Controller
                     }
                 }
 
-                // 4️⃣ Update Unavailabilities - Delete old and create new
+                // 5️⃣ Update Unavailabilities - Delete old and create new
                 FacultyUnavailability::where('faculty_id', $facultyProfile->id)->delete();
                 
                 if ($request->filled('unavailabilities')) {
@@ -304,6 +350,8 @@ class FacultyController extends Controller
         try {
             DB::transaction(function () use ($faculty) {
                 if ($faculty->faculty) {
+                    // Delete related educational backgrounds
+                    EducationalBackground::where('faculty_id', $faculty->faculty->id)->delete();
                     // Delete related subjects
                     FacultySubject::where('faculty_id', $faculty->faculty->id)->delete();
                     // Delete unavailabilities

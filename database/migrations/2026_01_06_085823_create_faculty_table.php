@@ -21,17 +21,6 @@ return new class extends Migration
             $table->enum('employment_status', ['Full-Time', 'Part-Time', 'Contractual']);
             $table->text('home_address');
             
-            // Educational Background
-            $table->enum('degree_earned', [
-                'Bachelor Degree', 
-                'Master Degree', 
-                'Doctorate Degree', 
-                'Professional Degree'
-            ]);
-            $table->year('year_graduated');
-            $table->string('course');
-            $table->string('school_graduated');
-            
             // Account Credentials (foreign key to users table)
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             

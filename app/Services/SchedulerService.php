@@ -5,8 +5,6 @@ namespace App\Services;
 use App\Models\Schedule;
 use App\Models\Examination;
 use App\Models\Classroom;
-use App\Models\Faculty;
-use App\Models\FacultySubject;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,16 +14,6 @@ class SchedulerService
 {
     private array $daysOfWeek = [
         'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
-    ];
-
-    private array $dayNameToNumber = [
-        'Monday' => 1,
-        'Tuesday' => 2,
-        'Wednesday' => 3,
-        'Thursday' => 4,
-        'Friday' => 5,
-        'Saturday' => 6,
-        'Sunday' => 7,
     ];
 
     private array $timeSlots = [
@@ -43,11 +31,6 @@ class SchedulerService
         ['start' => '18:00:00', 'end' => '19:00:00'],
     ];
 
-    private function convertDayToNumber(string $day): int
-    {
-        return $this->dayNameToNumber[$day] ?? 1;
-    }
-
     /**
      * ============================
      * GENERATE SCHEDULE PREVIEW
@@ -58,161 +41,83 @@ class SchedulerService
         try {
             Log::info('=== SCHEDULE GENERATION START ===');
 
-            // First, check if tables exist and have data
-            $facultyCount = DB::table('faculty')->count();
-            $subjectCount = DB::table('subjects')->count();
             $assignmentCount = DB::table('faculty_subject')->count();
-            
-            Log::info("Database check - Faculty: {$facultyCount}, Subjects: {$subjectCount}, Assignments: {$assignmentCount}");
-
             if ($assignmentCount === 0) {
-                return [
-                    'success' => false,
-                    'message' => 'No faculty-subject assignments found in faculty_subject table. Please assign subjects to faculty first.',
-                    'schedules' => [],
-                    'examinations' => [],
-                    'conflicts' => [],
-                ];
+                return $this->fail('No faculty-subject assignments found.');
             }
 
-            /**
-             * ✅ FETCH USING PROPER FACULTY_SUBJECT TABLE
-             * Join with faculty table (not users) to get faculty name
-             */
+            // Fetch all assignments (including 0-unit)
             $facultyAssignments = DB::table('faculty_subject')
                 ->join('faculty', 'faculty_subject.faculty_id', '=', 'faculty.id')
                 ->join('subjects', 'faculty_subject.subject_id', '=', 'subjects.id')
                 ->select(
-                    'faculty_subject.id as assignment_id',
+                    'faculty_subject.id',
                     'faculty_subject.faculty_id',
                     'faculty_subject.subject_id',
                     'faculty_subject.lecture_units',
                     'faculty_subject.laboratory_units',
-                    'faculty_subject.year_level as assignment_year_level',
-                    'faculty_subject.semester as assignment_semester',
+                    'faculty_subject.year_level',
+                    'faculty_subject.semester',
                     'faculty.name as faculty_name',
-                    'faculty.user_id',
                     'subjects.subject_name',
-                    'subjects.course_code',
-                    'subjects.year_level as subject_year_level',
-                    'subjects.semester as subject_semester',
-                    DB::raw('
-                        COALESCE(faculty_subject.lecture_units,0) +
-                        COALESCE(faculty_subject.laboratory_units,0)
-                        as total_units
-                    ')
+                    'subjects.course_code'
                 )
-                ->havingRaw('total_units > 0')
                 ->get();
 
-            Log::info('Faculty assignments with units > 0: ' . $facultyAssignments->count());
-            
-            if ($facultyAssignments->count() > 0) {
-                Log::info('Sample assignment: ' . json_encode($facultyAssignments->first()));
-            }
-
             if ($facultyAssignments->isEmpty()) {
-                Log::warning('No faculty assignments with units > 0 found');
-                
-                // Check if there are assignments without units
-                $assignmentsWithoutUnits = DB::table('faculty_subject')->count();
-                
-                return [
-                    'success' => false,
-                    'message' => "Found {$assignmentsWithoutUnits} faculty-subject assignments, but none have lecture_units or laboratory_units set. Please set units for faculty assignments.",
-                    'schedules' => [],
-                    'examinations' => [],
-                    'conflicts' => [],
-                ];
+                return $this->fail('No faculty assignments found.');
             }
 
             $classrooms = Classroom::all();
             if ($classrooms->isEmpty()) {
-                return [
-                    'success' => false,
-                    'message' => 'No classrooms available.',
-                    'schedules' => [],
-                    'examinations' => [],
-                    'conflicts' => [],
-                ];
+                return $this->fail('No classrooms available.');
             }
-
-            $lectureRooms = $classrooms;
-            $labRooms = $classrooms;
 
             $schedules = [];
             $exams = [];
             $conflicts = [];
-            $subjectDayUsage = [];
 
             foreach ($facultyAssignments as $assignment) {
-                // Use assignment year_level and semester if available, otherwise fall back to subject
-                $yearLevel = $assignment->assignment_year_level ?? $assignment->subject_year_level;
-                $semester = $assignment->assignment_semester ?? $assignment->subject_semester;
-
-                Log::info("Processing assignment for {$assignment->faculty_name} - {$assignment->subject_name}");
 
                 $distribution = $this->buildDistribution(
-                    (float)$assignment->lecture_units,
-                    (float)$assignment->laboratory_units
+                    (float) $assignment->lecture_units,
+                    (float) $assignment->laboratory_units
                 );
-
-                if (empty($distribution)) {
-                    Log::warning("No distribution for assignment {$assignment->assignment_id}");
-                    continue;
-                }
 
                 $sessionSet = $this->scheduleSessions(
                     $assignment,
                     $distribution,
-                    $lectureRooms,
-                    $labRooms,
-                    $schedules,
-                    $subjectDayUsage,
-                    $yearLevel,
-                    $semester
+                    $classrooms,
+                    $schedules
                 );
 
                 if ($sessionSet === false) {
                     $conflicts[] = [
                         'faculty' => $assignment->faculty_name,
                         'subject' => $assignment->subject_name,
-                        'reason' => 'No available slot',
+                        'reason'  => 'No available slot'
                     ];
-                    Log::warning("No slot found for {$assignment->faculty_name} - {$assignment->subject_name}");
                     continue;
                 }
 
                 $schedules = array_merge($schedules, $sessionSet);
-
-                // Generate examination
-                $exam = $this->generateExam($assignment, $classrooms, $yearLevel, $semester);
-                if ($exam) {
-                    $exams[] = $exam;
-                }
+                $exams[] = $this->generateExam($assignment, $classrooms);
             }
-
-            Log::info('Schedules generated: ' . count($schedules));
-            Log::info('Examinations generated: ' . count($exams));
-            Log::info('Conflicts: ' . count($conflicts));
 
             return [
                 'success' => true,
+                'message' => count($schedules) . ' schedules generated',
                 'schedules' => $schedules,
                 'examinations' => $exams,
                 'conflicts' => $conflicts,
-                'message' => count($schedules) . ' schedules and ' . count($exams) . ' examinations generated',
             ];
 
         } catch (Exception $e) {
-            Log::error('Schedule generation error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-                'schedules' => [],
-                'examinations' => [],
-                'conflicts' => [],
-            ];
+            Log::error('Schedule generation error', [
+                'message' => $e->getMessage()
+            ]);
+
+            return $this->fail($e->getMessage());
         }
     }
 
@@ -226,12 +131,22 @@ class SchedulerService
         $out = [];
 
         if ($lecture > 0) {
-            $out[] = ['type' => 'Lecture', 'hours' => (int)$lecture];
+            $out[] = [
+                'type' => 'Lecture',
+                'hours' => (int) ceil($lecture)
+            ];
         }
 
         if ($lab > 0) {
-            // Lab units are typically 3 hours per unit
-            $out[] = ['type' => 'Laboratory', 'hours' => (int)($lab * 3)];
+            $out[] = [
+                'type' => 'Laboratory',
+                'hours' => max(1, (int) round($lab * 3))
+            ];
+        }
+
+        // Accept 0-unit: create a placeholder schedule
+        if (empty($out)) {
+            $out[] = ['type' => 'Lecture', 'hours' => 1];
         }
 
         return $out;
@@ -242,29 +157,20 @@ class SchedulerService
      * SESSION SCHEDULER
      * ============================
      */
-    private function scheduleSessions(
-        $assignment,
-        array $distribution,
-        $lectureRooms,
-        $labRooms,
-        array $existing,
-        array &$subjectDayUsage,
-        $yearLevel,
-        $semester
-    ) {
+    private function scheduleSessions($assignment, array $distribution, $rooms, array $existing)
+    {
         $sessions = [];
         $usedDays = [];
 
         foreach ($distribution as $block) {
+
             $slot = $this->findSlot(
                 $assignment,
                 $block['hours'],
                 $block['type'],
-                $block['type'] === 'Laboratory' ? $labRooms : $lectureRooms,
+                $rooms,
                 array_merge($existing, $sessions),
-                $usedDays,
-                $yearLevel,
-                $semester
+                $usedDays
             );
 
             if (!$slot) {
@@ -278,7 +184,7 @@ class SchedulerService
         return $sessions;
     }
 
-    private function findSlot($assignment, int $hours, string $type, $rooms, array $existing, array $usedDays, $yearLevel, $semester)
+    private function findSlot($assignment, int $hours, string $type, $rooms, array $existing, array $usedDays)
     {
         $days = $this->daysOfWeek;
         shuffle($days);
@@ -288,7 +194,7 @@ class SchedulerService
 
             foreach ($this->getContinuousSlots($hours) as $slot) {
                 foreach ($rooms as $room) {
-                    if ($this->slotFree($existing, $day, $slot, $room->id, $assignment, $yearLevel)) {
+                    if ($this->slotFree($existing, $day, $slot, $room->id, $assignment)) {
                         return [
                             'faculty_id' => $assignment->faculty_id,
                             'subject_id' => $assignment->subject_id,
@@ -300,10 +206,7 @@ class SchedulerService
                             'faculty_name' => $assignment->faculty_name,
                             'course_code' => $assignment->course_code,
                             'course_subject' => $assignment->subject_name,
-                            'classroom_name' => $room->room_name ?? 'N/A',
-                            'year_level' => $yearLevel,
-                            'semester' => $semester,
-                            'year_section' => $yearLevel . '-A',
+                            'year_section' => ($assignment->year_level ?? 1) . '-A',
                             'schedule_date' => Carbon::parse("next $day")->format('Y-m-d'),
                         ];
                     }
@@ -320,29 +223,25 @@ class SchedulerService
         for ($i = 0; $i <= count($this->timeSlots) - $hours; $i++) {
             $slots[] = [
                 'start' => $this->timeSlots[$i]['start'],
-                'end' => $this->timeSlots[$i + $hours - 1]['end'],
+                'end'   => $this->timeSlots[$i + $hours - 1]['end'],
             ];
         }
         return $slots;
     }
 
-    private function slotFree(array $existing, string $day, array $slot, int $roomId, $assignment, $yearLevel): bool
+    private function slotFree(array $existing, string $day, array $slot, int $roomId, $assignment): bool
     {
-        $yearSection = $yearLevel . '-A';
-
         foreach ($existing as $e) {
             if ($e['day_name'] !== $day) continue;
 
-            // Check for time overlap
             if (
                 $slot['start'] < $e['end_time'] &&
                 $slot['end'] > $e['start_time']
             ) {
-                // Conflict if same room, same faculty, or same year section
                 if (
                     $e['classroom_id'] == $roomId ||
                     $e['faculty_id'] == $assignment->faculty_id ||
-                    ($e['year_section'] ?? '') === $yearSection
+                    ($e['year_section'] ?? '') === (($assignment->year_level ?? 1) . '-A')
                 ) {
                     return false;
                 }
@@ -356,7 +255,7 @@ class SchedulerService
      * EXAM GENERATION
      * ============================
      */
-    private function generateExam($assignment, $classrooms, $yearLevel, $semester)
+    private function generateExam($assignment, $classrooms): array
     {
         $day = $this->daysOfWeek[array_rand($this->daysOfWeek)];
         $room = $classrooms->random();
@@ -370,153 +269,23 @@ class SchedulerService
             'start_time' => '08:00:00',
             'end_time' => '10:00:00',
             'exam_type' => 'Final',
-            'year_section' => $yearLevel . '-A',
-            'faculty_name' => $assignment->faculty_name,
-            'course_subject' => $assignment->subject_name,
-            'course_code' => $assignment->course_code,
-            'classroom_name' => $room->room_name ?? 'N/A',
-            'year_level' => $yearLevel,
-            'semester' => $semester,
+            'year_section' => ($assignment->year_level ?? 1) . '-A',
         ];
     }
 
     /**
      * ============================
-     * SAVE SCHEDULE & EXAMINATIONS
+     * HELPERS
      * ============================
      */
-    public function saveSchedule(array $schedules = [], array $examinations = []): array
+    private function fail(string $message): array
     {
-        try {
-            DB::beginTransaction();
-            
-            $savedSchedules = 0;
-            $savedExams = 0;
-            $errors = [];
-
-            Log::info('Saving schedules and examinations', [
-                'schedules_count' => count($schedules),
-                'examinations_count' => count($examinations)
-            ]);
-
-            // Save schedules if provided
-            foreach ($schedules as $index => $scheduleData) {
-                try {
-                    Schedule::create([
-                        'faculty_id' => $scheduleData['faculty_id'],
-                        'subject_id' => $scheduleData['subject_id'],
-                        'classroom_id' => $scheduleData['classroom_id'],
-                        'day_name' => $scheduleData['day_name'],
-                        'start_time' => $scheduleData['start_time'],
-                        'end_time' => $scheduleData['end_time'],
-                        'class_type' => $scheduleData['class_type'] ?? 'Lecture',
-                        'year_section' => $scheduleData['year_section'] ?? null,
-                        'schedule_date' => $scheduleData['schedule_date'] ?? null,
-                    ]);
-                    $savedSchedules++;
-                } catch (\Exception $e) {
-                    $errors[] = [
-                        'type' => 'schedule',
-                        'index' => $index,
-                        'error' => $e->getMessage()
-                    ];
-                    Log::warning("Failed to save schedule at index {$index}: " . $e->getMessage());
-                }
-            }
-
-            // Save examinations if provided
-            foreach ($examinations as $index => $examData) {
-                try {
-                    Examination::create([
-                        'faculty_id' => $examData['faculty_id'],
-                        'subject_id' => $examData['subject_id'],
-                        'classroom_id' => $examData['classroom_id'],
-                        'exam_date' => $examData['exam_date'],
-                        'day_name' => $examData['day_name'] ?? null,
-                        'start_time' => $examData['start_time'],
-                        'end_time' => $examData['end_time'],
-                        'exam_type' => $examData['exam_type'] ?? 'Final',
-                        'year_section' => $examData['year_section'] ?? null,
-                    ]);
-                    $savedExams++;
-                } catch (\Exception $e) {
-                    $errors[] = [
-                        'type' => 'examination',
-                        'index' => $index,
-                        'error' => $e->getMessage(),
-                        'data' => $examData
-                    ];
-                    Log::warning("Failed to save examination at index {$index}: " . $e->getMessage());
-                }
-            }
-
-            DB::commit();
-
-            Log::info('Save complete', [
-                'saved_schedules' => $savedSchedules,
-                'saved_examinations' => $savedExams,
-                'errors_count' => count($errors)
-            ]);
-
-            $message = [];
-            if ($savedSchedules > 0) {
-                $message[] = "{$savedSchedules} schedules saved";
-            }
-            if ($savedExams > 0) {
-                $message[] = "{$savedExams} examinations saved";
-            }
-            if (!empty($errors)) {
-                $message[] = count($errors) . " errors occurred";
-            }
-
-            return [
-                'success' => ($savedSchedules > 0 || $savedExams > 0),
-                'message' => implode(', ', $message) ?: 'No items to save',
-                'saved_schedules' => $savedSchedules,
-                'saved_examinations' => $savedExams,
-                'errors' => $errors
-            ];
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Save schedule error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return [
-                'success' => false,
-                'message' => 'Error saving: ' . $e->getMessage(),
-                'saved_schedules' => 0,
-                'saved_examinations' => 0,
-                'errors' => []
-            ];
-        }
-    }
-
-    /**
-     * ============================
-     * CLEAR ALL EXAMINATIONS
-     * ============================
-     */
-    public function clearAllExaminations(): array
-    {
-        try {
-            $count = Examination::count();
-            Examination::truncate();
-            
-            Log::info("Cleared {$count} examinations");
-            
-            return [
-                'success' => true,
-                'message' => "Cleared {$count} examination schedules"
-            ];
-        } catch (\Exception $e) {
-            Log::error('Clear examinations error: ' . $e->getMessage());
-            
-            return [
-                'success' => false,
-                'message' => 'Error clearing examinations: ' . $e->getMessage()
-            ];
-        }
+        return [
+            'success' => false,
+            'message' => $message,
+            'schedules' => [],
+            'examinations' => [],
+            'conflicts' => [],
+        ];
     }
 }

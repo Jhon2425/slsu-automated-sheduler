@@ -1,66 +1,6 @@
 <x-app-layout>
     <div class="min-h-screen bg-[url('/path/to/your/bg.jpg')] bg-cover bg-center py-8">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-
-            <!-- COMPREHENSIVE DEBUG SECTION -->
-            @if(config('app.debug'))
-                <div class="mb-6 p-6 bg-yellow-500/30 border-2 border-yellow-500 rounded-xl text-white">
-                    <h3 class="text-xl font-bold mb-4">🐛 DEBUG INFORMATION</h3>
-                    
-                    <div class="space-y-3 text-sm">
-                        <div class="bg-black/30 p-3 rounded">
-                            <strong>User Object:</strong><br>
-                            ID: {{ $user->id ?? 'NULL' }}<br>
-                            Name: {{ $user->name ?? 'NULL' }}
-                        </div>
-                        
-                        <div class="bg-black/30 p-3 rounded">
-                            <strong>Faculty Object:</strong><br>
-                            Type: {{ gettype($faculty) }}<br>
-                            ID: {{ $faculty->id ?? 'NULL' }}<br>
-                            Name: {{ $faculty->name ?? 'NULL' }}<br>
-                            Birthdate (raw): {{ $faculty->birthdate ?? 'NULL' }}<br>
-                            Birthdate (type): {{ gettype($faculty->birthdate ?? null) }}<br>
-                            Birthdate (formatted): {{ $faculty->birthdate ? $faculty->birthdate->format('Y-m-d') : 'NULL' }}
-                        </div>
-                        
-                        <div class="bg-black/30 p-3 rounded">
-                            <strong>Unavailabilities Check:</strong><br>
-                            Has 'unavailabilities' property: {{ isset($faculty->unavailabilities) ? 'YES' : 'NO' }}<br>
-                            Type: {{ isset($faculty->unavailabilities) ? gettype($faculty->unavailabilities) : 'N/A' }}<br>
-                            Count: {{ isset($faculty->unavailabilities) ? count($faculty->unavailabilities) : '0' }}<br>
-                            Is Array: {{ is_array($faculty->unavailabilities ?? null) ? 'YES' : 'NO' }}<br>
-                            Is Collection: {{ is_object($faculty->unavailabilities ?? null) && method_exists($faculty->unavailabilities ?? null, 'count') ? 'YES' : 'NO' }}
-                        </div>
-                        
-                        @if(isset($faculty->unavailabilities) && count($faculty->unavailabilities) > 0)
-                            <div class="bg-black/30 p-3 rounded">
-                                <strong>Unavailability Data:</strong><br>
-                                @foreach($faculty->unavailabilities as $idx => $unav)
-                                    [{{ $idx }}] 
-                                    Day: {{ $unav->day ?? 'NULL' }} | 
-                                    From: {{ $unav->time_from ?? 'NULL' }} | 
-                                    To: {{ $unav->time_to ?? 'NULL' }} | 
-                                    Reason: {{ $unav->reason ?? 'NULL' }}<br>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="bg-red-500/50 p-3 rounded">
-                                ⚠️ NO UNAVAILABILITIES FOUND - Check database or relationship loading
-                            </div>
-                        @endif
-                        
-                        <div class="bg-black/30 p-3 rounded">
-                            <strong>All Faculty Properties:</strong><br>
-                            @php
-                                $props = get_object_vars($faculty);
-                                echo implode(', ', array_keys($props));
-                            @endphp
-                        </div>
-                    </div>
-                </div>
-            @endif
-
             <!-- Page Header with Breadcrumb -->
             <div class="mb-8 animate-fade-in">
                 <div class="flex items-center text-white/70 text-sm mb-2">
@@ -188,55 +128,149 @@
                             </div>
                             Educational Background
                         </h3>
-                        <p class="text-sm text-white/80 mt-1">Academic qualifications</p>
+                        <p class="text-sm text-white/80 mt-1">Academic qualifications (at least one required)</p>
                     </div>
 
-                    <div class="p-8 space-y-6">
-                        <!-- Degree Earned -->
-                        <div>
-                            <label class="block text-white font-semibold mb-2">
-                                <i class="fas fa-certificate mr-2"></i>Degree Earned <span class="text-red-400">*</span>
-                            </label>
-                            <select name="degree_earned" required
-                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                                <option value="">Select Degree</option>
-                                <option value="Bachelor Degree" {{ old('degree_earned', $faculty->degree_earned) == "Bachelor Degree" ? 'selected' : '' }}>Bachelor's Degree</option>
-                                <option value="Master Degree" {{ old('degree_earned', $faculty->degree_earned) == "Master Degree" ? 'selected' : '' }}>Master's Degree</option>
-                                <option value="Doctorate Degree" {{ old('degree_earned', $faculty->degree_earned) == 'Doctorate Degree' ? 'selected' : '' }}>Doctorate Degree</option>
-                                <option value="Professional Degree" {{ old('degree_earned', $faculty->degree_earned) == 'Professional Degree' ? 'selected' : '' }}>Professional Degree</option>
-                            </select>
+                    <div class="p-8">
+                        <div id="education-container" class="space-y-4">
+                            @php
+                                // Use the educationalBackgrounds relationship loaded in the controller
+                                $existingEducation = $faculty->educationalBackgrounds ?? collect();
+                            @endphp
+                            
+                            @forelse($existingEducation as $index => $education)
+                                <div id="education-row-existing-{{ $index }}" class="glass-item p-6 rounded-xl space-y-4">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h4 class="text-white font-semibold">
+                                            <i class="fas fa-graduation-cap mr-2"></i>Education {{ $index + 1 }}
+                                        </h4>
+                                        @if($index > 0)
+                                        <button type="button" onclick="removeEducationRow('education-row-existing-{{ $index }}')"
+                                                class="text-red-400 hover:text-red-300 transition">
+                                            <i class="fas fa-times-circle text-xl"></i>
+                                        </button>
+                                        @endif
+                                    </div>
+
+                                    <!-- Hidden ID for existing education records -->
+                                    <input type="hidden" name="education[{{ $index }}][id]" value="{{ $education->id }}">
+
+                                    <!-- Degree Earned -->
+                                    <div>
+                                        <label class="block text-white font-medium mb-2">
+                                            <i class="fas fa-certificate mr-2"></i>Degree Earned <span class="text-red-400">*</span>
+                                        </label>
+                                        <select name="education[{{ $index }}][degree_earned]" required
+                                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                                            <option value="">Select Degree</option>
+                                            <option value="Bachelor Degree" {{ old("education.$index.degree_earned", $education->degree_earned) == "Bachelor Degree" ? 'selected' : '' }}>Bachelor's Degree</option>
+                                            <option value="Master Degree" {{ old("education.$index.degree_earned", $education->degree_earned) == "Master Degree" ? 'selected' : '' }}>Master's Degree</option>
+                                            <option value="Doctorate Degree" {{ old("education.$index.degree_earned", $education->degree_earned) == 'Doctorate Degree' ? 'selected' : '' }}>Doctorate Degree</option>
+                                            <option value="Professional Degree" {{ old("education.$index.degree_earned", $education->degree_earned) == 'Professional Degree' ? 'selected' : '' }}>Professional Degree</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <!-- Year Graduated -->
+                                        <div>
+                                            <label class="block text-white font-medium mb-2">
+                                                <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
+                                            </label>
+                                            <input type="number" name="education[{{ $index }}][year_graduated]" 
+                                                   value="{{ old("education.$index.year_graduated", $education->year_graduated) }}" 
+                                                   min="1950" max="{{ date('Y') }}" required
+                                                   placeholder="e.g., 2020"
+                                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+
+                                        <!-- Course -->
+                                        <div>
+                                            <label class="block text-white font-medium mb-2">
+                                                <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
+                                            </label>
+                                            <input type="text" name="education[{{ $index }}][course]" 
+                                                   value="{{ old("education.$index.course", $education->course) }}" required
+                                                   placeholder="e.g., Computer Science"
+                                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+                                    </div>
+
+                                    <!-- School Graduated -->
+                                    <div>
+                                        <label class="block text-white font-medium mb-2">
+                                            <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
+                                        </label>
+                                        <input type="text" name="education[{{ $index }}][school_graduated]" 
+                                               value="{{ old("education.$index.school_graduated", $education->school_graduated) }}" required
+                                               placeholder="e.g., University of the Philippines"
+                                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+                                </div>
+                            @empty
+                                <!-- If no educational backgrounds exist, show one empty form -->
+                                <div id="education-row-existing-0" class="glass-item p-6 rounded-xl space-y-4">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h4 class="text-white font-semibold">
+                                            <i class="fas fa-graduation-cap mr-2"></i>Education 1
+                                        </h4>
+                                    </div>
+
+                                    <!-- Degree Earned -->
+                                    <div>
+                                        <label class="block text-white font-medium mb-2">
+                                            <i class="fas fa-certificate mr-2"></i>Degree Earned <span class="text-red-400">*</span>
+                                        </label>
+                                        <select name="education[0][degree_earned]" required
+                                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                                            <option value="">Select Degree</option>
+                                            <option value="Bachelor Degree">Bachelor's Degree</option>
+                                            <option value="Master Degree">Master's Degree</option>
+                                            <option value="Doctorate Degree">Doctorate Degree</option>
+                                            <option value="Professional Degree">Professional Degree</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <!-- Year Graduated -->
+                                        <div>
+                                            <label class="block text-white font-medium mb-2">
+                                                <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
+                                            </label>
+                                            <input type="number" name="education[0][year_graduated]" 
+                                                   min="1950" max="{{ date('Y') }}" required
+                                                   placeholder="e.g., 2020"
+                                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+
+                                        <!-- Course -->
+                                        <div>
+                                            <label class="block text-white font-medium mb-2">
+                                                <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
+                                            </label>
+                                            <input type="text" name="education[0][course]" required
+                                                   placeholder="e.g., Computer Science"
+                                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+                                    </div>
+
+                                    <!-- School Graduated -->
+                                    <div>
+                                        <label class="block text-white font-medium mb-2">
+                                            <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
+                                        </label>
+                                        <input type="text" name="education[0][school_graduated]" required
+                                               placeholder="e.g., University of the Philippines"
+                                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+                                </div>
+                            @endforelse
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Year Graduated -->
-                            <div>
-                                <label class="block text-white font-semibold mb-2">
-                                    <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
-                                </label>
-                                <input type="number" name="year_graduated" value="{{ old('year_graduated', $faculty->year_graduated) }}" 
-                                       min="1950" max="{{ date('Y') }}" required
-                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                            </div>
-
-                            <!-- Course -->
-                            <div>
-                                <label class="block text-white font-semibold mb-2">
-                                    <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
-                                </label>
-                                <input type="text" name="course" value="{{ old('course', $faculty->course) }}" required
-                                       placeholder="e.g., Computer Science"
-                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                            </div>
-                        </div>
-
-                        <!-- School Graduated -->
-                        <div>
-                            <label class="block text-white font-semibold mb-2">
-                                <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
-                            </label>
-                            <input type="text" name="school_graduated" value="{{ old('school_graduated', $faculty->school_graduated) }}" required
-                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                        </div>
+                        <button type="button" onclick="addEducationRow()" 
+                                class="mt-4 px-6 py-3 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105"
+                                style="background: rgba(109, 151, 115, 0.3); border: 1px solid rgba(109, 151, 115, 0.5);">
+                            <i class="fas fa-plus-circle mr-2"></i>Add Educational Background
+                        </button>
                     </div>
                 </div>
 
@@ -428,21 +462,9 @@
                                                 <option value="">Select Time</option>
                                                 @php
                                                     $timeSlots = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
-                                                    // Convert database time format to HH:MM format
                                                     $rawTimeFrom = $unavailability->time_from ?? '';
-                                                    $savedTimeFrom = '';
-                                                    if ($rawTimeFrom) {
-                                                        // Handle different time formats
-                                                        if (strlen($rawTimeFrom) > 5) {
-                                                            $savedTimeFrom = substr($rawTimeFrom, 0, 5); // "07:30:00" -> "07:30"
-                                                        } else {
-                                                            $savedTimeFrom = $rawTimeFrom; // Already "07:30"
-                                                        }
-                                                    }
+                                                    $savedTimeFrom = strlen($rawTimeFrom) > 5 ? substr($rawTimeFrom, 0, 5) : $rawTimeFrom;
                                                 @endphp
-                                                @if(config('app.debug'))
-                                                    <!-- Debug: Raw={{ $rawTimeFrom }}, Processed={{ $savedTimeFrom }} -->
-                                                @endif
                                                 @foreach($timeSlots as $time)
                                                     <option value="{{ $time }}" {{ $savedTimeFrom == $time ? 'selected' : '' }}>
                                                         {{ date('g:i A', strtotime($time)) }}
@@ -462,21 +484,9 @@
                                                     class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-red-500">
                                                 <option value="">Select Time</option>
                                                 @php
-                                                    // Convert database time format to HH:MM format
                                                     $rawTimeTo = $unavailability->time_to ?? '';
-                                                    $savedTimeTo = '';
-                                                    if ($rawTimeTo) {
-                                                        // Handle different time formats
-                                                        if (strlen($rawTimeTo) > 5) {
-                                                            $savedTimeTo = substr($rawTimeTo, 0, 5); // "19:00:00" -> "19:00"
-                                                        } else {
-                                                            $savedTimeTo = $rawTimeTo; // Already "19:00"
-                                                        }
-                                                    }
+                                                    $savedTimeTo = strlen($rawTimeTo) > 5 ? substr($rawTimeTo, 0, 5) : $rawTimeTo;
                                                 @endphp
-                                                @if(config('app.debug'))
-                                                    <!-- Debug: Raw={{ $rawTimeTo }}, Processed={{ $savedTimeTo }} -->
-                                                @endif
                                                 @foreach($timeSlots as $time)
                                                     <option value="{{ $time }}" {{ $savedTimeTo == $time ? 'selected' : '' }}>
                                                         {{ date('g:i A', strtotime($time)) }}
@@ -692,12 +702,11 @@
         const availablePrograms = @json($programs ?? []);
         let subjectRowCounter = {{ count($faculty->subjects ?? []) }};
         let unavailabilityRowCounter = {{ count($faculty->unavailabilities ?? []) }};
-
-        // Debug: Log available subjects to verify data structure
-        console.log('Available subjects:', availableSubjects);
-        if (availableSubjects.length > 0) {
-            console.log('Sample subject data:', availableSubjects[0]);
-        }
+        
+        @php
+            $existingEducation = $faculty->educationalBackgrounds ?? collect();
+        @endphp
+        let educationRowCounter = {{ $existingEducation->count() > 0 ? $existingEducation->count() : 1 }};
 
         // Time slots from 7:30 AM to 7:00 PM in 30-minute intervals
         const timeSlots = [
@@ -707,6 +716,95 @@
         ];
 
         const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        function addEducationRow() {
+            const container = document.getElementById('education-container');
+            const rowIndex = educationRowCounter++;
+            const rowId = `education-row-${rowIndex}`;
+
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'glass-item p-6 rounded-xl space-y-4';
+
+            row.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-white font-semibold">
+                        <i class="fas fa-graduation-cap mr-2"></i>Education ${rowIndex + 1}
+                    </h4>
+                    <button type="button" onclick="removeEducationRow('${rowId}')"
+                            class="text-red-400 hover:text-red-300 transition">
+                        <i class="fas fa-times-circle text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Degree Earned -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-certificate mr-2"></i>Degree Earned <span class="text-red-400">*</span>
+                    </label>
+                    <select name="education[${rowIndex}][degree_earned]" required
+                            class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="">Select Degree</option>
+                        <option value="Bachelor Degree">Bachelor's Degree</option>
+                        <option value="Master Degree">Master's Degree</option>
+                        <option value="Doctorate Degree">Doctorate Degree</option>
+                        <option value="Professional Degree">Professional Degree</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Year Graduated -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
+                        </label>
+                        <input type="number" name="education[${rowIndex}][year_graduated]" 
+                               min="1950" max="${new Date().getFullYear()}" required
+                               placeholder="e.g., 2020"
+                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+
+                    <!-- Course -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" name="education[${rowIndex}][course]" required
+                               placeholder="e.g., Computer Science"
+                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+                </div>
+
+                <!-- School Graduated -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="education[${rowIndex}][school_graduated]" required
+                           placeholder="e.g., University of the Philippines"
+                           class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            `;
+
+            container.appendChild(row);
+        }
+
+        function removeEducationRow(rowId) {
+            const container = document.getElementById('education-container');
+            const educationRows = container.querySelectorAll('[id^="education-row-"]');
+            
+            // Prevent removing the last education row
+            if (educationRows.length <= 1) {
+                alert('At least one educational background is required.');
+                return;
+            }
+            
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => row.remove(), 300);
+            }
+        }
 
         function addSubjectRow() {
             const container = document.getElementById('subjects-container');
@@ -824,7 +922,6 @@
             const selectedOption = select.options[select.selectedIndex];
 
             if (!selectedOption.value) {
-                // Clear all fields if no subject selected
                 document.getElementById(`${rowId}-code`).value = '';
                 document.getElementById(`${rowId}-year`).value = '';
                 document.getElementById(`${rowId}-semester`).value = '';
@@ -834,11 +931,6 @@
                 return;
             }
 
-            // Get the full subject object for detailed debugging
-            const selectedSubject = availableSubjects.find(s => s.id == selectedOption.value);
-            console.log('Selected subject full object:', selectedSubject);
-
-            // Auto-fill from subject data
             const code = selectedOption.getAttribute('data-code');
             const year = selectedOption.getAttribute('data-year');
             let semester = selectedOption.getAttribute('data-semester');
@@ -846,17 +938,6 @@
             const laboratory = selectedOption.getAttribute('data-laboratory');
             const program = selectedOption.getAttribute('data-program');
 
-            // Debug logging with more detail
-            console.log('Extracted data attributes:', {
-                code, 
-                year, 
-                semester, 
-                lecture: `"${lecture}" (type: ${typeof lecture})`,
-                laboratory: `"${laboratory}" (type: ${typeof laboratory})`,
-                program
-            });
-
-            // Format semester display (convert numeric to text if needed)
             if (semester) {
                 if (semester === '1') {
                     semester = '1st Semester';
@@ -871,15 +952,6 @@
             document.getElementById(`${rowId}-lecture`).value = lecture || '0';
             document.getElementById(`${rowId}-laboratory`).value = laboratory || '0';
             document.getElementById(`${rowId}-program`).value = program || '';
-
-            // Verify all fields were set
-            console.log('Field values after update:', {
-                code: document.getElementById(`${rowId}-code`).value,
-                year: document.getElementById(`${rowId}-year`).value,
-                semester: document.getElementById(`${rowId}-semester`).value,
-                lecture: document.getElementById(`${rowId}-lecture`).value,
-                laboratory: document.getElementById(`${rowId}-laboratory`).value
-            });
         }
 
         function removeSubjectRow(rowId) {
@@ -998,10 +1070,8 @@
             const selectedFromIndex = timeSlots.indexOf(timeFromSelect.value);
             const currentToValue = timeToSelect.value;
 
-            // Clear and rebuild time_to options
             timeToSelect.innerHTML = '<option value="">Select Time</option>';
             
-            // Only show times after the selected "from" time
             timeSlots.forEach((time, index) => {
                 if (index > selectedFromIndex) {
                     const option = document.createElement('option');
@@ -1016,6 +1086,8 @@
         }
 
         // Make functions globally available
+        window.addEducationRow = addEducationRow;
+        window.removeEducationRow = removeEducationRow;
         window.addSubjectRow = addSubjectRow;
         window.updateSubjectDetails = updateSubjectDetails;
         window.removeSubjectRow = removeSubjectRow;

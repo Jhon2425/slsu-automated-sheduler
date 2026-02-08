@@ -126,55 +126,19 @@
                             </div>
                             Educational Background
                         </h3>
-                        <p class="text-sm text-white/80 mt-1">Academic qualifications</p>
+                        <p class="text-sm text-white/80 mt-1">Add academic qualifications (at least one required)</p>
                     </div>
 
-                    <div class="p-8 space-y-6">
-                        <!-- Degree Earned -->
-                        <div>
-                            <label class="block text-white font-semibold mb-2">
-                                <i class="fas fa-certificate mr-2"></i>Degree Earned <span class="text-red-400">*</span>
-                            </label>
-                            <select name="degree_earned" required
-                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                                <option value="">Select Degree</option>
-                                <option value="Bachelor Degree" {{ old('degree_earned') == "Bachelor Degree" ? 'selected' : '' }}>Bachelor's Degree</option>
-                                <option value="Master Degree" {{ old('degree_earned') == "Master Degree" ? 'selected' : '' }}>Master's Degree</option>
-                                <option value="Doctorate Degree" {{ old('degree_earned') == 'Doctorate Degree' ? 'selected' : '' }}>Doctorate Degree</option>
-                                <option value="Professional Degree" {{ old('degree_earned') == 'Professional Degree' ? 'selected' : '' }}>Professional Degree</option>
-                            </select>
+                    <div class="p-8">
+                        <div id="education-container" class="space-y-4">
+                            <!-- Education rows will be added here -->
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Year Graduated -->
-                            <div>
-                                <label class="block text-white font-semibold mb-2">
-                                    <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
-                                </label>
-                                <input type="number" name="year_graduated" value="{{ old('year_graduated') }}" 
-                                       min="1950" max="{{ date('Y') }}" required
-                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                            </div>
-
-                            <!-- Course -->
-                            <div>
-                                <label class="block text-white font-semibold mb-2">
-                                    <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
-                                </label>
-                                <input type="text" name="course" value="{{ old('course') }}" required
-                                       placeholder="e.g., Computer Science"
-                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                            </div>
-                        </div>
-
-                        <!-- School Graduated -->
-                        <div>
-                            <label class="block text-white font-semibold mb-2">
-                                <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
-                            </label>
-                            <input type="text" name="school_graduated" value="{{ old('school_graduated') }}" required
-                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
-                        </div>
+                        <button type="button" onclick="addEducationRow()" 
+                                class="mt-4 px-6 py-3 rounded-xl text-white font-medium transition-all duration-300 hover:scale-105"
+                                style="background: rgba(109, 151, 115, 0.3); border: 1px solid rgba(109, 151, 115, 0.5);">
+                            <i class="fas fa-plus-circle mr-2"></i>Add Educational Background
+                        </button>
                     </div>
                 </div>
 
@@ -410,12 +374,7 @@
         const availablePrograms = @json($programs ?? []);
         let subjectRowCounter = 0;
         let unavailabilityRowCounter = 0;
-
-        // Debug: Log available subjects to verify data structure
-        console.log('Available subjects:', availableSubjects);
-        if (availableSubjects.length > 0) {
-            console.log('Sample subject data:', availableSubjects[0]);
-        }
+        let educationRowCounter = 0;
 
         // Time slots from 7:30 AM to 7:00 PM in 30-minute intervals
         const timeSlots = [
@@ -425,6 +384,93 @@
         ];
 
         const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // Add initial education row on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            addEducationRow();
+        });
+
+        function addEducationRow() {
+            const container = document.getElementById('education-container');
+            const rowIndex = educationRowCounter++;
+            const rowId = `education-row-${rowIndex}`;
+
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'glass-item p-6 rounded-xl space-y-4';
+
+            row.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-white font-semibold">
+                        <i class="fas fa-graduation-cap mr-2"></i>Education ${rowIndex + 1}
+                    </h4>
+                    ${rowIndex > 0 ? `
+                    <button type="button" onclick="removeEducationRow('${rowId}')"
+                            class="text-red-400 hover:text-red-300 transition">
+                        <i class="fas fa-times-circle text-xl"></i>
+                    </button>
+                    ` : ''}
+                </div>
+
+                <!-- Degree Earned -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-certificate mr-2"></i>Degree Earned <span class="text-red-400">*</span>
+                    </label>
+                    <select name="education[${rowIndex}][degree_earned]" required
+                            class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="">Select Degree</option>
+                        <option value="Bachelor Degree">Bachelor's Degree</option>
+                        <option value="Master Degree">Master's Degree</option>
+                        <option value="Doctorate Degree">Doctorate Degree</option>
+                        <option value="Professional Degree">Professional Degree</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Year Graduated -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-calendar-check mr-2"></i>Year Graduated <span class="text-red-400">*</span>
+                        </label>
+                        <input type="number" name="education[${rowIndex}][year_graduated]" 
+                               min="1950" max="${new Date().getFullYear()}" required
+                               placeholder="e.g., 2020"
+                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+
+                    <!-- Course -->
+                    <div>
+                        <label class="block text-white font-medium mb-2">
+                            <i class="fas fa-book-open mr-2"></i>Course <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" name="education[${rowIndex}][course]" required
+                               placeholder="e.g., Computer Science"
+                               class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+                </div>
+
+                <!-- School Graduated -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-university mr-2"></i>School Graduated <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="education[${rowIndex}][school_graduated]" required
+                           placeholder="e.g., University of the Philippines"
+                           class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            `;
+
+            container.appendChild(row);
+        }
+
+        function removeEducationRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => row.remove(), 300);
+            }
+        }
 
         function addSubjectRow() {
             const container = document.getElementById('subjects-container');
@@ -542,7 +588,6 @@
             const selectedOption = select.options[select.selectedIndex];
 
             if (!selectedOption.value) {
-                // Clear all fields if no subject selected
                 document.getElementById(`${rowId}-code`).value = '';
                 document.getElementById(`${rowId}-year`).value = '';
                 document.getElementById(`${rowId}-semester`).value = '';
@@ -552,11 +597,6 @@
                 return;
             }
 
-            // Get the full subject object for detailed debugging
-            const selectedSubject = availableSubjects.find(s => s.id == selectedOption.value);
-            console.log('Selected subject full object:', selectedSubject);
-
-            // Auto-fill from subject data
             const code = selectedOption.getAttribute('data-code');
             const year = selectedOption.getAttribute('data-year');
             let semester = selectedOption.getAttribute('data-semester');
@@ -564,17 +604,6 @@
             const laboratory = selectedOption.getAttribute('data-laboratory');
             const program = selectedOption.getAttribute('data-program');
 
-            // Debug logging with more detail
-            console.log('Extracted data attributes:', {
-                code, 
-                year, 
-                semester, 
-                lecture: `"${lecture}" (type: ${typeof lecture})`,
-                laboratory: `"${laboratory}" (type: ${typeof laboratory})`,
-                program
-            });
-
-            // Format semester display (convert numeric to text if needed)
             if (semester) {
                 if (semester === '1') {
                     semester = '1st Semester';
@@ -589,15 +618,6 @@
             document.getElementById(`${rowId}-lecture`).value = lecture || '0';
             document.getElementById(`${rowId}-laboratory`).value = laboratory || '0';
             document.getElementById(`${rowId}-program`).value = program || '';
-
-            // Verify all fields were set
-            console.log('Field values after update:', {
-                code: document.getElementById(`${rowId}-code`).value,
-                year: document.getElementById(`${rowId}-year`).value,
-                semester: document.getElementById(`${rowId}-semester`).value,
-                lecture: document.getElementById(`${rowId}-lecture`).value,
-                laboratory: document.getElementById(`${rowId}-laboratory`).value
-            });
         }
 
         function removeSubjectRow(rowId) {
@@ -716,10 +736,8 @@
             const selectedFromIndex = timeSlots.indexOf(timeFromSelect.value);
             const currentToValue = timeToSelect.value;
 
-            // Clear and rebuild time_to options
             timeToSelect.innerHTML = '<option value="">Select Time</option>';
             
-            // Only show times after the selected "from" time
             timeSlots.forEach((time, index) => {
                 if (index > selectedFromIndex) {
                     const option = document.createElement('option');
@@ -734,6 +752,8 @@
         }
 
         // Make functions globally available
+        window.addEducationRow = addEducationRow;
+        window.removeEducationRow = removeEducationRow;
         window.addSubjectRow = addSubjectRow;
         window.updateSubjectDetails = updateSubjectDetails;
         window.removeSubjectRow = removeSubjectRow;

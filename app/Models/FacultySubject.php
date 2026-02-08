@@ -11,6 +11,8 @@ class FacultySubject extends Model
 
     protected $table = 'faculty_subject';
 
+    public $timestamps = false; // 🔑 VERY IMPORTANT
+
     protected $fillable = [
         'faculty_id',
         'subject_id',
