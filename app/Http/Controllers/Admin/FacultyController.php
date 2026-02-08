@@ -158,9 +158,12 @@ class FacultyController extends Controller
         $subjects = Subject::all();
         $programs = Program::all();
 
+        // Get the faculty profile
+        $facultyProfile = $faculty->faculty;
+
         // Transform faculty subjects for easier frontend consumption
-        $facultySubjects = $faculty->faculty->facultySubjects->map(function($facultySubject) {
-            return [
+        $facultySubjects = $facultyProfile->facultySubjects->map(function($facultySubject) {
+            return (object)[
                 'id' => $facultySubject->subject->id,
                 'subject_name' => $facultySubject->subject->subject_name,
                 'course_code' => $facultySubject->subject->course_code,
@@ -170,23 +173,17 @@ class FacultyController extends Controller
                 'lab' => $facultySubject->laboratory_units ?? $facultySubject->subject->lab,
                 'pre_req' => $facultySubject->subject->pre_req,
                 'program_id' => $facultySubject->program_id ?? $facultySubject->subject->program_id ?? null,
-                'pivot' => [
-                    'id' => $facultySubject->id,
-                    'lecture_units' => $facultySubject->lecture_units,
-                    'laboratory_units' => $facultySubject->laboratory_units,
-                    'year_level' => $facultySubject->year_level,
-                    'semester' => $facultySubject->semester,
-                ]
             ];
         });
 
+        // Assign the transformed subjects to the faculty profile
+        $facultyProfile->subjects = $facultySubjects;
+
         return view('admin.faculty.edit', [
             'user' => $faculty, // Pass the User model for the route
-            'faculty' => $faculty->faculty, // Pass the Faculty model for form data
+            'faculty' => $facultyProfile, // Pass the Faculty model for form data with unavailabilities
             'subjects' => $subjects,
             'programs' => $programs,
-            'facultySubjects' => $facultySubjects,
-            'unavailabilities' => $faculty->faculty->unavailabilities
         ]);
     }
 

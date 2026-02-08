@@ -27,10 +27,13 @@ class FacultyUnavailability extends Model
 
     /**
      * Attribute casting
+     * 
+     * ⚠️ IMPORTANT: Do NOT cast time_from/time_to as datetime!
+     * They are TIME fields in the database (e.g., "07:30:00")
+     * Casting as datetime corrupts the values and prevents proper retrieval
      */
     protected $casts = [
-        'time_from' => 'datetime:H:i',
-        'time_to'   => 'datetime:H:i',
+        // Leave time fields as strings - they work fine that way
     ];
 
     /**
