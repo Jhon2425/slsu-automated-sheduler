@@ -13,6 +13,7 @@ class Faculty extends Model
     protected $table = 'faculty';
 
     protected $fillable = [
+        'faculty_id',
         'user_id',
         'name',
         'civil_status',
@@ -66,18 +67,14 @@ class Faculty extends Model
         return $this->birthdate?->age;
     }
 
-    /**
-     * Get the highest degree earned
-     */
     public function getHighestDegreeAttribute()
     {
         $educations = $this->educationalBackgrounds;
-        
+
         if ($educations->isEmpty()) {
             return null;
         }
 
-        // Order by degree level (Doctorate > Master > Professional > Bachelor)
         $degreeOrder = [
             'Doctorate Degree' => 4,
             'Master Degree' => 3,
@@ -85,20 +82,15 @@ class Faculty extends Model
             'Bachelor Degree' => 1,
         ];
 
-        $highestEducation = $educations->sortByDesc(function($education) use ($degreeOrder) {
-            return $degreeOrder[$education->degree_earned] ?? 0;
-        })->first();
-
-        return $highestEducation;
+        return $educations->sortByDesc(
+            fn ($education) => $degreeOrder[$education->degree_earned] ?? 0
+        )->first();
     }
 
-    /**
-     * Get full degree string for the highest degree
-     */
     public function getFullDegreeAttribute()
     {
         $highestDegree = $this->highest_degree;
-        
+
         if (!$highestDegree) {
             return 'No degree information';
         }
@@ -106,9 +98,6 @@ class Faculty extends Model
         return "{$highestDegree->degree_earned} in {$highestDegree->course}";
     }
 
-    /**
-     * Get the primary/latest educational background
-     */
     public function getPrimaryEducationAttribute()
     {
         return $this->educationalBackgrounds()

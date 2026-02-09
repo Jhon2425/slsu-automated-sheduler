@@ -66,6 +66,19 @@
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                         </div>
 
+                        <!-- Faculty ID -->
+                        <div>
+                            <label class="block text-white font-semibold mb-2">
+                                <i class="fas fa-id-card mr-2"></i>Faculty ID <span class="text-red-400">*</span>
+                            </label>
+                            <input type="text" name="faculty_id" value="{{ old('faculty_id') }}" required
+                                   placeholder="e.g., FAC-2024-001"
+                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                            <p class="mt-1 text-sm text-white/60">
+                                <i class="fas fa-info-circle mr-1"></i>Enter a unique identifier for this faculty member
+                            </p>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Civil Status -->
                             <div>

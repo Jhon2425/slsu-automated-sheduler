@@ -69,7 +69,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">Total Faculty</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->count() }}</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->count() }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
                                 <i class="fas fa-users text-[#6D9773] mr-1"></i>
                                 Registered members
@@ -87,7 +87,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">With Subjects</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->where('subjects_count', '>', 0)->count() }}</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->where('subjects_count', '>', 0)->count() }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
                                 <i class="fas fa-book text-blue-400 mr-1"></i>
                                 Have assigned subjects
@@ -105,7 +105,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">Total Subjects</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculties->sum('subjects_count') }}</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->sum('subjects_count') }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
                                 <i class="fas fa-clipboard-list text-purple-400 mr-1"></i>
                                 Subjects assigned
@@ -134,13 +134,13 @@
                         </div>
                         <div class="text-white/70 text-sm">
                             <i class="fas fa-users mr-2"></i>
-                            {{ $faculties->count() }} {{ Str::plural('member', $faculties->count()) }}
+                            {{ $faculty->count() }} {{ Str::plural('member', $faculty->count()) }}
                         </div>
                     </div>
                 </div>
 
                 <div class="overflow-x-auto">
-                    @if($faculties->count() > 0)
+                    @if($faculty->count() > 0)
                         <table class="w-full">
                             <thead style="background: rgba(109, 151, 115, 0.1); backdrop-filter: blur(5px);">
                                 <tr>
@@ -159,7 +159,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-white/10">
-                                @foreach($faculties as $index => $faculty)
+                                @foreach($faculty as $index => $faculty)
                                     <tr class="table-row hover:bg-white/5 transition-all duration-300" 
                                         style="animation: tableRowFadeIn 0.5s ease-out {{ $index * 0.05 }}s both;">
                                         <td class="px-6 py-4 whitespace-nowrap">

@@ -21,7 +21,7 @@ class FacultyController extends Controller
      */
     public function index()
     {
-        $faculties = User::whereHas('faculty')
+        $faculty = User::whereHas('faculty')
             ->with([
                 'faculty' => function ($q) {
                     $q->withCount('facultySubjects');
@@ -29,7 +29,7 @@ class FacultyController extends Controller
             ])
             ->get();
 
-        return view('admin.faculty.index', compact('faculties'));
+        return view('admin.faculty.index', compact('faculty'));
     }
 
     /**
@@ -49,9 +49,10 @@ class FacultyController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|confirmed|min:8',
+            'name'        => 'required|string|max:255',
+            'faculty_id'  => 'required|string|max:255|unique:faculty,faculty_id',
+            'email'       => 'required|email|unique:users,email',
+            'password'    => 'required|confirmed|min:8',
 
             'civil_status'       => 'required|string',
             'birthdate'          => 'required|date',
@@ -94,6 +95,7 @@ class FacultyController extends Controller
                 // 2️⃣ Create Faculty Profile
                 $faculty = Faculty::create([
                     'user_id'            => $user->id,
+                    'faculty_id'         => $request->faculty_id,
                     'name'               => $request->name,
                     'civil_status'       => $request->civil_status,
                     'birthdate'          => $request->birthdate,
@@ -211,10 +213,13 @@ class FacultyController extends Controller
      */
     public function update(Request $request, User $faculty)
     {
+        $facultyProfile = $faculty->faculty;
+
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email,' . $faculty->id,
-            'password' => 'nullable|confirmed|min:8',
+            'name'        => 'required|string|max:255',
+            'faculty_id'  => 'required|string|max:255|unique:faculty,faculty_id,' . $facultyProfile->id,
+            'email'       => 'required|email|unique:users,email,' . $faculty->id,
+            'password'    => 'nullable|confirmed|min:8',
 
             'civil_status'       => 'required|string',
             'birthdate'          => 'required|date',
@@ -244,8 +249,6 @@ class FacultyController extends Controller
             'unavailabilities.*.reason'      => 'nullable|string',
         ]);
 
-        $facultyProfile = $faculty->faculty;
-
         try {
             DB::transaction(function () use ($request, $faculty, $facultyProfile) {
                 
@@ -263,6 +266,7 @@ class FacultyController extends Controller
 
                 // 2️⃣ Update Faculty Profile
                 $facultyProfile->update([
+                    'faculty_id'         => $request->faculty_id,
                     'name'               => $request->name,
                     'civil_status'       => $request->civil_status,
                     'birthdate'          => $request->birthdate,

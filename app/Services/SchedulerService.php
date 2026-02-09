@@ -86,6 +86,15 @@ class SchedulerService
                 'count' => $facultyAssignments->count(),
                 'sample_data' => $facultyAssignments->take(2)->toArray()
             ]);
+            
+            // Log faculty unavailability information
+            $facultiesWithUnavailability = DB::table('faculty_unavailabilities')
+                ->distinct()
+                ->count('faculty_id');
+            
+            if ($facultiesWithUnavailability > 0) {
+                Log::info("Found {$facultiesWithUnavailability} faculties with unavailability restrictions");
+            }
 
             if ($facultyAssignments->isEmpty()) {
                 return [
@@ -171,6 +180,16 @@ class SchedulerService
                 }
 
                 if (!$scheduled) {
+                    // Check if conflict was due to faculty unavailability
+                    $unavailabilityReason = '';
+                    $facultyUnavailabilities = DB::table('faculty_unavailabilities')
+                        ->where('faculty_id', $assignment->faculty_id)
+                        ->get();
+                    
+                    if ($facultyUnavailabilities->isNotEmpty()) {
+                        $unavailabilityReason = ' Faculty has ' . $facultyUnavailabilities->count() . ' unavailability slot(s).';
+                    }
+                    
                     $conflicts[] = [
                         'assignment_id' => $assignment->assignment_id,
                         'faculty' => $assignment->faculty_name,
@@ -178,7 +197,7 @@ class SchedulerService
                         'lecture_units' => $lectureUnits,
                         'laboratory_units' => $labUnits,
                         'total_units' => $totalUnits,
-                        'reason' => 'Could not find available time slots after ' . $maxAttempts . ' attempts.'
+                        'reason' => 'Could not find available time slots after ' . $maxAttempts . ' attempts.' . $unavailabilityReason
                     ];
                 }
             }
@@ -383,9 +402,45 @@ class SchedulerService
         return $continuousSlots;
     }
 
+    /**
+     * Check if faculty is unavailable at the given day and time
+     */
+    private function isFacultyUnavailable($facultyId, $day, $startTime, $endTime)
+    {
+        try {
+            // Convert day name to number if needed
+            $dayNumber = is_numeric($day) ? $day : $this->convertDayToNumber($day);
+            
+            // Query faculty_unavailabilities table
+            $unavailabilities = DB::table('faculty_unavailabilities')
+                ->where('faculty_id', $facultyId)
+                ->where('day', $dayNumber)
+                ->get();
+            
+            // Check if any unavailability conflicts with the proposed time
+            foreach ($unavailabilities as $unavailability) {
+                if ($this->timesOverlap($startTime, $endTime, $unavailability->start_time, $unavailability->end_time)) {
+                    Log::info("Faculty {$facultyId} is unavailable on day {$dayNumber} from {$unavailability->start_time} to {$unavailability->end_time}");
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            Log::warning("Error checking faculty unavailability: " . $e->getMessage());
+            // If there's an error checking unavailability, assume available to not block scheduling
+            return false;
+        }
+    }
+
     private function isSlotAvailableForAssignment($schedules, $day, $startTime, $endTime, $classroomId, $assignment)
     {
         $assignmentSection = $assignment->year_level . '-A';
+
+        // Check if faculty is unavailable at this time
+        if ($this->isFacultyUnavailable($assignment->faculty_id, $day, $startTime, $endTime)) {
+            return false;
+        }
 
         foreach ($schedules as $schedule) {
             $scheduleDay = $schedule['day_name'] ?? $schedule['day'];
@@ -399,6 +454,32 @@ class SchedulerService
         }
 
         return true;
+    }
+
+    /**
+     * Get faculty unavailability summary for a specific faculty member
+     */
+    private function getFacultyUnavailabilitySummary($facultyId)
+    {
+        try {
+            $unavailabilities = DB::table('faculty_unavailabilities')
+                ->where('faculty_id', $facultyId)
+                ->get();
+            
+            if ($unavailabilities->isEmpty()) {
+                return 'No unavailability restrictions';
+            }
+            
+            $summary = [];
+            foreach ($unavailabilities as $unavail) {
+                $dayName = array_search($unavail->day, $this->dayNameToNumber);
+                $summary[] = "{$dayName}: {$unavail->start_time}-{$unavail->end_time}";
+            }
+            
+            return implode(', ', $summary);
+        } catch (Exception $e) {
+            return 'Unable to fetch unavailability';
+        }
     }
 
     private function timesOverlap($start1, $end1, $start2, $end2)
@@ -444,7 +525,8 @@ class SchedulerService
                             'units'           => $totalUnits,
                             'year_section'    => $yearSection,
                             'classroom_name'  => $classroom->room_name ?? $classroom->name ?? 'Room ' . $classroom->id,
-                            'year_level'      => $assignment->year_level
+                            'year_level'      => $assignment->year_level,
+                            'semester'        => $assignment->semester
                         ];
                     }
                 }
@@ -493,6 +575,7 @@ class SchedulerService
             $savedExams = 0;
             $errors = [];
 
+            // Save regular class schedules to schedules table
             foreach ($schedules as $index => $schedule) {
                 try {
                     // Validate required fields
@@ -516,7 +599,7 @@ class SchedulerService
                     $dayName = $schedule['day_name'] ?? $schedule['day'];
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Build schedule data - FIXED for new schema
+                    // Build schedule data
                     $data = [
                         'faculty_id' => $schedule['faculty_id'],
                         'subject_id' => $schedule['subject_id'],
@@ -548,6 +631,7 @@ class SchedulerService
                 }
             }
 
+            // Save examinations ONLY to examinations table (NOT to schedules table)
             foreach ($examinations as $index => $exam) {
                 try {
                     if (empty($exam['faculty_id']) || empty($exam['subject_id']) || empty($exam['classroom_id'])) {
@@ -558,43 +642,23 @@ class SchedulerService
                     $startTime = $this->ensureTimeFormat($exam['start_time']);
                     $endTime = $this->ensureTimeFormat($exam['end_time']);
                     
-                    // FIXED: Extract day number from exam_date
+                    // Extract day number from exam_date
                     $examDate = Carbon::parse($exam['exam_date']);
                     $dayName = $examDate->format('l'); // Gets full day name (Monday, Tuesday, etc.)
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Save to examinations table
+                    // Save ONLY to examinations table
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
                         'exam_date' => $exam['exam_date'] ?? null,
-                        'day' => $dayNumber, // FIXED: Use day number (1-7) instead of day name
+                        'day' => $dayNumber,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
                         'exam_type' => $exam['exam_type'] ?? 'Final',
                         'year_section' => $exam['year_section'] ?? null,
                         'is_active' => true
-                    ]);
-
-                    // ALSO save to schedules table
-                    $currentYear = now()->year;
-                    $nextYear = $currentYear + 1;
-                    
-                    Schedule::create([
-                        'faculty_id' => $exam['faculty_id'],
-                        'subject_id' => $exam['subject_id'],
-                        'classroom_id' => $exam['classroom_id'],
-                        'day' => $dayNumber,
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
-                        'class_type' => 'Lecture', // Use 'Lecture' since 'Examination' is not in ENUM
-                        'year_level' => $exam['year_level'] ?? null,
-                        'semester' => $exam['semester'] ?? null,
-                        'schedule_date' => $exam['exam_date'] ?? null,
-                        'section' => $exam['year_section'] ?? null,
-                        'academic_year' => "{$currentYear}-{$nextYear}",
-                        'is_active' => true,
                     ]);
 
                     $savedExams++;
