@@ -115,15 +115,22 @@ class FacultyController extends Controller
                 // 4️⃣ Assign Subjects (optional)
                 if ($request->filled('subjects')) {
                     foreach ($request->subjects as $subject) {
-                        FacultySubject::create([
-                            'faculty_id'       => $faculty->id,
-                            'subject_id'       => $subject['subject_id'],
-                            'program_id'       => $subject['program_id'] ?? null,
-                            'lecture_units'    => $subject['lecture_units'] ?? 0,
-                            'laboratory_units' => $subject['laboratory_units'] ?? 0,
-                            'year_level'       => $subject['year_level'] ?? null,
-                            'semester'         => $subject['semester'] ?? null,
-                        ]);
+                        // Get lecture and lab units with fallback to subject defaults
+                        $lectureUnits = $subject['lecture_units'] ?? 0;
+                        $laboratoryUnits = $subject['laboratory_units'] ?? 0;
+
+                        // Only create assignment if at least one unit type has a value
+                        if ($lectureUnits > 0 || $laboratoryUnits > 0) {
+                            FacultySubject::create([
+                                'faculty_id'       => $faculty->id,
+                                'subject_id'       => $subject['subject_id'],
+                                'program_id'       => $subject['program_id'] ?? null,
+                                'lecture_units'    => $lectureUnits,
+                                'laboratory_units' => $laboratoryUnits,
+                                'year_level'       => $subject['year_level'] ?? null,
+                                'semester'         => $subject['semester'] ?? null,
+                            ]);
+                        }
                     }
                 }
 
@@ -302,15 +309,22 @@ class FacultyController extends Controller
                 
                 if ($request->filled('subjects')) {
                     foreach ($request->subjects as $subject) {
-                        FacultySubject::create([
-                            'faculty_id'       => $facultyProfile->id,
-                            'subject_id'       => $subject['subject_id'],
-                            'program_id'       => $subject['program_id'] ?? null,
-                            'lecture_units'    => $subject['lecture_units'] ?? 0,
-                            'laboratory_units' => $subject['laboratory_units'] ?? 0,
-                            'year_level'       => $subject['year_level'] ?? null,
-                            'semester'         => $subject['semester'] ?? null,
-                        ]);
+                        // Get lecture and lab units
+                        $lectureUnits = $subject['lecture_units'] ?? 0;
+                        $laboratoryUnits = $subject['laboratory_units'] ?? 0;
+
+                        // Only create assignment if at least one unit type has a value
+                        if ($lectureUnits > 0 || $laboratoryUnits > 0) {
+                            FacultySubject::create([
+                                'faculty_id'       => $facultyProfile->id,
+                                'subject_id'       => $subject['subject_id'],
+                                'program_id'       => $subject['program_id'] ?? null,
+                                'lecture_units'    => $lectureUnits,
+                                'laboratory_units' => $laboratoryUnits,
+                                'year_level'       => $subject['year_level'] ?? null,
+                                'semester'         => $subject['semester'] ?? null,
+                            ]);
+                        }
                     }
                 }
 
@@ -451,12 +465,17 @@ class FacultyController extends Controller
                 // Add new ones
                 if ($request->filled('subjects')) {
                     foreach ($request->subjects as $subjectId) {
+                        // Get subject to use default units
+                        $subject = Subject::find($subjectId);
+                        
                         FacultySubject::create([
                             'faculty_id' => $facultyProfile->id,
                             'subject_id' => $subjectId,
-                            'program_id' => null,
-                            'lecture_units' => 0,
-                            'laboratory_units' => 0,
+                            'program_id' => $subject->program_id ?? null,
+                            'lecture_units' => $subject->lec ?? 0,
+                            'laboratory_units' => $subject->lab ?? 0,
+                            'year_level' => $subject->year_level ?? null,
+                            'semester' => $subject->semester ?? null,
                         ]);
                     }
                 }

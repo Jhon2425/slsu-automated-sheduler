@@ -216,15 +216,21 @@
                                                 #{{ $exam->id }}
                                             </td>
                                             <td class="px-6 py-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ optional($exam->subject)->subject_name }}</div>
-                                                <div class="text-xs text-gray-500">{{ optional($exam->subject)->course_code }}</div>
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $exam->subject ? $exam->subject->subject_name : ($exam->course_subject ?? 'N/A') }}
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    {{ $exam->subject ? $exam->subject->course_code : ($exam->course_code ?? 'N/A') }}
+                                                </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
                                                     <div class="bg-blue-100 rounded-full p-2 mr-3">
                                                         <i class="fas fa-user-tie text-blue-600 text-sm"></i>
                                                     </div>
-                                                    <div class="text-sm font-medium text-gray-900">{{ optional($exam->faculty)->name }}</div>
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $exam->faculty ? $exam->faculty->name : ($exam->faculty_name ?? 'N/A') }}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
@@ -232,7 +238,7 @@
                                                     @if($exam->exam_type == 'Midterm') bg-yellow-100 text-yellow-800
                                                     @elseif($exam->exam_type == 'Final') bg-red-100 text-red-800
                                                     @else bg-blue-100 text-blue-800 @endif">
-                                                    {{ $exam->exam_type }}
+                                                    {{ $exam->exam_type ?? 'Final' }}
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
@@ -245,7 +251,7 @@
                                                             $dateFormatted = $date->format('M d, Y');
                                                             $dayName = $date->format('l');
                                                         } catch (\Exception $e) {
-                                                            $dateFormatted = $exam->exam_date;
+                                                            $dateFormatted = $exam->exam_date ?? 'N/A';
                                                             $dayName = $exam->day_name ?? '';
                                                         }
                                                     @endphp
@@ -264,7 +270,7 @@
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                                     <i class="fas fa-door-open mr-1"></i>
-                                                    {{ optional($exam->classroom)->room_name }}
+                                                    {{ $exam->classroom ? $exam->classroom->room_name : ($exam->classroom_name ?? 'N/A') }}
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">

@@ -14,7 +14,8 @@ class Examination extends Model
         'subject_id',
         'classroom_id',
         'exam_date',
-        'day',           // IMPORTANT: Add this field to fillable
+        'day',
+        'day_name',      // Add this to support direct day_name storage
         'start_time',
         'end_time',
         'exam_type',
@@ -24,8 +25,6 @@ class Examination extends Model
 
     protected $casts = [
         'exam_date' => 'date',
-        'start_time' => 'datetime:H:i:s',
-        'end_time' => 'datetime:H:i:s',
         'is_active' => 'boolean',
     ];
 
@@ -40,16 +39,31 @@ class Examination extends Model
         7 => 'Sunday',
     ];
 
-    // Accessor: Convert day number to day name
+    /**
+     * Accessor: Get day name from day number or direct day_name field
+     * This will work whether you store day as number or day_name as string
+     */
     public function getDayNameAttribute()
     {
-        return $this->dayMap[$this->day] ?? 'Unknown';
+        // If day_name is already set in the database, use it
+        if (isset($this->attributes['day_name']) && $this->attributes['day_name']) {
+            return $this->attributes['day_name'];
+        }
+        
+        // Otherwise, convert from day number
+        if (isset($this->attributes['day'])) {
+            return $this->dayMap[$this->attributes['day']] ?? 'Unknown';
+        }
+        
+        return 'Unknown';
     }
 
-    // Relationships
+    /**
+     * Relationships
+     */
     public function faculty()
     {
-        return $this->belongsTo(User::class, 'faculty_id');
+        return $this->belongsTo(Faculty::class, 'faculty_id');
     }
 
     public function subject()

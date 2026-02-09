@@ -73,6 +73,12 @@ class SchedulerService
                 return $this->fail('No classrooms available.');
             }
 
+            // Create a lookup map for classroom names
+            $classroomMap = [];
+            foreach ($classrooms as $room) {
+                $classroomMap[$room->id] = $room->room_name;
+            }
+
             $schedules = [];
             $exams = [];
             $conflicts = [];
@@ -88,7 +94,8 @@ class SchedulerService
                     $assignment,
                     $distribution,
                     $classrooms,
-                    $schedules
+                    $schedules,
+                    $classroomMap
                 );
 
                 if ($sessionSet === false) {
@@ -101,7 +108,7 @@ class SchedulerService
                 }
 
                 $schedules = array_merge($schedules, $sessionSet);
-                $exams[] = $this->generateExam($assignment, $classrooms);
+                $exams[] = $this->generateExam($assignment, $classrooms, $classroomMap);
             }
 
             return [
@@ -114,10 +121,117 @@ class SchedulerService
 
         } catch (Exception $e) {
             Log::error('Schedule generation error', [
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return $this->fail($e->getMessage());
+        }
+    }
+
+    /**
+     * ============================
+     * SAVE SCHEDULE TO DATABASE
+     * ============================
+     */
+    public function saveSchedule(array $scheduleData): array
+    {
+        try {
+            // Validate input structure
+            if (!isset($scheduleData['schedules'])) {
+                Log::error('Invalid schedule data - missing schedules key', [
+                    'data_keys' => array_keys($scheduleData)
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Invalid schedule data structure. Missing schedules key.',
+                ];
+            }
+
+            if (!isset($scheduleData['examinations'])) {
+                Log::error('Invalid schedule data - missing examinations key', [
+                    'data_keys' => array_keys($scheduleData)
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Invalid schedule data structure. Missing examinations key.',
+                ];
+            }
+
+            // Check if arrays are empty
+            if (empty($scheduleData['schedules']) && empty($scheduleData['examinations'])) {
+                return [
+                    'success' => false,
+                    'message' => 'No schedules or examinations to save.',
+                ];
+            }
+
+            DB::beginTransaction();
+
+            // Clear existing schedules
+            Schedule::truncate();
+            Examination::truncate();
+
+            // Save schedules
+            $savedSchedules = 0;
+            foreach ($scheduleData['schedules'] as $schedule) {
+                Schedule::create([
+                    'faculty_id' => $schedule['faculty_id'],
+                    'subject_id' => $schedule['subject_id'],
+                    'classroom_id' => $schedule['classroom_id'],
+                    'day_name' => $schedule['day_name'],
+                    'start_time' => $schedule['start_time'],
+                    'end_time' => $schedule['end_time'],
+                    'class_type' => $schedule['class_type'],
+                    'schedule_date' => $schedule['schedule_date'],
+                    'year_section' => $schedule['year_section'] ?? null,
+                ]);
+                $savedSchedules++;
+            }
+
+            // Save examinations
+            $savedExams = 0;
+            foreach ($scheduleData['examinations'] as $exam) {
+                Examination::create([
+                    'faculty_id' => $exam['faculty_id'],
+                    'subject_id' => $exam['subject_id'],
+                    'classroom_id' => $exam['classroom_id'],
+                    'exam_date' => $exam['exam_date'],
+                    'day_name' => $exam['day_name'],
+                    'start_time' => $exam['start_time'],
+                    'end_time' => $exam['end_time'],
+                    'exam_type' => $exam['exam_type'],
+                    'year_section' => $exam['year_section'] ?? null,
+                ]);
+                $savedExams++;
+            }
+
+            DB::commit();
+
+            Log::info('Schedules saved successfully', [
+                'schedules' => $savedSchedules,
+                'exams' => $savedExams
+            ]);
+
+            return [
+                'success' => true,
+                'message' => "Successfully saved {$savedSchedules} schedules and {$savedExams} examinations",
+                'schedules_count' => $savedSchedules,
+                'exams_count' => $savedExams,
+            ];
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Error saving schedules', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to save schedules: ' . $e->getMessage(),
+            ];
         }
     }
 
@@ -157,7 +271,7 @@ class SchedulerService
      * SESSION SCHEDULER
      * ============================
      */
-    private function scheduleSessions($assignment, array $distribution, $rooms, array $existing)
+    private function scheduleSessions($assignment, array $distribution, $rooms, array $existing, array $classroomMap)
     {
         $sessions = [];
         $usedDays = [];
@@ -170,7 +284,8 @@ class SchedulerService
                 $block['type'],
                 $rooms,
                 array_merge($existing, $sessions),
-                $usedDays
+                $usedDays,
+                $classroomMap
             );
 
             if (!$slot) {
@@ -184,7 +299,7 @@ class SchedulerService
         return $sessions;
     }
 
-    private function findSlot($assignment, int $hours, string $type, $rooms, array $existing, array $usedDays)
+    private function findSlot($assignment, int $hours, string $type, $rooms, array $existing, array $usedDays, array $classroomMap)
     {
         $days = $this->daysOfWeek;
         shuffle($days);
@@ -206,6 +321,7 @@ class SchedulerService
                             'faculty_name' => $assignment->faculty_name,
                             'course_code' => $assignment->course_code,
                             'course_subject' => $assignment->subject_name,
+                            'classroom_name' => $classroomMap[$room->id] ?? 'N/A', // ADD THIS
                             'year_section' => ($assignment->year_level ?? 1) . '-A',
                             'schedule_date' => Carbon::parse("next $day")->format('Y-m-d'),
                         ];
@@ -255,7 +371,7 @@ class SchedulerService
      * EXAM GENERATION
      * ============================
      */
-    private function generateExam($assignment, $classrooms): array
+    private function generateExam($assignment, $classrooms, array $classroomMap): array
     {
         $day = $this->daysOfWeek[array_rand($this->daysOfWeek)];
         $room = $classrooms->random();
@@ -269,6 +385,10 @@ class SchedulerService
             'start_time' => '08:00:00',
             'end_time' => '10:00:00',
             'exam_type' => 'Final',
+            'faculty_name' => $assignment->faculty_name,
+            'course_code' => $assignment->course_code,
+            'course_subject' => $assignment->subject_name,
+            'classroom_name' => $classroomMap[$room->id] ?? 'N/A', // ADD THIS
             'year_section' => ($assignment->year_level ?? 1) . '-A',
         ];
     }
