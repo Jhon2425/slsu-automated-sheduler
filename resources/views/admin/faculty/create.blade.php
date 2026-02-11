@@ -66,14 +66,13 @@
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                         </div>
 
-                        <!-- Faculty ID -->
+                        <!-- Faculty Code -->
                         <div>
                             <label class="block text-white font-semibold mb-2">
-                                <i class="fas fa-id-card mr-2"></i>Faculty ID <span class="text-red-400">*</span>
+                                <i class="fas fa-id-card mr-2"></i>Faculty Code <span class="text-red-400">*</span>
                             </label>
                             <input type="text" name="faculty_id" value="{{ old('faculty_id') }}" required
-                                   placeholder="e.g., FAC-2024-001"
-                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                                class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             <p class="mt-1 text-sm text-white/60">
                                 <i class="fas fa-info-circle mr-1"></i>Enter a unique identifier for this faculty member
                             </p>
@@ -282,41 +281,59 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .glass-card select {
-            background-color: rgba(255, 255, 255, 0.85);
-            color: #000000;
-            border: 2px solid #10b981;
+        /* Make selects match your inputs */
+        .glass-card select,
+        select {
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.20);
+            color: #ffffff;
+        }
+
+        /* Keep focus consistent */
+        .glass-card select:focus,
+        select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
+            border-color: transparent;
+        }
+
+                /* ✅ Force green focus for ALL inputs (removes blue focus line) */
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none !important;
+            border-color: transparent !important;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35) !important;
+        }
+
+        /* ✅ Specifically catch number inputs (some browsers are stubborn) */
+        input[type="number"]:focus {
+            outline: none !important;
+            border-color: transparent !important;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35) !important;
+        }
+
+        /* Dropdown list colors */
+        /* Make dropdown list clean white */
+        select option {
+            background-color: #ffffff;
+            color: #111827; /* dark text */
+        }
+
+        /* ✅ Remove number input arrows (Chrome, Edge, Safari) */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* ✅ Remove number input arrows (Firefox) */
+        input[type="number"] {
+            -moz-appearance: textfield;
         }
 
         select, input, textarea {
             color-scheme: dark;
-        }
-
-        select {
-            background-color: rgba(255, 255, 255, 0.85);
-            color: #000000;
-            border: 2px solid #10b981;
-            border-radius: 0.75rem;
-            padding: 0.75rem 1rem;
-            outline: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        select:focus {
-            border-color: #10b981;
-            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
-            background-color: rgba(255, 255, 255, 0.85);
-            color: #000000;
-        }
-
-        select option {
-            background-color: #ffffff;
-            color: #000000;
-            border: none;
-            box-shadow: none;
         }
 
         select option:hover {
