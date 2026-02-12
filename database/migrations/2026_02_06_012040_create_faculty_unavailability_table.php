@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('faculty_id')
                   ->constrained('faculty')
                   ->cascadeOnDelete();
+            $table->string('faculty_code'); // Added faculty_code
 
             $table->string('day');
             $table->time('time_from');
@@ -20,6 +21,9 @@ return new class extends Migration
             $table->string('reason')->nullable();
 
             $table->timestamps();
+            
+            // Optional: Add index for better query performance
+            $table->index(['faculty_code', 'day']);
         });
     }
 

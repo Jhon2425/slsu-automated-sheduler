@@ -19,6 +19,7 @@ class FacultyUnavailability extends Model
      */
     protected $fillable = [
         'faculty_id',
+        'faculty_code', // Added faculty_code
         'day',
         'time_from',
         'time_to',
@@ -68,6 +69,34 @@ class FacultyUnavailability extends Model
         int $excludeId = null
     ): bool {
         $query = self::where('faculty_id', $facultyId)
+            ->where('day', $day)
+            ->where(function ($q) use ($timeFrom, $timeTo) {
+                $q->whereBetween('time_from', [$timeFrom, $timeTo])
+                  ->orWhereBetween('time_to', [$timeFrom, $timeTo])
+                  ->orWhere(function ($q2) use ($timeFrom, $timeTo) {
+                      $q2->where('time_from', '<=', $timeFrom)
+                         ->where('time_to', '>=', $timeTo);
+                  });
+            });
+
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        return $query->exists();
+    }
+    
+    /**
+     * Alternative overlap check using faculty_code
+     */
+    public static function hasOverlapByCode(
+        string $facultyCode,
+        string $day,
+        string $timeFrom,
+        string $timeTo,
+        int $excludeId = null
+    ): bool {
+        $query = self::where('faculty_code', $facultyCode)
             ->where('day', $day)
             ->where(function ($q) use ($timeFrom, $timeTo) {
                 $q->whereBetween('time_from', [$timeFrom, $timeTo])

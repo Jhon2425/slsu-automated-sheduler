@@ -167,11 +167,12 @@ class FacultyController extends Controller
             if (!empty($validated['unavailabilities'])) {
                 foreach ($validated['unavailabilities'] as $unavail) {
                     FacultyUnavailability::create([
-                        'faculty_id' => $faculty->id,
-                        'day'        => $unavail['day'],
-                        'time_from'  => $unavail['time_from'],
-                        'time_to'    => $unavail['time_to'],
-                        'reason'     => $unavail['reason'] ?? null,
+                        'faculty_id'  => $faculty->id,
+                        'faculty_code' => $faculty->faculty_code, // ✅ Added faculty_code
+                        'day'         => $unavail['day'],
+                        'time_from'   => $unavail['time_from'],
+                        'time_to'     => $unavail['time_to'],
+                        'reason'      => $unavail['reason'] ?? null,
                     ]);
                     $unavailabilityCount++;
                 }
@@ -255,15 +256,15 @@ class FacultyController extends Controller
             return (object)[
                 'id' => $unavail->id,
                 'day' => $unavail->day,
-                'time_from' => $unavail->time_from, // ✅ Ensure time_from is included
-                'time_to' => $unavail->time_to,     // ✅ Ensure time_to is included
+                'time_from' => $unavail->time_from,
+                'time_to' => $unavail->time_to,
                 'reason' => $unavail->reason,
             ];
         });
 
         // Assign the transformed data to the faculty profile
         $facultyProfile->subjects = $facultySubjects;
-        $facultyProfile->unavailabilities = $unavailabilities; // ✅ Reassign transformed unavailabilities
+        $facultyProfile->unavailabilities = $unavailabilities;
 
         return view('admin.faculty.edit', [
             'user' => $faculty,
@@ -444,11 +445,12 @@ class FacultyController extends Controller
             if (!empty($validated['unavailabilities'])) {
                 foreach ($validated['unavailabilities'] as $unavail) {
                     FacultyUnavailability::create([
-                        'faculty_id' => $facultyProfile->id,
-                        'day'        => $unavail['day'],
-                        'time_from'  => $unavail['time_from'],
-                        'time_to'    => $unavail['time_to'],
-                        'reason'     => $unavail['reason'] ?? null,
+                        'faculty_id'  => $facultyProfile->id,
+                        'faculty_code' => $facultyProfile->faculty_code, // ✅ Added faculty_code
+                        'day'         => $unavail['day'],
+                        'time_from'   => $unavail['time_from'],
+                        'time_to'     => $unavail['time_to'],
+                        'reason'      => $unavail['reason'] ?? null,
                     ]);
                     $unavailabilityCount++;
                 }
