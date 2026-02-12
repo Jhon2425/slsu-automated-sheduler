@@ -41,7 +41,7 @@
             @endif
 
             <!-- Form -->
-            <form action="{{ route('admin.faculty.update', $faculty->id) }}" method="POST" class="space-y-6">
+            <form action="{{ route('admin.faculty.update', $user->id) }}" method="POST" class="space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -67,12 +67,12 @@
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                         </div>
 
-                        <!-- Faculty ID -->
+                        <!-- Faculty Code -->
                         <div>
                             <label class="block text-white font-semibold mb-2">
-                                <i class="fas fa-id-card mr-2"></i>Faculty ID <span class="text-red-400">*</span>
+                                <i class="fas fa-id-card mr-2"></i>Faculty Code <span class="text-red-400">*</span>
                             </label>
-                            <input type="text" name="faculty_id" value="{{ old('faculty_id', $faculty->faculty_id) }}" required
+                            <input type="text" name="faculty_code" value="{{ old('faculty_code', $faculty->faculty_code) }}" required
                                    placeholder="e.g., FAC-2024-001"
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             <p class="mt-1 text-sm text-white/60">
@@ -101,7 +101,7 @@
                                 <label class="block text-white font-semibold mb-2">
                                     <i class="fas fa-calendar mr-2"></i>Birthdate <span class="text-red-400">*</span>
                                 </label>
-                                <input type="date" name="birthdate" value="{{ old('birthdate', $faculty->birthdate) }}" required
+                                <input type="date" name="birthdate" value="{{ old('birthdate', $faculty->birthdate?->format('Y-m-d')) }}" required
                                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             </div>
                         </div>
@@ -224,7 +224,7 @@
                             <label class="block text-white font-semibold mb-2">
                                 <i class="fas fa-envelope mr-2"></i>Email Address <span class="text-red-400">*</span>
                             </label>
-                            <input type="email" name="email" value="{{ old('email', $faculty->email) }}" required
+                            <input type="email" name="email" value="{{ old('email', $user->email) }}" required
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                         </div>
 
@@ -386,7 +386,7 @@
     <script>
         const availableSubjects = @json($subjects ?? []);
         const availablePrograms = @json($programs ?? []);
-        const existingEducation = @json($faculty->education ?? []);
+        const existingEducation = @json($faculty->educationalBackgrounds ?? []);
         const existingSubjects = @json($faculty->subjects ?? []);
         const existingUnavailabilities = @json($faculty->unavailabilities ?? []);
         
@@ -548,7 +548,7 @@
                         <option value="">Choose a subject</option>
                         ${availableSubjects.map(subject => `
                             <option value="${subject.id}"
-                                    ${existingData?.subject_id === subject.id ? 'selected' : ''}
+                                    ${existingData?.id === subject.id ? 'selected' : ''}
                                     data-code="${subject.course_code || ''}"
                                     data-year="${subject.year_level || ''}"
                                     data-lecture="${subject.lec || 0}"
@@ -609,7 +609,7 @@
                             name="subjects[${rowIndex}][lecture_units]"
                             step="0.5"
                             readonly
-                            value="${existingData?.lecture_units || 0}"
+                            value="${existingData?.lec || 0}"
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
@@ -622,7 +622,7 @@
                             name="subjects[${rowIndex}][laboratory_units]"
                             step="0.5"
                             readonly
-                            value="${existingData?.laboratory_units || 0}"
+                            value="${existingData?.lab || 0}"
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>

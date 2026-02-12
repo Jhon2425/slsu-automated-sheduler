@@ -11,9 +11,8 @@ class FacultySubject extends Model
 
     protected $table = 'faculty_subject';
 
-    public $timestamps = false; // 🔑 VERY IMPORTANT
-
     protected $fillable = [
+        'faculty_code',
         'faculty_id',
         'subject_id',
         'program_id',
@@ -36,5 +35,10 @@ class FacultySubject extends Model
     public function subject()
     {
         return $this->belongsTo(Subject::class);
+    }
+
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
     }
 }

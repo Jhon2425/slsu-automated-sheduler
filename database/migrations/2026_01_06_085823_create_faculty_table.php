@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             
             // Personal Information
+            $table->string('faculty_code')->unique();
             $table->string('name');
             $table->enum('civil_status', ['Single', 'Married', 'Widowed', 'Divorced']);
             $table->date('birthdate');
@@ -31,13 +32,14 @@ return new class extends Migration
         // Pivot table for faculty-subject assignments
         Schema::create('faculty_subject', function (Blueprint $table) {
             $table->id();
+            $table->string('faculty_code'); // Added faculty_code
             $table->foreignId('faculty_id')->constrained('faculty')->onDelete('cascade');
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');
             $table->foreignId('program_id')->nullable()->constrained()->onDelete('set null');
             
             // Subject details
-            $table->string('year_level')->nullable(); // e.g., "1st Year", "2nd Year", "3rd Year", "4th Year"
-            $table->string('semester')->nullable(); // e.g., "1st Semester", "2nd Semester", "Summer"
+            $table->string('year_level')->nullable();
+            $table->string('semester')->nullable();
             $table->decimal('lecture_units', 3, 1)->nullable();
             $table->decimal('laboratory_units', 3, 1)->nullable();
             
@@ -45,6 +47,9 @@ return new class extends Migration
             
             // Ensure unique combination of faculty, subject, and program
             $table->unique(['faculty_id', 'subject_id', 'program_id']);
+            
+            // Add index for faculty_code for faster lookups
+            $table->index('faculty_code');
         });
     }
 

@@ -87,7 +87,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">With Subjects</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->where('subjects_count', '>', 0)->count() }}</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->filter(function($f) { return $f->faculty && $f->faculty->faculty_subjects_count > 0; })->count() }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
                                 <i class="fas fa-book text-blue-400 mr-1"></i>
                                 Have assigned subjects
@@ -105,7 +105,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-white/80 text-sm font-medium mb-2">Total Subjects</p>
-                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->sum('subjects_count') }}</p>
+                            <p class="text-4xl font-bold text-white number-animate">{{ $faculty->sum(function($f) { return $f->faculty ? $f->faculty->faculty_subjects_count : 0; }) }}</p>
                             <p class="text-xs text-white/60 mt-2 flex items-center">
                                 <i class="fas fa-clipboard-list text-purple-400 mr-1"></i>
                                 Subjects assigned
@@ -145,7 +145,7 @@
                             <thead style="background: rgba(109, 151, 115, 0.1); backdrop-filter: blur(5px);">
                                 <tr>
                                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
-                                        <i class="fas fa-hashtag mr-2"></i>ID
+                                        <i class="fas fa-id-card mr-2"></i>Faculty Code
                                     </th>
                                     <th class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                         <i class="fas fa-user mr-2"></i>Faculty Name
@@ -159,13 +159,13 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-white/10">
-                                @foreach($faculty as $index => $faculty)
+                                @foreach($faculty as $index => $member)
                                     <tr class="table-row hover:bg-white/5 transition-all duration-300" 
                                         style="animation: tableRowFadeIn 0.5s ease-out {{ $index * 0.05 }}s both;">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="text-sm font-bold text-white/90 px-3 py-1 rounded-full inline-flex items-center" style="background: rgba(109, 151, 115, 0.2);">
-                                                <i class="fas fa-id-badge mr-2 text-xs"></i> 
-                                                #{{ $faculty->id }}
+                                                <i class="fas fa-id-card mr-2 text-xs"></i> 
+                                                {{ $member->faculty->faculty_code ?? 'N/A' }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 align-middle">
@@ -175,7 +175,7 @@
                                                     <i class="fas fa-user text-white"></i>
                                                 </div>
                                                 <div>
-                                                    <div class="text-sm font-bold text-white">{{ $faculty->name }}</div>
+                                                    <div class="text-sm font-bold text-white">{{ $member->name }}</div>
                                                     <div class="text-xs text-white/60">
                                                         <i class="fas fa-user-tag mr-1"></i>Faculty Member
                                                     </div>
@@ -184,33 +184,33 @@
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="text-sm text-white/80">
-                                                <i class="fas fa-envelope mr-2 text-white/60"></i>{{ $faculty->email }}
+                                                <i class="fas fa-envelope mr-2 text-white/60"></i>{{ $member->email }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 align-middle">
                                             <div class="flex items-center justify-center gap-3 h-full">
                                                 <!-- View Subjects Button -->
-                                                <button onclick="openViewSubjectsModal({{ $faculty->id }}, '{{ addslashes($faculty->name) }}', '#{{ $faculty->id }}')" 
+                                                <button onclick="openViewSubjectsModal({{ $member->id }}, '{{ addslashes($member->name) }}', '{{ $member->faculty->faculty_code ?? 'N/A' }}')" 
                                                         class="action-button bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg" 
                                                         title="View Assigned Subjects">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
 
                                                 <!-- Edit Faculty -->
-                                                <a href="{{ route('admin.faculty.edit', $faculty->id) }}" 
+                                                <a href="{{ route('admin.faculty.edit', $member->id) }}" 
                                                 class="action-button bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 shadow-lg" 
                                                 title="Edit Faculty">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
 
                                                 <!-- Delete Faculty -->
-                                                <form action="{{ route('admin.faculty.destroy', $faculty->id) }}" method="POST" class="inline">
+                                                <form action="{{ route('admin.faculty.destroy', $member->id) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" 
                                                             class="action-button bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg" 
                                                             title="Delete Faculty"
-                                                            onclick="return confirm('Are you sure you want to delete {{ $faculty->name }}?');">
+                                                            onclick="return confirm('Are you sure you want to delete {{ $member->name }}?');">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>
@@ -702,6 +702,7 @@
         .animate-bounce-slow {
             animation: bounceSlow 2s ease-in-out infinite;
         }
+        
         /* Faculty Management Gradient Title */
         .faculty-gradient {
             background: linear-gradient(
@@ -729,18 +730,17 @@
             color: #3b82f6;
             transform: translateY(-12px) scale(1.1);
         }
-
     </style>
 
     <script>
         let currentFacultyId = null;
 
         // View Subjects Modal Functions
-        function openViewSubjectsModal(facultyId, facultyName, facultyIdLabel) {
+        function openViewSubjectsModal(facultyId, facultyName, facultyCode) {
             console.log('Opening view modal for faculty:', facultyId);
             
             document.getElementById('viewModalFacultyName').textContent = facultyName;
-            document.getElementById('viewModalFacultyId').textContent = facultyIdLabel;
+            document.getElementById('viewModalFacultyId').textContent = facultyCode;
             document.getElementById('viewSubjectsModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
             
@@ -759,7 +759,6 @@
         }
 
         async function fetchAssignedSubjects(facultyId) {
-            // Construct URL using proper route
             const url = `/admin/faculty/${facultyId}/assigned-subjects`;
             
             console.log('Fetching assigned subjects from:', url);
@@ -777,7 +776,6 @@
                 });
                 
                 console.log('Response status:', response.status);
-                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
                 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -855,10 +853,10 @@
         }
 
         // Assignment Modal Functions
-        function openSubjectModal(facultyId, facultyName, facultyIdLabel) {
+        function openSubjectModal(facultyId, facultyName, facultyCode) {
             currentFacultyId = facultyId;
             document.getElementById('modalFacultyName').textContent = facultyName;
-            document.getElementById('modalFacultyId').textContent = facultyIdLabel;
+            document.getElementById('modalFacultyId').textContent = facultyCode;
             document.getElementById('subjectModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
             
