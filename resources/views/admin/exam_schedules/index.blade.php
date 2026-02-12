@@ -48,10 +48,6 @@
                             class="bg-red-500/30 backdrop-blur-md hover:bg-red-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
                             <i class="fas fa-file-pdf mr-2"></i>Download PDF
                         </a>
-                        <a href="{{ route('admin.examinations.download-excel') }}"
-                            class="bg-green-500/30 backdrop-blur-md hover:bg-green-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
-                            <i class="fas fa-file-excel mr-2"></i>Download Excel
-                        </a>
                         <form action="{{ route('admin.examinations.clear') }}" method="POST" onsubmit="return confirm('Are you sure you want to clear all examination schedules?');" class="inline">
                             @csrf
                             <button type="submit"
@@ -79,7 +75,7 @@
                                 </thead>
                                 <tbody>
                                     @php
-                                        $timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+                                        $timeSlots =  ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
                                         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                         
                                         $schedulesByDayAndTime = [];
@@ -105,16 +101,20 @@
                                             $endHour = (int)substr($endTime, 0, 2);
                                             $endMin = (int)substr($endTime, 3, 2);
                                             
+                                            // Calculate duration in hours
                                             $duration = $endHour - $startHour;
                                             if ($endMin > $startMin) {
                                                 $duration += 1;
                                             }
                                             
                                             if(isset($schedulesByDayAndTime[$day][$startTime])) {
-                                                $exam->calculated_rowspan = max(1, $duration);
+                                                // Calculate rowspan based on 30-minute intervals
+                                                $durationIn30MinSlots = $duration * 2; // Each hour = 2 slots of 30 minutes
+                                                $exam->calculated_rowspan = max(1, $durationIn30MinSlots);
                                                 $schedulesByDayAndTime[$day][$startTime][] = $exam;
                                                 
-                                                for($i = 1; $i < $duration; $i++) {
+                                                // Mark all occupied cells (skip first slot as it contains the exam)
+                                                for($i = 1; $i < $durationIn30MinSlots; $i++) {
                                                     $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
                                                     if($nextTimeIndex < count($timeSlots)) {
                                                         $nextTime = $timeSlots[$nextTimeIndex];
@@ -168,6 +168,7 @@
                                                                     }
                                                                     $color = $subjectColors[$exam->subject_id];
                                                                     $rowspan = $exam->calculated_rowspan ?? 1;
+                                                                    // Height calculation: 150px per 30-min slot
                                                                     $blockHeight = ($rowspan * 150) - 8;
                                                                     
                                                                     // Format display times
@@ -466,7 +467,7 @@
             return;
         }
         
-        const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+        const timeSlots =  ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
         
         const schedulesByDayAndTime = {};
         const occupiedCells = {};
@@ -486,12 +487,15 @@
             
             const duration = calculateDuration(startTime, endTime);
             
-            exam.calculated_rowspan = duration;
+            // Calculate rowspan based on 30-minute intervals
+            const durationIn30MinSlots = duration * 2; // Each hour = 2 slots of 30 minutes
+            exam.calculated_rowspan = durationIn30MinSlots;
             
             if (schedulesByDayAndTime[day] && schedulesByDayAndTime[day][startTime]) {
                 schedulesByDayAndTime[day][startTime].push(exam);
                 
-                for(let i = 1; i < duration; i++) {
+                // Mark all occupied cells (skip first slot as it contains the exam)
+                for(let i = 1; i < durationIn30MinSlots; i++) {
                     const nextTimeIndex = timeSlots.indexOf(startTime) + i;
                     if(nextTimeIndex < timeSlots.length) {
                         const nextTime = timeSlots[nextTimeIndex];
@@ -534,6 +538,7 @@
                     
                     examsAtThisTime.forEach(exam => {
                         const color = getSubjectColor(exam.subject_id, subjectMap);
+                        // Height calculation: 150px per 30-min slot
                         const blockHeight = (rowspan * 150) - 8;
                         
                         html += `

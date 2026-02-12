@@ -48,10 +48,6 @@
                             class="bg-red-500/30 backdrop-blur-md hover:bg-red-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
                             <i class="fas fa-file-pdf mr-2"></i>Download PDF
                         </a>
-                        <a href="{{ route('admin.schedules.download-excel') }}"
-                            class="bg-green-500/30 backdrop-blur-md hover:bg-green-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
-                            <i class="fas fa-file-excel mr-2"></i>Download Excel
-                        </a>
                         <form action="{{ route('admin.schedules.clear') }}" method="POST" onsubmit="return confirm('Are you sure you want to clear all schedules?');" class="inline">
                             @csrf
                             <button type="submit"
