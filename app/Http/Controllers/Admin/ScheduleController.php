@@ -375,7 +375,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Download schedules as PDF
+     * Download schedules as PDF - ACCURATE TIME PLOTTING FIX
      */
     public function downloadPDF(Request $request)
     {
@@ -386,11 +386,19 @@ class ScheduleController extends Controller
                 ->get();
 
             $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            $timeSlots = [
-                '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', 
-                '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
-            ];
             
+            // Generate 30-minute interval time slots from 7:00 AM to 7:30 PM
+            $timeSlots = [];
+            for ($hour = 7; $hour <= 19; $hour++) {
+                $timeSlots[] = sprintf('%02d:00', $hour);
+                if ($hour < 19) {
+                    $timeSlots[] = sprintf('%02d:30', $hour);
+                }
+            }
+            
+            Log::info('Time slots generated', ['slots' => $timeSlots]);
+            
+            // Initialize the grid
             $schedulesByDayAndTime = [];
             foreach($days as $day) {
                 $schedulesByDayAndTime[$day] = [];
@@ -401,44 +409,7 @@ class ScheduleController extends Controller
             
             $occupiedCells = [];
             
-            foreach($schedules as $schedule) {
-                $day = $schedule->day;
-                $startTime = substr($schedule->start_time, 0, 5);
-                $endTime = substr($schedule->end_time, 0, 5);
-                
-                if(!in_array($day, $days)) continue;
-                
-                $startHour = (int)substr($startTime, 0, 2);
-                $endHour = (int)substr($endTime, 0, 2);
-                $duration = $endHour - $startHour;
-                if((int)substr($endTime, 3, 2) > 0) $duration++;
-                
-                $closestSlot = $startTime;
-                $minDiff = 9999;
-                foreach($timeSlots as $slot) {
-                    $slotHour = (int)substr($slot, 0, 2);
-                    $diff = abs($slotHour - $startHour);
-                    if($diff < $minDiff) {
-                        $minDiff = $diff;
-                        $closestSlot = $slot;
-                    }
-                }
-                
-                if(isset($schedulesByDayAndTime[$day][$closestSlot])) {
-                    $schedule->calculated_rowspan = max(1, $duration);
-                    $schedulesByDayAndTime[$day][$closestSlot][] = $schedule;
-                    
-                    for($i = 1; $i < $duration; $i++) {
-                        $nextTimeIndex = array_search($closestSlot, $timeSlots) + $i;
-                        if($nextTimeIndex < count($timeSlots)) {
-                            $nextTime = $timeSlots[$nextTimeIndex];
-                            if(!isset($occupiedCells[$day])) $occupiedCells[$day] = [];
-                            $occupiedCells[$day][$nextTime] = true;
-                        }
-                    }
-                }
-            }
-            
+            // Assign consistent colors to subjects
             $colors = [
                 'pink', 'blue', 'green', 'yellow', 'purple', 'red', 
                 'indigo', 'teal', 'orange', 'cyan', 'lime', 'fuchsia'
@@ -448,9 +419,127 @@ class ScheduleController extends Controller
             $colorIndex = 0;
             
             foreach($schedules as $schedule) {
-                if(!isset($subjectColors[$schedule->subject_id])) {
+                if($schedule->subject_id && !isset($subjectColors[$schedule->subject_id])) {
                     $subjectColors[$schedule->subject_id] = $colors[$colorIndex % count($colors)];
                     $colorIndex++;
+                }
+            }
+            
+            // Plot schedules accurately on the time grid
+            foreach($schedules as $schedule) {
+                $day = $schedule->day;
+                
+                if(!in_array($day, $days)) continue;
+                
+                // Parse times accurately (handle both HH:MM:SS and HH:MM formats)
+                $startTime = substr($schedule->start_time, 0, 5); // HH:MM
+                $endTime = substr($schedule->end_time, 0, 5);     // HH:MM
+                
+                // Convert to minutes for accurate calculation
+                list($startHour, $startMin) = explode(':', $startTime);
+                list($endHour, $endMin) = explode(':', $endTime);
+                
+                $startMinutes = (int)$startHour * 60 + (int)$startMin;
+                $endMinutes = (int)$endHour * 60 + (int)$endMin;
+                $durationMinutes = $endMinutes - $startMinutes;
+                
+                Log::info('Processing schedule', [
+                    'subject' => $schedule->subject->name ?? 'N/A',
+                    'day' => $day,
+                    'start' => $startTime,
+                    'end' => $endTime,
+                    'startMinutes' => $startMinutes,
+                    'endMinutes' => $endMinutes,
+                    'duration' => $durationMinutes
+                ]);
+                
+                // Find EXACT matching time slot (must match start time exactly)
+                $matchedSlot = null;
+                
+                foreach($timeSlots as $slot) {
+                    if ($slot === $startTime) {
+                        $matchedSlot = $slot;
+                        break;
+                    }
+                }
+                
+                // If no exact match, find the nearest slot that's <= start time
+                if (!$matchedSlot) {
+                    $minDiff = PHP_INT_MAX;
+                    foreach($timeSlots as $slot) {
+                        list($slotHour, $slotMin) = explode(':', $slot);
+                        $slotMinutes = (int)$slotHour * 60 + (int)$slotMin;
+                        
+                        // Only consider slots that are at or before the start time
+                        if ($slotMinutes <= $startMinutes) {
+                            $diff = $startMinutes - $slotMinutes;
+                            if ($diff < $minDiff) {
+                                $minDiff = $diff;
+                                $matchedSlot = $slot;
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback to first slot if nothing matched
+                if (!$matchedSlot && count($timeSlots) > 0) {
+                    $matchedSlot = $timeSlots[0];
+                }
+                
+                if ($matchedSlot && isset($schedulesByDayAndTime[$day][$matchedSlot])) {
+                    // Calculate rowspan: each slot is 30 minutes
+                    // Example: 2 hours (120 min) = 4 cells (120/30 = 4)
+                    // Example: 1.5 hours (90 min) = 3 cells (90/30 = 3)
+                    // Example: 1 hour (60 min) = 2 cells (60/30 = 2)
+                    $rowspan = (int)ceil($durationMinutes / 30);
+                    
+                    // Ensure minimum rowspan of 1
+                    $rowspan = max(1, $rowspan);
+                    
+                    $schedule->calculated_rowspan = $rowspan;
+                    $schedule->assigned_color = $subjectColors[$schedule->subject_id] ?? 'gray';
+                    
+                    $schedulesByDayAndTime[$day][$matchedSlot][] = $schedule;
+                    
+                    // Mark occupied cells for rowspan
+                    // The first cell contains the schedule data, subsequent cells are occupied/blocked
+                    // Example: If rowspan=4 (2 hours), we occupy cells at index+1, index+2, index+3
+                    $slotIndex = array_search($matchedSlot, $timeSlots);
+                    
+                    if ($slotIndex !== false) {
+                        if(!isset($occupiedCells[$day])) {
+                            $occupiedCells[$day] = [];
+                        }
+                        
+                        // Mark cells 1 through (rowspan-1) as occupied
+                        // For a 2-hour class (rowspan=4), mark 3 additional cells after the first one
+                        for($i = 1; $i < $rowspan; $i++) {
+                            $nextIndex = $slotIndex + $i;
+                            if($nextIndex < count($timeSlots)) {
+                                $nextSlot = $timeSlots[$nextIndex];
+                                $occupiedCells[$day][$nextSlot] = true;
+                            }
+                        }
+                    }
+                    
+                    Log::info('✓ Successfully plotted schedule', [
+                        'subject' => $schedule->subject->name ?? 'N/A',
+                        'day' => $day,
+                        'matched_slot' => $matchedSlot,
+                        'rowspan' => $rowspan,
+                        'duration_mins' => $durationMinutes,
+                        'color' => $schedule->assigned_color,
+                        'slot_index' => $slotIndex,
+                        'occupied_cell_count' => $rowspan - 1,
+                        'occupied_indices' => range($slotIndex + 1, min($slotIndex + $rowspan - 1, count($timeSlots) - 1))
+                    ]);
+                } else {
+                    Log::warning('Failed to plot schedule', [
+                        'subject' => $schedule->subject->name ?? 'N/A',
+                        'day' => $day,
+                        'start' => $startTime,
+                        'matched_slot' => $matchedSlot
+                    ]);
                 }
             }
 

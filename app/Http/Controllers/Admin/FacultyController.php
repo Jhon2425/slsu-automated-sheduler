@@ -54,7 +54,7 @@ class FacultyController extends Controller
         try {
             $validated = $request->validate([
                 'name'         => 'required|string|max:255',
-                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code',
+                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code|unique:users,faculty_code',
                 'email'        => 'required|email|unique:users,email',
                 'password'     => 'required|confirmed|min:8',
 
@@ -97,15 +97,20 @@ class FacultyController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1️⃣ Create User Account
+            // 1️⃣ Create User Account with faculty_code
             $user = User::create([
-                'name'     => $validated['name'],
-                'email'    => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'role_id'  => 2, // Faculty role - ensure this exists in your roles table
+                'name'         => $validated['name'],
+                'email'        => $validated['email'],
+                'faculty_code' => $validated['faculty_code'], // ✅ Added faculty_code to User
+                'password'     => Hash::make($validated['password']),
+                'role_id'      => 2, // Faculty role - ensure this exists in your roles table
             ]);
 
-            Log::info('User created for faculty', ['user_id' => $user->id, 'email' => $user->email]);
+            Log::info('User created for faculty', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'faculty_code' => $user->faculty_code
+            ]);
 
             // 2️⃣ Create Faculty Profile
             $faculty = Faculty::create([
@@ -168,7 +173,7 @@ class FacultyController extends Controller
                 foreach ($validated['unavailabilities'] as $unavail) {
                     FacultyUnavailability::create([
                         'faculty_id'  => $faculty->id,
-                        'faculty_code' => $faculty->faculty_code, // ✅ Added faculty_code
+                        'faculty_code' => $faculty->faculty_code,
                         'day'         => $unavail['day'],
                         'time_from'   => $unavail['time_from'],
                         'time_to'     => $unavail['time_to'],
@@ -291,7 +296,7 @@ class FacultyController extends Controller
         try {
             $validated = $request->validate([
                 'name'         => 'required|string|max:255',
-                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code,' . $facultyProfile->id,
+                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code,' . $facultyProfile->id . '|unique:users,faculty_code,' . $faculty->id,
                 'email'        => 'required|email|unique:users,email,' . $faculty->id,
                 'password'     => 'nullable|confirmed|min:8',
 
@@ -336,10 +341,11 @@ class FacultyController extends Controller
         try {
             DB::beginTransaction();
             
-            // 1️⃣ Update User
+            // 1️⃣ Update User with faculty_code
             $userData = [
-                'name'  => $validated['name'],
-                'email' => $validated['email'],
+                'name'         => $validated['name'],
+                'email'        => $validated['email'],
+                'faculty_code' => $validated['faculty_code'], // ✅ Added faculty_code to User update
             ];
             
             if (!empty($validated['password'])) {
@@ -348,7 +354,11 @@ class FacultyController extends Controller
             
             $faculty->update($userData);
 
-            Log::info('User updated for faculty', ['user_id' => $faculty->id, 'faculty_id' => $facultyProfile->id]);
+            Log::info('User updated for faculty', [
+                'user_id' => $faculty->id,
+                'faculty_id' => $facultyProfile->id,
+                'faculty_code' => $validated['faculty_code']
+            ]);
 
             // 2️⃣ Update Faculty Profile
             $facultyProfile->update([
@@ -405,7 +415,7 @@ class FacultyController extends Controller
                 'deleted' => $deletedEducation
             ]);
 
-            // 4️⃣ Update Subjects - Delete old and create new
+            // 4️⃣ Update Subjects - Delete old and create new with updated faculty_code
             $deletedSubjects = FacultySubject::where('faculty_id', $facultyProfile->id)->delete();
             $subjectCount = 0;
             
@@ -419,7 +429,7 @@ class FacultyController extends Controller
                     if ($lectureUnits > 0 || $laboratoryUnits > 0) {
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
-                            'faculty_code'     => $facultyProfile->faculty_code,
+                            'faculty_code'     => $validated['faculty_code'], // ✅ Use updated faculty_code
                             'subject_id'       => $subject['subject_id'],
                             'program_id'       => $subject['program_id'] ?? null,
                             'lecture_units'    => $lectureUnits,
@@ -438,7 +448,7 @@ class FacultyController extends Controller
                 'created' => $subjectCount
             ]);
 
-            // 5️⃣ Update Unavailabilities - Delete old and create new
+            // 5️⃣ Update Unavailabilities - Delete old and create new with updated faculty_code
             $deletedUnavailabilities = FacultyUnavailability::where('faculty_id', $facultyProfile->id)->delete();
             $unavailabilityCount = 0;
             
@@ -446,7 +456,7 @@ class FacultyController extends Controller
                 foreach ($validated['unavailabilities'] as $unavail) {
                     FacultyUnavailability::create([
                         'faculty_id'  => $facultyProfile->id,
-                        'faculty_code' => $facultyProfile->faculty_code, // ✅ Added faculty_code
+                        'faculty_code' => $validated['faculty_code'], // ✅ Use updated faculty_code
                         'day'         => $unavail['day'],
                         'time_from'   => $unavail['time_from'],
                         'time_to'     => $unavail['time_to'],
@@ -666,7 +676,7 @@ class FacultyController extends Controller
                     if ($subject) {
                         FacultySubject::create([
                             'faculty_id' => $facultyProfile->id,
-                            'faculty_code' => $facultyProfile->faculty_code,
+                            'faculty_code' => $facultyProfile->faculty_code, // ✅ Use faculty_code from faculty profile
                             'subject_id' => $subjectId,
                             'program_id' => $subject->program_id ?? null,
                             'lecture_units' => $subject->lec ?? 0,

@@ -13,35 +13,37 @@ class Examination extends Model
         'faculty_id',
         'subject_id',
         'classroom_id',
+        'program_id',
         'exam_date',
         'day',
-        'day_name',      // Add this to support direct day_name storage
+        'day_name',
         'start_time',
         'end_time',
         'exam_type',
         'year_section',
+        'year_level',
+        'semester',
         'is_active',
     ];
 
     protected $casts = [
-        'exam_date' => 'date',
         'is_active' => 'boolean',
+        'exam_date' => 'date',
     ];
 
-    // Map day numbers to day names
-    protected $dayMap = [
+    // Map day numbers to names
+    private static $dayNumberToName = [
         1 => 'Monday',
         2 => 'Tuesday',
         3 => 'Wednesday',
         4 => 'Thursday',
         5 => 'Friday',
         6 => 'Saturday',
-        7 => 'Sunday',
+        7 => 'Sunday'
     ];
 
     /**
-     * Accessor: Get day name from day number or direct day_name field
-     * This will work whether you store day as number or day_name as string
+     * Get the day name from day number or direct day_name field
      */
     public function getDayNameAttribute()
     {
@@ -52,10 +54,10 @@ class Examination extends Model
         
         // Otherwise, convert from day number
         if (isset($this->attributes['day'])) {
-            return $this->dayMap[$this->attributes['day']] ?? 'Unknown';
+            return self::$dayNumberToName[$this->attributes['day']] ?? 'Monday';
         }
         
-        return 'Unknown';
+        return 'Monday';
     }
 
     /**
@@ -63,7 +65,9 @@ class Examination extends Model
      */
     public function faculty()
     {
-        return $this->belongsTo(Faculty::class, 'faculty_id');
+        // Updated to use User model instead of Faculty model
+        // since faculty data is stored in users table with faculty_code
+        return $this->belongsTo(User::class, 'faculty_id');
     }
 
     public function subject()
@@ -74,5 +78,82 @@ class Examination extends Model
     public function classroom()
     {
         return $this->belongsTo(Classroom::class);
+    }
+
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
+    }
+
+    /**
+     * Accessor to get faculty name - prevents N/A display
+     */
+    public function getFacultyNameAttribute()
+    {
+        return $this->faculty ? $this->faculty->name : 'N/A';
+    }
+
+    /**
+     * Accessor to get faculty code - prevents N/A display
+     */
+    public function getFacultyCodeAttribute()
+    {
+        return $this->faculty ? $this->faculty->faculty_code : 'N/A';
+    }
+
+    /**
+     * Accessor to get subject name - prevents N/A display
+     */
+    public function getSubjectNameAttribute()
+    {
+        return $this->subject ? $this->subject->subject_name : 'N/A';
+    }
+
+    /**
+     * Accessor to get course code - prevents N/A display
+     */
+    public function getCourseCodeAttribute()
+    {
+        return $this->subject ? $this->subject->course_code : 'N/A';
+    }
+
+    /**
+     * Accessor to get classroom name - prevents N/A display
+     */
+    public function getClassroomNameAttribute()
+    {
+        if (!$this->classroom) {
+            return 'N/A';
+        }
+        
+        return $this->classroom->room_name 
+            ?? $this->classroom->name 
+            ?? 'Room ' . $this->classroom->id;
+    }
+
+    /**
+     * Accessor to get program name - prevents N/A display
+     */
+    public function getProgramNameAttribute()
+    {
+        return $this->program ? $this->program->program_name : 'N/A';
+    }
+
+    /**
+     * Scope to get examinations with all relationships loaded
+     * Usage: Examination::withAllRelations()->get()
+     */
+    public function scopeWithAllRelations($query)
+    {
+        return $query->with(['faculty', 'subject', 'classroom', 'program']);
+    }
+
+    /**
+     * Scope to get active examinations only
+     * Usage: Examination::active()->get()
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 }

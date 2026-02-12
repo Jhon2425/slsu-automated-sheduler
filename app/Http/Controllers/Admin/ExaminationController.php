@@ -201,13 +201,15 @@ class ExaminationController extends Controller
 
     /**
      * Generate examination schedule preview
+     * FIXED: Now calls generateExaminationPreview() instead of generateSchedulePreview()
      */
     public function generatePreview(Request $request)
     {
         try {
             Log::info('Generate Examination Preview Request');
 
-            $result = $this->schedulerService->generateSchedulePreview();
+            // FIXED: Changed from generateSchedulePreview() to generateExaminationPreview()
+            $result = $this->schedulerService->generateExaminationPreview();
 
             if ($result['success'] && !empty($result['examinations'])) {
                 // Store in session for review
@@ -220,7 +222,7 @@ class ExaminationController extends Controller
                     'success' => true,
                     'examinations' => $result['examinations'],
                     'conflicts' => $result['conflicts'] ?? [],
-                    'message' => count($result['examinations']) . ' examinations generated successfully',
+                    'message' => $result['message'], // Will now say "X examinations generated successfully"
                     'stats' => [
                         'total_exams' => count($result['examinations']),
                         'total_conflicts' => count($result['conflicts'] ?? [])
@@ -252,6 +254,7 @@ class ExaminationController extends Controller
 
     /**
      * Confirm and save examinations
+     * UPDATED: Now uses saveExaminations() method for clarity
      */
     public function confirm(Request $request)
     {
@@ -273,8 +276,9 @@ class ExaminationController extends Controller
                 ], 400);
             }
 
-            // Save examinations using the scheduler service
-            $result = $this->schedulerService->saveSchedule([], $examinations);
+            // UPDATED: Use saveExaminations() instead of saveSchedule([], $examinations)
+            // Both work the same, but saveExaminations() is more explicit
+            $result = $this->schedulerService->saveExaminations($examinations);
 
             // Clear session data on success
             if ($result['success']) {

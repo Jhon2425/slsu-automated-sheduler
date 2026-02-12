@@ -79,7 +79,7 @@
                                 </thead>
                                 <tbody>
                                     @php
-                                        $timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+                                        $timeSlots = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
                                         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                         
                                         $schedulesByDayAndTime = [];
@@ -97,28 +97,35 @@
                                             $startTime = substr($schedule->start_time, 0, 5);
                                             $endTime = substr($schedule->end_time, 0, 5);
                                             
-                                            $startHour = (int)substr($startTime, 0, 2);
-                                            $startMin = (int)substr($startTime, 3, 2);
-                                            $endHour = (int)substr($endTime, 0, 2);
-                                            $endMin = (int)substr($endTime, 3, 2);
+                                            // FIXED: Calculate duration in MINUTES, then convert to 30-minute slots
+                                            list($startHour, $startMin) = explode(':', $startTime);
+                                            list($endHour, $endMin) = explode(':', $endTime);
                                             
-                                            $duration = $endHour - $startHour;
-                                            if ($endMin > $startMin) {
-                                                $duration += 1;
-                                            }
+                                            $startMinutes = ((int)$startHour * 60) + (int)$startMin;
+                                            $endMinutes = ((int)$endHour * 60) + (int)$endMin;
+                                            $durationMinutes = $endMinutes - $startMinutes;
+                                            
+                                            // Convert to number of 30-minute slots
+                                            // Example: 120 minutes / 30 = 4 slots (2 hours = 4 cells)
+                                            $rowspan = (int)ceil($durationMinutes / 30);
+                                            $rowspan = max(1, $rowspan); // Minimum 1 slot
                                             
                                             if(isset($schedulesByDayAndTime[$day][$startTime])) {
-                                                $schedule->calculated_rowspan = max(1, $duration);
+                                                $schedule->calculated_rowspan = $rowspan;
                                                 $schedulesByDayAndTime[$day][$startTime][] = $schedule;
                                                 
-                                                for($i = 1; $i < $duration; $i++) {
-                                                    $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
-                                                    if($nextTimeIndex < count($timeSlots)) {
-                                                        $nextTime = $timeSlots[$nextTimeIndex];
-                                                        if(!isset($occupiedCells[$day])) {
-                                                            $occupiedCells[$day] = [];
+                                                // Mark occupied cells (skip the first one, it contains the schedule)
+                                                $startIndex = array_search($startTime, $timeSlots);
+                                                if ($startIndex !== false) {
+                                                    for($i = 1; $i < $rowspan; $i++) {
+                                                        $nextIndex = $startIndex + $i;
+                                                        if($nextIndex < count($timeSlots)) {
+                                                            $nextTime = $timeSlots[$nextIndex];
+                                                            if(!isset($occupiedCells[$day])) {
+                                                                $occupiedCells[$day] = [];
+                                                            }
+                                                            $occupiedCells[$day][$nextTime] = true;
                                                         }
-                                                        $occupiedCells[$day][$nextTime] = true;
                                                     }
                                                 }
                                             }
@@ -144,6 +151,7 @@
                                             
                                             @foreach($days as $day)
                                                 @php
+                                                    // Skip if this cell is occupied by a rowspan from above
                                                     if(isset($occupiedCells[$day][$time])) {
                                                         continue;
                                                     }
@@ -250,7 +258,8 @@
             </div>
         </div>
     </div>
-   <style>
+
+    <style>
     .time-slot {
         height: 150px;
         min-height: 150px;
@@ -354,7 +363,8 @@
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(12px);
     }
-</style>
+    </style>
+
     <script>
     let generatedSchedules = null;
     let responseData = null;
@@ -437,17 +447,21 @@
         return subjectMap.get(subjectId);
     }
 
+    // FIXED: Calculate duration in 30-minute slots, not hours
     function calculateDuration(startTime, endTime) {
         const [startHour, startMin] = startTime.split(':').map(Number);
         const [endHour, endMin] = endTime.split(':').map(Number);
         
-        let duration = endHour - startHour;
+        // Convert to total minutes
+        const startMinutes = (startHour * 60) + startMin;
+        const endMinutes = (endHour * 60) + endMin;
+        const durationMinutes = endMinutes - startMinutes;
         
-        if (endMin > startMin) {
-            duration += 1;
-        }
+        // Convert to number of 30-minute slots
+        // Example: 120 minutes / 30 = 4 slots (2 hours = 4 cells)
+        const rowspan = Math.ceil(durationMinutes / 30);
         
-        return Math.max(1, duration);
+        return Math.max(1, rowspan); // Minimum 1 slot
     }
 
     function displayTimetable(schedules) {
@@ -459,7 +473,7 @@
             return;
         }
         
-        const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+        const timeSlots = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
         
         const schedulesByDayAndTime = {};
         const occupiedCells = {};
@@ -477,18 +491,23 @@
             const startTime = schedule.start_time;
             const endTime = schedule.end_time;
             
-            const duration = calculateDuration(startTime, endTime);
+            // FIXED: Use the corrected duration calculation
+            const rowspan = calculateDuration(startTime, endTime);
             
-            schedule.calculated_rowspan = duration;
+            schedule.calculated_rowspan = rowspan;
             
             if (schedulesByDayAndTime[day] && schedulesByDayAndTime[day][startTime]) {
                 schedulesByDayAndTime[day][startTime].push(schedule);
                 
-                for(let i = 1; i < duration; i++) {
-                    const nextTimeIndex = timeSlots.indexOf(startTime) + i;
-                    if(nextTimeIndex < timeSlots.length) {
-                        const nextTime = timeSlots[nextTimeIndex];
-                        occupiedCells[day][nextTime] = true;
+                // Mark occupied cells (the first cell contains the schedule)
+                const startIndex = timeSlots.indexOf(startTime);
+                if (startIndex !== -1) {
+                    for(let i = 1; i < rowspan; i++) {
+                        const nextTimeIndex = startIndex + i;
+                        if(nextTimeIndex < timeSlots.length) {
+                            const nextTime = timeSlots[nextTimeIndex];
+                            occupiedCells[day][nextTime] = true;
+                        }
                     }
                 }
             }
@@ -513,6 +532,7 @@
             </td>`;
             
             days.forEach(day => {
+                // Skip if this cell is occupied by a rowspan from above
                 if(occupiedCells[day][time]) {
                     return;
                 }
@@ -527,6 +547,8 @@
                     
                     schedulesAtThisTime.forEach(schedule => {
                         const color = getSubjectColor(schedule.subject_id, subjectMap);
+                        // Calculate block height based on rowspan
+                        // Each row is 150px, minus 8px for padding
                         const blockHeight = (rowspan * 150) - 8;
                         
                         html += `
@@ -640,5 +662,5 @@
             confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirm & Save';
         }
     }
-</script>
+    </script>
 </x-app-layout>

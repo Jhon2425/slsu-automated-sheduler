@@ -269,19 +269,28 @@
             position: relative;
         }
 
+        /* Container for multiple schedules side-by-side */
+        .schedules-wrapper {
+            display: flex;
+            gap: 3px;
+            height: 100%;
+            min-height: 100%;
+            padding: 3px;
+        }
+
         .schedule-block {
             border: none;
             border-radius: 0;
-            padding: 10px;
-            height: 100%;
-            min-height: 100%;
-            font-size: 8pt;
-            line-height: 1.5;
+            padding: 8px;
+            flex: 1;
+            min-width: 0;
+            font-size: 7pt;
+            line-height: 1.4;
             background: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            gap: 3px;
+            gap: 2px;
             position: relative;
             overflow: hidden;
         }
@@ -291,7 +300,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 5px;
+            width: 4px;
             height: 100%;
             background: currentColor;
             opacity: 0.8;
@@ -367,28 +376,28 @@
 
         .course-code {
             font-weight: 800;
-            font-size: 9pt;
+            font-size: 8pt;
             color: inherit;
             border-bottom: 2px solid currentColor;
             padding-bottom: 2px;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             letter-spacing: 0.3px;
         }
 
         .subject-name {
-            font-size: 8pt;
+            font-size: 7pt;
             font-weight: 700;
             color: inherit;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             opacity: 0.9;
         }
 
         .schedule-detail {
-            font-size: 7pt;
+            font-size: 6pt;
             color: inherit;
             display: flex;
             align-items: center;
-            gap: 3px;
+            gap: 2px;
             opacity: 0.85;
         }
 
@@ -396,7 +405,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            font-size: 6.5pt;
+            font-size: 5.5pt;
         }
 
         /* Footer */
@@ -477,11 +486,11 @@
         /* Responsive adjustments for smaller screens */
         @media screen and (max-width: 1200px) {
             .schedule-block {
-                font-size: 7pt;
+                font-size: 6pt;
             }
             
             .course-code {
-                font-size: 8pt;
+                font-size: 7pt;
             }
         }
     </style>
@@ -548,7 +557,7 @@
                 </thead>
                 <tbody>
                     @php
-                        $timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+                        $timeSlots = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
                         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                         
                         // Group schedules
@@ -568,20 +577,33 @@
                             $startTime = substr($schedule->start_time, 0, 5);
                             $endTime = substr($schedule->end_time, 0, 5);
                             
-                            $startHour = (int)substr($startTime, 0, 2);
-                            $endHour = (int)substr($endTime, 0, 2);
-                            $duration = $endHour - $startHour;
+                            // FIXED: Calculate duration in MINUTES, then convert to 30-minute slots
+                            list($startHour, $startMin) = explode(':', $startTime);
+                            list($endHour, $endMin) = explode(':', $endTime);
                             
-                            $schedule->calculated_rowspan = max(1, $duration);
+                            $startMinutes = ((int)$startHour * 60) + (int)$startMin;
+                            $endMinutes = ((int)$endHour * 60) + (int)$endMin;
+                            $durationMinutes = $endMinutes - $startMinutes;
+                            
+                            // Convert to number of 30-minute slots
+                            // Example: 120 minutes / 30 = 4 slots (2 hours = 4 cells)
+                            $rowspan = (int)ceil($durationMinutes / 30);
+                            $rowspan = max(1, $rowspan); // Minimum 1 slot
+                            
+                            $schedule->calculated_rowspan = $rowspan;
                             
                             if(isset($schedulesByDayAndTime[$day][$startTime])) {
                                 $schedulesByDayAndTime[$day][$startTime][] = $schedule;
                                 
-                                for($i = 1; $i < $duration; $i++) {
-                                    $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
-                                    if($nextTimeIndex < count($timeSlots)) {
-                                        $nextTime = $timeSlots[$nextTimeIndex];
-                                        $occupiedCells[$day][$nextTime] = true;
+                                // Mark occupied cells (skip the first one, it contains the schedule)
+                                $startIndex = array_search($startTime, $timeSlots);
+                                if ($startIndex !== false) {
+                                    for($i = 1; $i < $rowspan; $i++) {
+                                        $nextIndex = $startIndex + $i;
+                                        if($nextIndex < count($timeSlots)) {
+                                            $nextTime = $timeSlots[$nextIndex];
+                                            $occupiedCells[$day][$nextTime] = true;
+                                        }
                                     }
                                 }
                             }
@@ -605,6 +627,7 @@
                             
                             @foreach($days as $day)
                                 @php
+                                    // Skip if this cell is occupied by a rowspan from above
                                     if(isset($occupiedCells[$day][$time])) {
                                         continue;
                                     }
@@ -617,24 +640,26 @@
                                         rowspan="{{ $daySchedules[0]->calculated_rowspan }}"
                                     @endif>
                                     @if(count($daySchedules) > 0)
-                                        @foreach($daySchedules as $schedule)
-                                            @php
-                                                if(!isset($subjectColors[$schedule->subject_id])) {
-                                                    $subjectColors[$schedule->subject_id] = $colors[$colorIndex % count($colors)];
-                                                    $colorIndex++;
-                                                }
-                                                $color = $subjectColors[$schedule->subject_id];
-                                            @endphp
-                                            
-                                            <div class="schedule-block schedule-block-{{ $color }}">
-                                                <div class="schedule-text course-code">{{ $schedule->subject->course_code ?? 'N/A' }}</div>
-                                                <div class="schedule-text subject-name">{{ $schedule->subject->subject_name ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Room:</span> {{ $schedule->classroom->room_name ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Faculty:</span> {{ $schedule->faculty->name ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Type:</span> {{ $schedule->class_type === 'Laboratory' ? 'Lab' : 'Lec' }} | Year {{ $schedule->year_level }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Time:</span> {{ date('g:i A', strtotime($schedule->start_time)) }} - {{ date('g:i A', strtotime($schedule->end_time)) }}</div>
-                                            </div>
-                                        @endforeach
+                                        <div class="schedules-wrapper">
+                                            @foreach($daySchedules as $schedule)
+                                                @php
+                                                    if(!isset($subjectColors[$schedule->subject_id])) {
+                                                        $subjectColors[$schedule->subject_id] = $colors[$colorIndex % count($colors)];
+                                                        $colorIndex++;
+                                                    }
+                                                    $color = $subjectColors[$schedule->subject_id];
+                                                @endphp
+                                                
+                                                <div class="schedule-block schedule-block-{{ $color }}">
+                                                    <div class="schedule-text course-code">{{ $schedule->subject->course_code ?? 'N/A' }}</div>
+                                                    <div class="schedule-text subject-name">{{ $schedule->subject->subject_name ?? 'N/A' }}</div>
+                                                    <div class="schedule-detail"><span class="detail-label">Room:</span> {{ $schedule->classroom->room_name ?? 'N/A' }}</div>
+                                                    <div class="schedule-detail"><span class="detail-label">Faculty:</span> {{ $schedule->faculty->name ?? 'N/A' }}</div>
+                                                    <div class="schedule-detail"><span class="detail-label">Type:</span> {{ $schedule->class_type === 'Laboratory' ? 'Lab' : 'Lec' }} | Yr {{ $schedule->year_level }}</div>
+                                                    <div class="schedule-detail"><span class="detail-label">Time:</span> {{ date('g:i A', strtotime($schedule->start_time)) }} - {{ date('g:i A', strtotime($schedule->end_time)) }}</div>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     @endif
                                 </td>
                             @endforeach

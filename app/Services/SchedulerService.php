@@ -29,21 +29,141 @@ class SchedulerService
         'Sunday' => 7
     ];
     
-    // Time slots from 7 AM to 7 PM
+    // FIXED: Time slots from 7 AM to 7 PM (30-minute intervals)
+    // These represent the START times of each 30-minute slot
     private $timeSlots = [
-        ['start' => '07:00:00', 'end' => '08:00:00'],
-        ['start' => '08:00:00', 'end' => '09:00:00'],
-        ['start' => '09:00:00', 'end' => '10:00:00'],
-        ['start' => '10:00:00', 'end' => '11:00:00'],
-        ['start' => '11:00:00', 'end' => '12:00:00'],
-        ['start' => '12:00:00', 'end' => '13:00:00'],
-        ['start' => '13:00:00', 'end' => '14:00:00'],
-        ['start' => '14:00:00', 'end' => '15:00:00'],
-        ['start' => '15:00:00', 'end' => '16:00:00'],
-        ['start' => '16:00:00', 'end' => '17:00:00'],
-        ['start' => '17:00:00', 'end' => '18:00:00'],
-        ['start' => '18:00:00', 'end' => '19:00:00'],
+        ['start' => '07:00:00', 'end' => '07:30:00'],
+        ['start' => '07:30:00', 'end' => '08:00:00'],
+        ['start' => '08:00:00', 'end' => '08:30:00'],
+        ['start' => '08:30:00', 'end' => '09:00:00'],
+        ['start' => '09:00:00', 'end' => '09:30:00'],
+        ['start' => '09:30:00', 'end' => '10:00:00'],
+        ['start' => '10:00:00', 'end' => '10:30:00'],
+        ['start' => '10:30:00', 'end' => '11:00:00'],
+        ['start' => '11:00:00', 'end' => '11:30:00'],
+        ['start' => '11:30:00', 'end' => '12:00:00'],
+        ['start' => '12:00:00', 'end' => '12:30:00'],
+        ['start' => '12:30:00', 'end' => '13:00:00'],
+        ['start' => '13:00:00', 'end' => '13:30:00'],
+        ['start' => '13:30:00', 'end' => '14:00:00'],
+        ['start' => '14:00:00', 'end' => '14:30:00'],
+        ['start' => '14:30:00', 'end' => '15:00:00'],
+        ['start' => '15:00:00', 'end' => '15:30:00'],
+        ['start' => '15:30:00', 'end' => '16:00:00'],
+        ['start' => '16:00:00', 'end' => '16:30:00'],
+        ['start' => '16:30:00', 'end' => '17:00:00'],
+        ['start' => '17:00:00', 'end' => '17:30:00'],
+        ['start' => '17:30:00', 'end' => '18:00:00'],
+        ['start' => '18:00:00', 'end' => '18:30:00'],
+        ['start' => '18:30:00', 'end' => '19:00:00'],
     ];
+
+    /**
+     * Generate examination preview separately from class schedules
+     * This should be called independently when you want to generate exams
+     */
+    public function generateExaminationPreview()
+    {
+        try {
+            Log::info('=== EXAMINATION GENERATION START ===');
+            
+            // Get data from faculty_subject using faculty_code
+            $facultyAssignments = DB::table('faculty_subject')
+                ->join('users', 'faculty_subject.faculty_code', '=', 'users.faculty_code')
+                ->join('subjects', 'faculty_subject.subject_id', '=', 'subjects.id')
+                ->select(
+                    'faculty_subject.id as assignment_id',
+                    'faculty_subject.faculty_code',
+                    'faculty_subject.subject_id',
+                    'faculty_subject.lecture_units',
+                    'faculty_subject.laboratory_units',
+                    'users.id as faculty_id',
+                    'users.name as faculty_name',
+                    'subjects.subject_name',
+                    'subjects.course_code',
+                    'subjects.year_level',
+                    'subjects.semester',
+                    DB::raw('(COALESCE(faculty_subject.lecture_units, 0) + COALESCE(faculty_subject.laboratory_units, 0)) as total_units')
+                )
+                ->havingRaw('total_units > 0')
+                ->get();
+
+            if ($facultyAssignments->isEmpty()) {
+                return [
+                    'success' => false,
+                    'message' => 'No faculty-subject assignments found.',
+                    'examinations' => [],
+                    'conflicts' => []
+                ];
+            }
+
+            $classrooms = Classroom::all();
+            if ($classrooms->isEmpty()) {
+                return [
+                    'success' => false,
+                    'message' => 'No classrooms found.',
+                    'examinations' => [],
+                    'conflicts' => []
+                ];
+            }
+
+            $examinations = [];
+            $conflicts = [];
+
+            foreach ($facultyAssignments as $assignment) {
+                $totalUnits = (float)($assignment->lecture_units ?? 0) + (float)($assignment->laboratory_units ?? 0);
+                
+                if ($totalUnits < 1) continue;
+
+                $exam = $this->generateExaminationForAssignment($assignment, $classrooms, $examinations, $totalUnits);
+                
+                if ($exam) {
+                    $examinations[] = $exam;
+                } else {
+                    $conflicts[] = [
+                        'assignment_id' => $assignment->assignment_id,
+                        'faculty_code' => $assignment->faculty_code,
+                        'faculty' => $assignment->faculty_name,
+                        'subject' => $assignment->subject_name . ' (' . $assignment->course_code . ')',
+                        'reason' => 'Could not find available examination slot'
+                    ];
+                }
+            }
+
+            // Format times
+            $examinations = array_map(function($exam) {
+                $exam['start_time'] = substr($exam['start_time'], 0, 5);
+                $exam['end_time'] = substr($exam['end_time'], 0, 5);
+                return $exam;
+            }, $examinations);
+
+            Log::info('=== EXAMINATION GENERATION COMPLETE ===', [
+                'exams' => count($examinations),
+                'conflicts' => count($conflicts)
+            ]);
+
+            return [
+                'success' => true,
+                'examinations' => $examinations,
+                'conflicts' => $conflicts,
+                'message' => count($examinations) . ' examinations generated successfully',
+                'stats' => [
+                    'total_exams' => count($examinations),
+                    'total_conflicts' => count($conflicts)
+                ]
+            ];
+
+        } catch (Exception $e) {
+            Log::error('SchedulerService generateExaminationPreview error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return [
+                'success' => false,
+                'message' => 'Error generating examinations: ' . $e->getMessage(),
+                'examinations' => [],
+                'conflicts' => []
+            ];
+        }
+    }
 
     /**
      * Convert day name to number
@@ -55,23 +175,26 @@ class SchedulerService
 
     /**
      * Generate schedule preview with conflict prevention
-     * FIXED: Now uses lecture_units and laboratory_units from faculty_subject table
+     * NOTE: This generates REGULAR CLASS SCHEDULES only, NOT examinations
+     * Examinations are generated separately and stored in a different table
+     * UPDATED: Now uses faculty_code instead of faculty_id
      */
     public function generateSchedulePreview()
     {
         try {
             Log::info('=== SCHEDULE GENERATION START ===');
             
-            // FIXED: Get data from faculty_subject with lecture_units and laboratory_units
+            // UPDATED: Get data from faculty_subject using faculty_code
             $facultyAssignments = DB::table('faculty_subject')
-                ->join('users', 'faculty_subject.faculty_id', '=', 'users.id')
+                ->join('users', 'faculty_subject.faculty_code', '=', 'users.faculty_code')
                 ->join('subjects', 'faculty_subject.subject_id', '=', 'subjects.id')
                 ->select(
                     'faculty_subject.id as assignment_id',
-                    'faculty_subject.faculty_id',
+                    'faculty_subject.faculty_code',
                     'faculty_subject.subject_id',
                     'faculty_subject.lecture_units',
                     'faculty_subject.laboratory_units',
+                    'users.id as faculty_id',
                     'users.name as faculty_name',
                     'subjects.subject_name',
                     'subjects.course_code',
@@ -87,10 +210,10 @@ class SchedulerService
                 'sample_data' => $facultyAssignments->take(2)->toArray()
             ]);
             
-            // Log faculty unavailability information
+            // Log faculty unavailability information using faculty_code
             $facultiesWithUnavailability = DB::table('faculty_unavailabilities')
                 ->distinct()
-                ->count('faculty_id');
+                ->count('faculty_code');
             
             if ($facultiesWithUnavailability > 0) {
                 Log::info("Found {$facultiesWithUnavailability} faculties with unavailability restrictions");
@@ -143,7 +266,9 @@ class SchedulerService
 
                 if ($totalUnits < 1) continue;
 
-                // FIXED: Use lecture_units and laboratory_units directly
+                // Use lecture_units and laboratory_units directly
+                // 1 lecture unit = 1 hour
+                // 1 laboratory unit = 3 hours
                 $distribution = $this->getClassDistributionFromFacultySubject($lectureUnits, $labUnits);
 
                 $scheduled = false;
@@ -174,16 +299,16 @@ class SchedulerService
                             $subjectDayUsage[$subjectKey][] = $session['day_name'];
                         }
 
-                        $exam = $this->generateExaminationForAssignment($assignment, $classrooms, $examinations, $totalUnits);
-                        if ($exam) $examinations[] = $exam;
+                        // NOTE: Examinations are NOT generated here
+                        // They should be generated separately using generateExaminationPreview() method
                     }
                 }
 
                 if (!$scheduled) {
-                    // Check if conflict was due to faculty unavailability
+                    // Check if conflict was due to faculty unavailability using faculty_code
                     $unavailabilityReason = '';
                     $facultyUnavailabilities = DB::table('faculty_unavailabilities')
-                        ->where('faculty_id', $assignment->faculty_id)
+                        ->where('faculty_code', $assignment->faculty_code)
                         ->get();
                     
                     if ($facultyUnavailabilities->isNotEmpty()) {
@@ -192,6 +317,7 @@ class SchedulerService
                     
                     $conflicts[] = [
                         'assignment_id' => $assignment->assignment_id,
+                        'faculty_code' => $assignment->faculty_code,
                         'faculty' => $assignment->faculty_name,
                         'subject' => $assignment->subject_name . ' (' . $assignment->course_code . ')',
                         'lecture_units' => $lectureUnits,
@@ -223,12 +349,12 @@ class SchedulerService
             return [
                 'success' => true,
                 'schedules' => $schedules,
-                'examinations' => $examinations,
+                'examinations' => $examinations, // Will be empty - examinations generated separately
                 'conflicts' => $conflicts,
                 'message' => count($schedules) . ' schedule sessions generated successfully',
                 'stats' => [
                     'total_schedules' => count($schedules),
-                    'total_exams' => count($examinations),
+                    'total_exams' => count($examinations), // Will be 0
                     'total_conflicts' => count($conflicts),
                     'faculty_count' => count($facultyAssignments)
                 ]
@@ -248,23 +374,25 @@ class SchedulerService
     }
 
     /**
-     * NEW METHOD: Get class distribution from faculty_subject lecture and lab units
-     * Each lecture unit = 1 hour
-     * Each laboratory unit = 3 hours
+     * Get class distribution from faculty_subject lecture and lab units
+     * 1 lecture unit = 1 hour
+     * 1 laboratory unit = 3 hours
      */
     private function getClassDistributionFromFacultySubject($lectureUnits, $labUnits)
     {
         $distribution = [];
         
         // Add lecture sessions if lecture units exist
+        // 1 lecture unit = 1 hour
         if ($lectureUnits > 0) {
-            $lectureHours = (int)$lectureUnits; // 1 unit = 1 hour
+            $lectureHours = (int)$lectureUnits;
             $distribution[] = ['type' => 'Lecture', 'hours' => $lectureHours];
         }
         
         // Add laboratory sessions if lab units exist
+        // 1 laboratory unit = 3 hours
         if ($labUnits > 0) {
-            $labHours = (int)($labUnits * 3); // 1 lab unit = 3 hours
+            $labHours = (int)($labUnits * 3);
             $distribution[] = ['type' => 'Laboratory', 'hours' => $labHours];
         }
         
@@ -362,6 +490,7 @@ class SchedulerService
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
+                            'faculty_code'    => $assignment->faculty_code,
                             'subject_id'      => $assignment->subject_id,
                             'classroom_id'    => $classroom->id,
                             'day'             => $day,
@@ -390,37 +519,72 @@ class SchedulerService
         return false;
     }
 
+    /**
+     * FIXED: Get continuous time slots for a given number of hours
+     * Now properly handles 30-minute intervals
+     * Examples:
+     * - 1 hour = 2 slots (1 * 2 = 2)
+     * - 2 hours = 4 slots (2 * 2 = 4)
+     * - 3 hours = 6 slots (3 * 2 = 6)
+     */
     private function getContinuousTimeSlots($hours)
     {
         $continuousSlots = [];
-        for ($i = 0; $i <= count($this->timeSlots) - $hours; $i++) {
+        
+        // Convert hours to number of 30-minute slots needed
+        // 1 hour = 2 slots of 30 minutes
+        // 2 hours = 4 slots of 30 minutes
+        // 3 hours = 6 slots of 30 minutes
+        $slotsNeeded = $hours * 2;
+        
+        // Generate all possible continuous time slots
+        for ($i = 0; $i <= count($this->timeSlots) - $slotsNeeded; $i++) {
+            $startTime = $this->timeSlots[$i]['start'];
+            
+            // Calculate end time by getting the end of the last required slot
+            // If we need 4 slots starting at index 0, we want slots [0,1,2,3]
+            // So the end time is at index 0 + 4 - 1 = 3, and we take the 'end' time
+            $endSlotIndex = $i + $slotsNeeded - 1;
+            $endTime = $this->timeSlots[$endSlotIndex]['end'];
+            
             $continuousSlots[] = [
-                'start' => $this->timeSlots[$i]['start'],
-                'end' => $this->timeSlots[$i + $hours - 1]['end']
+                'start' => $startTime,
+                'end' => $endTime
             ];
+            
+            Log::debug("Generated time slot", [
+                'hours' => $hours,
+                'slots_needed' => $slotsNeeded,
+                'start_index' => $i,
+                'end_index' => $endSlotIndex,
+                'start' => $startTime,
+                'end' => $endTime
+            ]);
         }
+        
         return $continuousSlots;
     }
 
     /**
      * Check if faculty is unavailable at the given day and time
+     * UPDATED: Now uses faculty_code instead of faculty_id
      */
-    private function isFacultyUnavailable($facultyId, $day, $startTime, $endTime)
+    private function isFacultyUnavailable($facultyCode, $day, $startTime, $endTime)
     {
         try {
             // Convert day name to number if needed
             $dayNumber = is_numeric($day) ? $day : $this->convertDayToNumber($day);
             
-            // Query faculty_unavailabilities table
+            // Query faculty_unavailabilities table using faculty_code
             $unavailabilities = DB::table('faculty_unavailabilities')
-                ->where('faculty_id', $facultyId)
+                ->where('faculty_code', $facultyCode)
                 ->where('day', $dayNumber)
                 ->get();
             
             // Check if any unavailability conflicts with the proposed time
             foreach ($unavailabilities as $unavailability) {
                 if ($this->timesOverlap($startTime, $endTime, $unavailability->start_time, $unavailability->end_time)) {
-                    Log::info("Faculty {$facultyId} is unavailable on day {$dayNumber} from {$unavailability->start_time} to {$unavailability->end_time}");
+                    Log::info("Faculty {$facultyCode} is unavailable on day {$dayNumber} from {$unavailability->start_time} to {$unavailability->end_time}");
                     return true;
                 }
             }
@@ -437,8 +601,8 @@ class SchedulerService
     {
         $assignmentSection = $assignment->year_level . '-A';
 
-        // Check if faculty is unavailable at this time
-        if ($this->isFacultyUnavailable($assignment->faculty_id, $day, $startTime, $endTime)) {
+        // Check if faculty is unavailable at this time using faculty_code
+        if ($this->isFacultyUnavailable($assignment->faculty_code, $day, $startTime, $endTime)) {
             return false;
         }
 
@@ -449,7 +613,10 @@ class SchedulerService
             if (!$this->timesOverlap($startTime, $endTime, $schedule['start_time'], $schedule['end_time'])) continue;
 
             if ($schedule['classroom_id'] == $classroomId) return false;
-            if (isset($schedule['faculty_id']) && $schedule['faculty_id'] == $assignment->faculty_id) return false;
+            
+            // Check faculty conflict using faculty_code
+            if (isset($schedule['faculty_code']) && $schedule['faculty_code'] == $assignment->faculty_code) return false;
+            
             if (($schedule['year_section'] ?? null) === $assignmentSection) return false;
         }
 
@@ -458,12 +625,13 @@ class SchedulerService
 
     /**
      * Get faculty unavailability summary for a specific faculty member
+     * UPDATED: Now uses faculty_code instead of faculty_id
      */
-    private function getFacultyUnavailabilitySummary($facultyId)
+    private function getFacultyUnavailabilitySummary($facultyCode)
     {
         try {
             $unavailabilities = DB::table('faculty_unavailabilities')
-                ->where('faculty_id', $facultyId)
+                ->where('faculty_code', $facultyCode)
                 ->get();
             
             if ($unavailabilities->isEmpty()) {
@@ -487,17 +655,27 @@ class SchedulerService
         return ($start1 < $end2) && ($end1 > $start2);
     }
 
+    /**
+     * Generate examination for a faculty assignment
+     * UPDATED: Examinations are now 1 hour only (not 2 hours)
+     * NOTE: Examinations are separate from regular class schedules
+     */
     private function generateExaminationForAssignment($assignment, $classrooms, $existingExams, $totalUnits)
     {
         $weeksAhead = rand(8, 10);
         $shuffledDays = $this->daysOfWeek; 
         shuffle($shuffledDays);
 
+        // All examination slots are now 1 hour long
         $examTimeSlots = [
-            ['start' => '08:00:00', 'end' => '10:00:00'],
-            ['start' => '10:00:00', 'end' => '12:00:00'],
-            ['start' => '13:00:00', 'end' => '15:00:00'],
-            ['start' => '15:00:00', 'end' => '17:00:00']
+            ['start' => '08:00:00', 'end' => '09:00:00'],
+            ['start' => '09:00:00', 'end' => '10:00:00'],
+            ['start' => '10:00:00', 'end' => '11:00:00'],
+            ['start' => '11:00:00', 'end' => '12:00:00'],
+            ['start' => '13:00:00', 'end' => '14:00:00'],
+            ['start' => '14:00:00', 'end' => '15:00:00'],
+            ['start' => '15:00:00', 'end' => '16:00:00'],
+            ['start' => '16:00:00', 'end' => '17:00:00']
         ]; 
         shuffle($examTimeSlots);
 
@@ -511,6 +689,7 @@ class SchedulerService
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
+                            'faculty_code'    => $assignment->faculty_code,
                             'subject_id'      => $assignment->subject_id,
                             'classroom_id'    => $classroom->id,
                             'exam_date'       => $specificExamDate,
@@ -561,7 +740,12 @@ class SchedulerService
         return Carbon::now()->addWeeks($weeks)->next($dayName)->format('Y-m-d');
     }
 
-    public function saveSchedule($schedules, $examinations = [])
+    /**
+     * Save schedules and/or examinations to database
+     * NOTE: Schedules go to 'schedules' table, examinations go to 'examinations' table
+     * Can be called with only schedules, only examinations, or both
+     */
+    public function saveSchedule($schedules = [], $examinations = [])
     {
         try {
             Log::info('SchedulerService: Starting saveSchedule', [
@@ -575,7 +759,7 @@ class SchedulerService
             $savedExams = 0;
             $errors = [];
 
-            // Save regular class schedules to schedules table
+            // Save regular class schedules to 'schedules' table ONLY
             foreach ($schedules as $index => $schedule) {
                 try {
                     // Validate required fields
@@ -631,7 +815,7 @@ class SchedulerService
                 }
             }
 
-            // Save examinations ONLY to examinations table (NOT to schedules table)
+            // Save examinations to 'examinations' table ONLY (NOT to schedules table)
             foreach ($examinations as $index => $exam) {
                 try {
                     if (empty($exam['faculty_id']) || empty($exam['subject_id']) || empty($exam['classroom_id'])) {
@@ -711,6 +895,15 @@ class SchedulerService
                 'message' => 'Database error: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Save only examinations to database
+     * Convenience method for saving exam data without schedules
+     */
+    public function saveExaminations($examinations)
+    {
+        return $this->saveSchedule([], $examinations);
     }
 
     private function ensureTimeFormat($time)
