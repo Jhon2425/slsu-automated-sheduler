@@ -106,9 +106,9 @@
                         <tbody>
                             @forelse($educationalQualifications as $qualification)
                             <tr>
-                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->degree }}</td>
-                                <td class="border border-gray-300 px-3 py-2 text-center">{{ $qualification->year }}</td>
-                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->school }}</td>
+                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->degree ?? 'N/A' }}</td>
+                                <td class="border border-gray-300 px-3 py-2 text-center">{{ $qualification->year_graduated ?? 'N/A' }}</td>
+                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->institution ?? 'N/A' }}</td>
                             </tr>
                             @empty
                             <tr>
@@ -172,7 +172,7 @@
                                     {{ $schedule->classroom->room_name ?? 'N/A' }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
-                                    BSIT {{ $schedule->year_level ?? 'N/A' }}
+                                    {{ $schedule->subject->program->code ?? 'N/A' }} {{ $schedule->year_level ?? '' }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
                                     @php
@@ -185,7 +185,14 @@
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
                                     @php
-                                        $units = ($schedule->lecture_units ?? 0) + ($schedule->laboratory_units ?? 0);
+                                        // Get units from schedule or subject
+                                        if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
+                                            $units = $schedule->lecture_units + $schedule->laboratory_units;
+                                        } elseif ($schedule->subject) {
+                                            $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+                                        } else {
+                                            $units = 0;
+                                        }
                                         $displayTotalUnits += $units;
                                     @endphp
                                     {{ number_format($units, 1) }}
@@ -232,6 +239,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @if(isset($assignmentsByType))
                             <tr>
                                 <td class="border border-gray-300 px-3 py-2">Designation</td>
                                 <td class="border border-gray-300 px-3 py-2">{{ $assignmentsByType['Designation']->description ?? '' }}</td>
@@ -257,6 +265,33 @@
                                 <td class="border border-gray-300 px-3 py-2">{{ $assignmentsByType['Production']->description ?? '' }}</td>
                                 <td class="border border-gray-300 px-3 py-2 text-center">{{ $assignmentsByType['Production']->hours_per_week ?? '' }}</td>
                             </tr>
+                            @else
+                            <tr>
+                                <td class="border border-gray-300 px-3 py-2">Designation</td>
+                                <td class="border border-gray-300 px-3 py-2"></td>
+                                <td class="border border-gray-300 px-3 py-2 text-center"></td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-300 px-3 py-2">Committee Work</td>
+                                <td class="border border-gray-300 px-3 py-2"></td>
+                                <td class="border border-gray-300 px-3 py-2 text-center"></td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-300 px-3 py-2">Research Work</td>
+                                <td class="border border-gray-300 px-3 py-2"></td>
+                                <td class="border border-gray-300 px-3 py-2 text-center"></td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-300 px-3 py-2">Extension</td>
+                                <td class="border border-gray-300 px-3 py-2"></td>
+                                <td class="border border-gray-300 px-3 py-2 text-center"></td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-300 px-3 py-2">Production, if any</td>
+                                <td class="border border-gray-300 px-3 py-2"></td>
+                                <td class="border border-gray-300 px-3 py-2 text-center"></td>
+                            </tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>

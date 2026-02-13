@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Faculty;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Program;
-use App\Models\FacultyEnrollment;
 use App\Models\Schedule;
+use App\Models\FacultySubject;
+use App\Models\EducationalBackground;
+use App\Models\Faculty;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -16,31 +17,30 @@ class FacultyDashboardController extends Controller
     {
         $facultyId = Auth::id();
         $user = Auth::user();
-        $faculty = Auth::user();
+        
+        // Get faculty details from faculty table using faculty_code
+        $faculty = Faculty::where('faculty_code', $user->faculty_code)->first();
+        
+        // If no faculty record exists, fall back to user data
+        if (!$faculty) {
+            $faculty = $user;
+        }
 
-        // Get IDs of programs the faculty is already enrolled in
-        $enrolledProgramIds = FacultyEnrollment::where('faculty_id', $facultyId)
-            ->pluck('program_id')
-            ->toArray();
-
-        // Get available programs (not enrolled)
-        $availablePrograms = Program::whereNotIn('id', $enrolledProgramIds)
-            ->orderBy('created_at', 'desc')
+        // Get assigned subjects for this faculty member with their programs
+        $assignedSubjects = FacultySubject::where('faculty_id', $facultyId)
+            ->with(['subject.program', 'subject'])
             ->get();
-
-        // Get programs faculty is enrolled in with schedules
-        $enrolledPrograms = FacultyEnrollment::where('faculty_id', $facultyId)
-            ->with(['program', 'schedules'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // Get assigned subjects for this faculty member
-        $assignedSubjects = $user->subjects()->with('program')->get();
 
         // Get schedules for this faculty member
         $schedules = Schedule::where('faculty_id', $facultyId)
-            ->with(['subject', 'program', 'classroom'])
+            ->with(['subject.program', 'subject', 'classroom'])
+            ->orderBy('day')
             ->orderBy('start_time')
+            ->get();
+
+        // Get educational background
+        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyId)
+            ->orderBy('year_graduated', 'desc')
             ->get();
 
         // Academic Year and Semester (you can adjust this logic based on your needs)
@@ -65,14 +65,6 @@ class FacultyDashboardController extends Controller
             $semester = 'Summer';
         }
 
-        // Educational Qualifications (fetch from database if you have a table for this)
-        $educationalQualifications = [];
-        
-        // Check if faculty has educational_qualifications field (JSON)
-        if ($faculty->educational_qualifications) {
-            $educationalQualifications = json_decode($faculty->educational_qualifications, true);
-        }
-
         // Calculate total contact hours and units
         $totalContactHours = 0;
         $totalUnits = 0;
@@ -84,18 +76,24 @@ class FacultyDashboardController extends Controller
             $hours = ($end - $start) / 3600;
             $totalContactHours += $hours;
             
-            // Calculate units
-            $units = ($schedule->lecture_units ?? 0) + ($schedule->laboratory_units ?? 0);
+            // Calculate units (get from subject or schedule)
+            if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
+                $units = $schedule->lecture_units + $schedule->laboratory_units;
+            } elseif ($schedule->subject) {
+                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+            } else {
+                $units = 0;
+            }
             $totalUnits += $units;
         }
 
-        // Calculate excess load (assuming normal load is 18 units for full-time)
+        // Calculate excess load (assuming normal load is 18 units for full-time, 12 for part-time)
         $normalLoad = $faculty->employment_status === 'FULL-TIME' ? 18 : 12;
         $excessLoad = $totalUnits > $normalLoad ? ($totalUnits - $normalLoad) . ' units' : 'NONE';
 
         // Total workload per day calculation
         $workloadPerDay = $schedules->groupBy(function($schedule) {
-            return $schedule->day_name;
+            return $schedule->day;
         })->map(function($daySchedules) {
             $dailyHours = 0;
             foreach ($daySchedules as $schedule) {
@@ -117,8 +115,6 @@ class FacultyDashboardController extends Controller
         $dateEffective = date('F d, Y', strtotime($faculty->created_at ?? now()));
 
         return view('faculty.dashboard', compact(
-            'availablePrograms',
-            'enrolledPrograms',
             'assignedSubjects',
             'faculty',
             'schedules',
@@ -137,68 +133,37 @@ class FacultyDashboardController extends Controller
     }
 
     /**
-     * Enroll faculty to a program
-     */
-    public function enrollProgram($programId)
-    {
-        $facultyId = Auth::id();
-
-        // Check if already enrolled
-        $exists = FacultyEnrollment::where('faculty_id', $facultyId)
-            ->where('program_id', $programId)
-            ->exists();
-
-        if ($exists) {
-            return redirect()->back()->with('error', 'You are already enrolled in this program.');
-        }
-
-        FacultyEnrollment::create([
-            'faculty_id' => $facultyId,
-            'program_id' => $programId,
-            'enrollment_status' => 'pending', // Admin needs to approve
-        ]);
-
-        return redirect()->back()->with('success', 'Successfully enrolled! Waiting for admin approval.');
-    }
-
-    /**
-     * Unenroll from a program
-     */
-    public function unenrollProgram($enrollmentId)
-    {
-        $facultyId = Auth::id();
-
-        $enrollment = FacultyEnrollment::where('id', $enrollmentId)
-            ->where('faculty_id', $facultyId)
-            ->firstOrFail();
-
-        $enrollment->delete();
-
-        return redirect()->back()->with('success', 'Successfully unenrolled from the program.');
-    }
-
-    /**
      * View schedule - Shows the faculty's complete teaching load document
      */
     public function viewSchedule()
     {
         $facultyId = Auth::id();
-        $faculty = Auth::user();
+        $user = Auth::user();
+        
+        // Get faculty details from faculty table using faculty_code
+        $faculty = Faculty::where('faculty_code', $user->faculty_code)->first();
+        
+        // If no faculty record exists, fall back to user data
+        if (!$faculty) {
+            $faculty = $user;
+        }
 
         // Get schedules for this faculty member
         $schedules = Schedule::where('faculty_id', $facultyId)
-            ->with(['subject', 'program', 'classroom'])
+            ->with(['subject.program', 'subject', 'classroom'])
+            ->orderBy('day')
             ->orderBy('start_time')
             ->get();
 
-        // Get enrolled programs
-        $enrolledPrograms = FacultyEnrollment::where('faculty_id', $facultyId)
-            ->with(['program', 'schedules'])
-            ->orderBy('created_at', 'desc')
+        // Get assigned subjects
+        $assignedSubjects = FacultySubject::where('faculty_id', $facultyId)
+            ->with(['subject.program', 'subject'])
             ->get();
 
-        // Get assigned subjects
-        $assignedSubjects = $faculty->subjects()->with('program')->get();
+        // Get educational background
+        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyId)
+            ->orderBy('year_graduated', 'desc')
+            ->get();
 
         // Academic year and semester
         $currentYear = date('Y');
@@ -220,12 +185,6 @@ class FacultyDashboardController extends Controller
             $semester = 'Summer';
         }
 
-        // Educational qualifications
-        $educationalQualifications = [];
-        if ($faculty->educational_qualifications) {
-            $educationalQualifications = json_decode($faculty->educational_qualifications, true);
-        }
-
         // Calculate totals
         $totalContactHours = 0;
         $totalUnits = 0;
@@ -236,7 +195,14 @@ class FacultyDashboardController extends Controller
             $hours = ($end - $start) / 3600;
             $totalContactHours += $hours;
             
-            $units = ($schedule->lecture_units ?? 0) + ($schedule->laboratory_units ?? 0);
+            // Calculate units (get from subject or schedule)
+            if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
+                $units = $schedule->lecture_units + $schedule->laboratory_units;
+            } elseif ($schedule->subject) {
+                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+            } else {
+                $units = 0;
+            }
             $totalUnits += $units;
         }
 
@@ -244,7 +210,7 @@ class FacultyDashboardController extends Controller
         $excessLoad = $totalUnits > $normalLoad ? ($totalUnits - $normalLoad) . ' units' : 'NONE';
 
         $workloadPerDay = $schedules->groupBy(function($schedule) {
-            return $schedule->day_name;
+            return $schedule->day;
         })->map(function($daySchedules) {
             $dailyHours = 0;
             foreach ($daySchedules as $schedule) {
@@ -261,7 +227,7 @@ class FacultyDashboardController extends Controller
         $vicePresident = config('app.vice_president', 'GONDELINA A. MADOVAN, PhD');
         $dateEffective = date('F d, Y', strtotime($faculty->created_at ?? now()));
 
-        // Return the teaching load view (the document you showed me earlier)
+        // Return the teaching load view
         return view('faculty.teaching-load', compact(
             'faculty',
             'schedules',
@@ -276,48 +242,40 @@ class FacultyDashboardController extends Controller
             'campusDirector',
             'vicePresident',
             'dateEffective',
-            'assignedSubjects',
-            'enrolledPrograms'
+            'assignedSubjects'
         ));
     }
 
     /**
-     * Download schedule for a specific enrollment
-     */
-    public function downloadSchedule($enrollmentId)
-    {
-        $facultyId = Auth::id();
-
-        $enrollment = FacultyEnrollment::where('id', $enrollmentId)
-            ->where('faculty_id', $facultyId)
-            ->with(['program', 'schedules'])
-            ->firstOrFail();
-
-        // Generate PDF logic here
-        $pdf = \PDF::loadView('faculty.schedule-pdf', compact('enrollment'));
-        
-        return $pdf->download('schedule-' . $enrollment->program->code . '.pdf');
-    }
-
-    /**
-     * Download all schedules (legacy)
+     * Download teaching load as PDF
      */
     public function downloadPDF()
     {
         $facultyId = Auth::id();
-        $faculty = Auth::user();
+        $user = Auth::user();
+        
+        // Get faculty details from faculty table using faculty_code
+        $faculty = Faculty::where('faculty_code', $user->faculty_code)->first();
+        
+        // If no faculty record exists, fall back to user data
+        if (!$faculty) {
+            $faculty = $user;
+        }
         
         // Get all the same data as viewSchedule method
         $schedules = Schedule::where('faculty_id', $facultyId)
-            ->with(['subject', 'program', 'classroom'])
+            ->with(['subject.program', 'subject', 'classroom'])
+            ->orderBy('day')
             ->orderBy('start_time')
             ->get();
 
-        $enrolledPrograms = FacultyEnrollment::where('faculty_id', $facultyId)
-            ->with(['program', 'schedules'])
+        $assignedSubjects = FacultySubject::where('faculty_id', $facultyId)
+            ->with(['subject.program', 'subject'])
             ->get();
 
-        $assignedSubjects = $faculty->subjects()->with('program')->get();
+        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyId)
+            ->orderBy('year_graduated', 'desc')
+            ->get();
 
         $currentYear = date('Y');
         $currentMonth = date('n');
@@ -338,11 +296,6 @@ class FacultyDashboardController extends Controller
             $semester = 'Summer';
         }
 
-        $educationalQualifications = [];
-        if ($faculty->educational_qualifications) {
-            $educationalQualifications = json_decode($faculty->educational_qualifications, true);
-        }
-
         $totalContactHours = 0;
         $totalUnits = 0;
         
@@ -352,7 +305,14 @@ class FacultyDashboardController extends Controller
             $hours = ($end - $start) / 3600;
             $totalContactHours += $hours;
             
-            $units = ($schedule->lecture_units ?? 0) + ($schedule->laboratory_units ?? 0);
+            // Calculate units (get from subject or schedule)
+            if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
+                $units = $schedule->lecture_units + $schedule->laboratory_units;
+            } elseif ($schedule->subject) {
+                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+            } else {
+                $units = 0;
+            }
             $totalUnits += $units;
         }
 
@@ -360,7 +320,7 @@ class FacultyDashboardController extends Controller
         $excessLoad = $totalUnits > $normalLoad ? ($totalUnits - $normalLoad) . ' units' : 'NONE';
 
         $workloadPerDay = $schedules->groupBy(function($schedule) {
-            return $schedule->day_name;
+            return $schedule->day;
         })->map(function($daySchedules) {
             $dailyHours = 0;
             foreach ($daySchedules as $schedule) {
@@ -378,7 +338,6 @@ class FacultyDashboardController extends Controller
         $dateEffective = date('F d, Y', strtotime($faculty->created_at ?? now()));
 
         $pdf = \PDF::loadView('faculty.teaching-load-pdf', compact(
-            'enrolledPrograms',
             'faculty',
             'assignedSubjects',
             'schedules',

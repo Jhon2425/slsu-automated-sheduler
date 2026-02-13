@@ -26,10 +26,10 @@
                         </h1>
                         <p class="mt-3 text-white/90 text-lg drop-shadow">Welcome, {{ $faculty->name }}!</p>
                         <p class="mt-1 text-white/80 text-sm drop-shadow">
-                            {{ $faculty->rank ?? 'Faculty Member' }} | {{ $faculty->employment_status ?? 'Part-Time' }}
+                            {{ $faculty->rank ?? 'Faculty Member' }} | {{ $faculty->employment_status ?? 'Not Set' }}
                         </p>
                         <p class="mt-1 text-white/70 text-sm drop-shadow">
-                            Academic Year {{ $academicYear ?? date('Y') . '-' . (date('Y') + 1) }} | {{ $semester ?? '1st' }} Semester
+                            Academic Year {{ $schoolYear ?? date('Y') . '-' . (date('Y') + 1) }} | {{ $semester ?? '1st' }} Semester
                         </p>
                     </div>
                 </div>
@@ -75,20 +75,20 @@
                         </div>
                     </div>
                     <h3 class="text-white/80 text-sm font-medium mb-2">Subjects Teaching</h3>
-                    <p class="text-4xl font-bold text-white">{{ $schedules->count() ?? 0 }}</p>
+                    <p class="text-4xl font-bold text-white">{{ $assignedSubjects->count() ?? 0 }}</p>
                     <p class="text-white/60 text-xs mt-2">Active courses this semester</p>
                 </div>
 
-                <!-- Programs Enrolled -->
+                <!-- Total Schedules -->
                 <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-pink-500/30 backdrop-blur-md p-4 rounded-xl">
-                            <i class="fas fa-graduation-cap text-3xl text-white"></i>
+                            <i class="fas fa-calendar-check text-3xl text-white"></i>
                         </div>
                     </div>
-                    <h3 class="text-white/80 text-sm font-medium mb-2">Programs</h3>
-                    <p class="text-4xl font-bold text-white">{{ $enrolledPrograms->count() ?? 0 }}</p>
-                    <p class="text-white/60 text-xs mt-2">Enrolled programs</p>
+                    <h3 class="text-white/80 text-sm font-medium mb-2">Class Schedules</h3>
+                    <p class="text-4xl font-bold text-white">{{ $schedules->count() ?? 0 }}</p>
+                    <p class="text-white/60 text-xs mt-2">Total class sessions</p>
                 </div>
             </div>
 
@@ -106,7 +106,7 @@
                             View your complete teaching load, class schedules, and download your official teaching load document
                         </p>
                         <div class="flex flex-wrap gap-4 justify-center">
-                            <a href="{{ route('faculty.schedule.view') }}" class="bg-blue-500/40 backdrop-blur-md hover:bg-blue-500/60 text-white px-8 py-4 rounded-xl shadow-lg font-semibold border border-white/30 transition-all inline-flex items-center gap-3 hover:scale-105">
+                            <a href="{{ route('faculty.teaching-load.index') }}" class="bg-blue-500/40 backdrop-blur-md hover:bg-blue-500/60 text-white px-8 py-4 rounded-xl shadow-lg font-semibold border border-white/30 transition-all inline-flex items-center gap-3 hover:scale-105">
                                 <i class="fas fa-eye text-xl"></i>
                                 <span>View My Schedule</span>
                             </a>
@@ -114,7 +114,7 @@
                                 <i class="fas fa-print text-xl"></i>
                                 <span>Print Schedule</span>
                             </button>
-                            <a href="{{ route('faculty.schedule.download-pdf') }}" class="bg-red-500/40 backdrop-blur-md hover:bg-red-500/60 text-white px-8 py-4 rounded-xl shadow-lg font-semibold border border-white/30 transition-all inline-flex items-center gap-3 hover:scale-105">
+                            <a href="{{ route('faculty.teaching-load.download-pdf') }}" class="bg-red-500/40 backdrop-blur-md hover:bg-red-500/60 text-white px-8 py-4 rounded-xl shadow-lg font-semibold border border-white/30 transition-all inline-flex items-center gap-3 hover:scale-105">
                                 <i class="fas fa-download text-xl"></i>
                                 <span>Download PDF</span>
                             </a>
@@ -139,11 +139,19 @@
                                 @php
                                     $today = date('l'); // Get current day name
                                     $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                    
+                                    // Helper function to convert day number to name
+                                    function getDayName($dayNumber) {
+                                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                        return $days[$dayNumber - 1] ?? 'Unknown';
+                                    }
                                 @endphp
                                 
-                                @foreach($daysOfWeek as $day)
+                                @foreach($daysOfWeek as $dayIndex => $day)
                                     @php
-                                        $daySchedules = $schedules->where('day_name', $day);
+                                        // Filter schedules by day number (1 = Monday, 2 = Tuesday, etc.)
+                                        $dayNumber = $dayIndex + 1;
+                                        $daySchedules = $schedules->where('day', $dayNumber);
                                         $isToday = $day === $today;
                                     @endphp
                                     @if($daySchedules->isNotEmpty())
@@ -170,7 +178,7 @@
                                                                 </p>
                                                                 <div class="flex items-center gap-4 mt-2 text-white/70 text-sm">
                                                                     <span><i class="fas fa-door-open mr-1"></i>{{ $schedule->classroom->room_name ?? 'TBA' }}</span>
-                                                                    <span><i class="fas fa-users mr-1"></i>BSIT {{ $schedule->year_level ?? 'N/A' }}</span>
+                                                                    <span><i class="fas fa-graduation-cap mr-1"></i>{{ $schedule->subject->program->code ?? 'N/A' }} {{ $schedule->year_level ?? '' }}</span>
                                                                 </div>
                                                             </div>
                                                             <div class="text-right ml-4">
@@ -245,22 +253,53 @@
                         </a>
                     </div>
 
-                    <!-- Enrolled Programs -->
+                    <!-- Educational Background -->
                     <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20">
                         <h2 class="text-xl font-bold text-white flex items-center gap-2 mb-4">
-                            <i class="fas fa-graduation-cap"></i>
-                            Enrolled Programs
+                            <i class="fas fa-user-graduate"></i>
+                            Educational Background
                         </h2>
-                        @if(isset($enrolledPrograms) && $enrolledPrograms->isNotEmpty())
+                        @if(isset($educationalQualifications) && $educationalQualifications->isNotEmpty())
                             <div class="space-y-3">
-                                @foreach($enrolledPrograms as $enrollment)
+                                @foreach($educationalQualifications as $education)
                                     <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-                                        <p class="text-white font-semibold">{{ $enrollment->program->code ?? 'N/A' }}</p>
-                                        <p class="text-white/70 text-sm mt-1">{{ $enrollment->program->name ?? 'N/A' }}</p>
-                                        <div class="mt-2">
-                                            <span class="inline-block text-xs px-3 py-1 rounded-full {{ $enrollment->enrollment_status == 'approved' ? 'bg-green-500/30 text-green-200 border border-green-400/30' : 'bg-yellow-500/30 text-yellow-200 border border-yellow-400/30' }}">
-                                                <i class="fas {{ $enrollment->enrollment_status == 'approved' ? 'fa-check-circle' : 'fa-clock' }} mr-1"></i>
-                                                {{ ucfirst($enrollment->enrollment_status ?? 'pending') }}
+                                        <p class="text-white font-semibold">{{ $education->degree ?? 'N/A' }}</p>
+                                        <p class="text-white/70 text-sm mt-1">{{ $education->institution ?? 'N/A' }}</p>
+                                        <p class="text-white/60 text-xs mt-1">
+                                            <i class="fas fa-calendar mr-1"></i>
+                                            {{ $education->year_graduated ?? 'N/A' }}
+                                        </p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-8">
+                                <i class="fas fa-graduation-cap text-5xl text-white/20 mb-3"></i>
+                                <p class="text-white/50 text-sm">No educational background added</p>
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Assigned Subjects -->
+                    <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2 mb-4">
+                            <i class="fas fa-book-reader"></i>
+                            Assigned Subjects
+                        </h2>
+                        @if(isset($assignedSubjects) && $assignedSubjects->isNotEmpty())
+                            <div class="space-y-3">
+                                @foreach($assignedSubjects as $assignment)
+                                    <div class="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+                                        <p class="text-white font-semibold">{{ $assignment->subject->course_code ?? 'N/A' }}</p>
+                                        <p class="text-white/70 text-sm mt-1">{{ $assignment->subject->subject_name ?? 'N/A' }}</p>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <span class="text-xs px-2 py-1 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                                                <i class="fas fa-graduation-cap mr-1"></i>
+                                                {{ $assignment->subject->program->code ?? 'N/A' }}
+                                            </span>
+                                            <span class="text-xs px-2 py-1 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/30">
+                                                <i class="fas fa-book mr-1"></i>
+                                                {{ (($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0)) }} units
                                             </span>
                                         </div>
                                     </div>
@@ -268,8 +307,8 @@
                             </div>
                         @else
                             <div class="text-center py-8">
-                                <i class="fas fa-folder-open text-5xl text-white/20 mb-3"></i>
-                                <p class="text-white/50 text-sm">No programs enrolled</p>
+                                <i class="fas fa-book-open text-5xl text-white/20 mb-3"></i>
+                                <p class="text-white/50 text-sm">No subjects assigned</p>
                             </div>
                         @endif
                     </div>
