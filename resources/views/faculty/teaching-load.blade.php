@@ -32,7 +32,7 @@
                         <button onclick="window.print()" class="bg-blue-500/30 backdrop-blur-md hover:bg-blue-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all no-print">
                             <i class="fas fa-print mr-2"></i>Print
                         </button>
-                        <a href="{{ route('faculty.schedule.download-pdf') }}" class="bg-red-500/30 backdrop-blur-md hover:bg-red-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all no-print">
+                        <a href="{{ route('faculty.teaching-load.download-pdf') }}" class="bg-red-500/30 backdrop-blur-md hover:bg-red-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all no-print">
                             <i class="fas fa-file-pdf mr-2"></i>Download PDF
                         </a>
                     </div>
@@ -59,11 +59,11 @@
                     <div class="space-y-2">
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">COLLEGE/TIAONG CAMPUS</div>
-                            <div class="px-3 py-2 w-2/3">{{ $faculty->college ?? 'TIAONG CAMPUS' }}</div>
+                            <div class="px-3 py-2 w-2/3">TIAONG CAMPUS</div>
                         </div>
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">LOCATION:</div>
-                            <div class="px-3 py-2 w-2/3">{{ $faculty->location ?? 'TIAONG, QUEZON' }}</div>
+                            <div class="px-3 py-2 w-2/3">TIAONG, QUEZON</div>
                         </div>
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">NAME:</div>
@@ -71,11 +71,11 @@
                         </div>
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">HOME ADDRESS:</div>
-                            <div class="px-3 py-2 w-2/3">{{ $faculty->address ?? 'TIAONG, QUEZON' }}</div>
+                            <div class="px-3 py-2 w-2/3">{{ $faculty->home_address ?? 'TIAONG, QUEZON' }}</div>
                         </div>
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">Monthly/Year Appointment:</div>
-                            <div class="px-3 py-2 w-2/3">{{ $faculty->formatted_appointment_date ?? ($faculty->appointment_date ? date('F Y', strtotime($faculty->appointment_date)) : 'September 2023') }}</div>
+                            <div class="px-3 py-2 w-2/3">{{ $faculty->formatted_appointment_date ?? 'September 2023' }}</div>
                         </div>
                     </div>
                     <div class="space-y-2">
@@ -106,13 +106,13 @@
                         <tbody>
                             @forelse($educationalQualifications as $qualification)
                             <tr>
-                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->degree ?? 'N/A' }}</td>
+                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->degree_earned ?? 'N/A' }} - {{ $qualification->course ?? '' }}</td>
                                 <td class="border border-gray-300 px-3 py-2 text-center">{{ $qualification->year_graduated ?? 'N/A' }}</td>
-                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->institution ?? 'N/A' }}</td>
+                                <td class="border border-gray-300 px-3 py-2">{{ $qualification->school_graduated ?? 'N/A' }}</td>
                             </tr>
                             @empty
                             <tr>
-                                <td class="border border-gray-300 px-3 py-2">BS INDUSTRIAL TECHNOLOGY</td>
+                                <td class="border border-gray-300 px-3 py-2">Bachelor Degree - BS INDUSTRIAL TECHNOLOGY</td>
                                 <td class="border border-gray-300 px-3 py-2 text-center">2013</td>
                                 <td class="border border-gray-300 px-3 py-2">SLSU-Tiaong Campus</td>
                             </tr>
@@ -125,15 +125,15 @@
                 <div class="grid grid-cols-3 gap-4 mb-6 text-sm">
                     <div class="border border-gray-300">
                         <div class="bg-gray-100 px-3 py-2 font-semibold text-center">EMPLOYMENT STATUS</div>
-                        <div class="px-3 py-2 text-center">{{ $faculty->employment_status ?? 'PART-TIME' }}</div>
+                        <div class="px-3 py-2 text-center">{{ $faculty->employment_status ?? 'Part-Time' }}</div>
                     </div>
                     <div class="border border-gray-300">
                         <div class="bg-gray-100 px-3 py-2 font-semibold text-center">CIVIL STATUS</div>
-                        <div class="px-3 py-2 text-center">{{ $faculty->civil_status ?? 'SINGLE' }}</div>
+                        <div class="px-3 py-2 text-center">{{ $faculty->civil_status ?? 'Single' }}</div>
                     </div>
                     <div class="border border-gray-300">
                         <div class="bg-gray-100 px-3 py-2 font-semibold text-center">DATE OF BIRTH</div>
-                        <div class="px-3 py-2 text-center">{{ $faculty->date_of_birth ? date('F d, Y', strtotime($faculty->date_of_birth)) : 'February 18, 1993' }}</div>
+                        <div class="px-3 py-2 text-center">{{ $faculty->birthdate ? date('F d, Y', strtotime($faculty->birthdate)) : 'Not Set' }}</div>
                     </div>
                 </div>
 
@@ -149,7 +149,6 @@
                                 <th class="border border-gray-300 px-2 py-2">Course</th>
                                 <th class="border border-gray-300 px-2 py-2">Contact Hours</th>
                                 <th class="border border-gray-300 px-2 py-2">Units</th>
-                                <th class="border border-gray-300 px-2 py-2">Class Size</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -166,7 +165,11 @@
                                     {{ date('g:i A', strtotime($schedule->start_time)) }}-{{ date('g:i A', strtotime($schedule->end_time)) }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
-                                    {{ $schedule->day_name ?? 'N/A' }}
+                                    @php
+                                        $days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                        $dayName = $schedule->day_name ?? ($days[$schedule->day] ?? 'N/A');
+                                    @endphp
+                                    {{ $dayName }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
                                     {{ $schedule->classroom->room_name ?? 'N/A' }}
@@ -185,25 +188,29 @@
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
                                     @php
-                                        // Get units from schedule or subject
-                                        if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
-                                            $units = $schedule->lecture_units + $schedule->laboratory_units;
+                                        // Get units from faculty_subject pivot table (preferred) or subject table (fallback)
+                                        $units = 0;
+                                        if (isset($schedule->faculty_subject)) {
+                                            // Units from pivot table
+                                            if ($schedule->faculty_subject->lecture_units !== null && $schedule->faculty_subject->laboratory_units !== null) {
+                                                $units = $schedule->faculty_subject->lecture_units + $schedule->faculty_subject->laboratory_units;
+                                            }
+                                            // Fallback to subject table
+                                            elseif ($schedule->subject) {
+                                                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+                                            }
                                         } elseif ($schedule->subject) {
+                                            // Direct from subject if no pivot data
                                             $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
-                                        } else {
-                                            $units = 0;
                                         }
                                         $displayTotalUnits += $units;
                                     @endphp
                                     {{ number_format($units, 1) }}
                                 </td>
-                                <td class="border border-gray-300 px-2 py-2 text-center">
-                                    {{ $schedule->class_size ?? '-' }}
-                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="border border-gray-300 px-2 py-2 text-center text-gray-500">
+                                <td colspan="7" class="border border-gray-300 px-2 py-2 text-center text-gray-500">
                                     No teaching load assigned yet
                                 </td>
                             </tr>

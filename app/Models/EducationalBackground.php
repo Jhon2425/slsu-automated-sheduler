@@ -13,6 +13,7 @@ class EducationalBackground extends Model
 
     protected $fillable = [
         'faculty_id',
+        'faculty_code',
         'degree_earned',
         'year_graduated',
         'course',

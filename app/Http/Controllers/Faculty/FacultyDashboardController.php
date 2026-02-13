@@ -25,21 +25,24 @@ class FacultyDashboardController extends Controller
         if (!$faculty) {
             $faculty = $user;
         }
+        
+        // Get the faculty table's ID to use in queries
+        $facultyTableId = $faculty->id ?? $facultyId;
 
         // Get assigned subjects for this faculty member with their programs
-        $assignedSubjects = FacultySubject::where('faculty_id', $facultyId)
+        $assignedSubjects = FacultySubject::where('faculty_id', $facultyTableId)
             ->with(['subject.program', 'subject'])
             ->get();
 
         // Get schedules for this faculty member
-        $schedules = Schedule::where('faculty_id', $facultyId)
+        $schedules = Schedule::where('faculty_id', $facultyTableId)
             ->with(['subject.program', 'subject', 'classroom'])
             ->orderBy('day')
             ->orderBy('start_time')
             ->get();
 
         // Get educational background
-        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyId)
+        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyTableId)
             ->orderBy('year_graduated', 'desc')
             ->get();
 
@@ -70,17 +73,22 @@ class FacultyDashboardController extends Controller
         $totalUnits = 0;
         
         foreach ($schedules as $schedule) {
-            // Calculate contact hours
+            // Calculate contact hours from schedule times
             $start = strtotime($schedule->start_time);
             $end = strtotime($schedule->end_time);
             $hours = ($end - $start) / 3600;
             $totalContactHours += $hours;
-            
-            // Calculate units (get from subject or schedule)
-            if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
-                $units = $schedule->lecture_units + $schedule->laboratory_units;
-            } elseif ($schedule->subject) {
-                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+        }
+        
+        // Calculate total units from assigned subjects
+        foreach ($assignedSubjects as $assignment) {
+            // Get units from faculty_subject pivot table (if available)
+            if (isset($assignment->lecture_units) && isset($assignment->laboratory_units)) {
+                $units = $assignment->lecture_units + $assignment->laboratory_units;
+            }
+            // Otherwise get from subject table
+            elseif ($assignment->subject) {
+                $units = ($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0);
             } else {
                 $units = 0;
             }
@@ -147,21 +155,24 @@ class FacultyDashboardController extends Controller
         if (!$faculty) {
             $faculty = $user;
         }
+        
+        // Get the faculty table's ID to use in queries
+        $facultyTableId = $faculty->id ?? $facultyId;
 
         // Get schedules for this faculty member
-        $schedules = Schedule::where('faculty_id', $facultyId)
+        $schedules = Schedule::where('faculty_id', $facultyTableId)
             ->with(['subject.program', 'subject', 'classroom'])
             ->orderBy('day')
             ->orderBy('start_time')
             ->get();
 
         // Get assigned subjects
-        $assignedSubjects = FacultySubject::where('faculty_id', $facultyId)
+        $assignedSubjects = FacultySubject::where('faculty_id', $facultyTableId)
             ->with(['subject.program', 'subject'])
             ->get();
 
         // Get educational background
-        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyId)
+        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyTableId)
             ->orderBy('year_graduated', 'desc')
             ->get();
 
@@ -190,16 +201,22 @@ class FacultyDashboardController extends Controller
         $totalUnits = 0;
         
         foreach ($schedules as $schedule) {
+            // Calculate contact hours from schedule times
             $start = strtotime($schedule->start_time);
             $end = strtotime($schedule->end_time);
             $hours = ($end - $start) / 3600;
             $totalContactHours += $hours;
-            
-            // Calculate units (get from subject or schedule)
-            if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
-                $units = $schedule->lecture_units + $schedule->laboratory_units;
-            } elseif ($schedule->subject) {
-                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+        }
+        
+        // Calculate total units from assigned subjects
+        foreach ($assignedSubjects as $assignment) {
+            // Get units from faculty_subject pivot table (if available)
+            if (isset($assignment->lecture_units) && isset($assignment->laboratory_units)) {
+                $units = $assignment->lecture_units + $assignment->laboratory_units;
+            }
+            // Otherwise get from subject table
+            elseif ($assignment->subject) {
+                $units = ($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0);
             } else {
                 $units = 0;
             }
@@ -262,18 +279,21 @@ class FacultyDashboardController extends Controller
             $faculty = $user;
         }
         
+        // Get the faculty table's ID to use in queries
+        $facultyTableId = $faculty->id ?? $facultyId;
+        
         // Get all the same data as viewSchedule method
-        $schedules = Schedule::where('faculty_id', $facultyId)
+        $schedules = Schedule::where('faculty_id', $facultyTableId)
             ->with(['subject.program', 'subject', 'classroom'])
             ->orderBy('day')
             ->orderBy('start_time')
             ->get();
 
-        $assignedSubjects = FacultySubject::where('faculty_id', $facultyId)
+        $assignedSubjects = FacultySubject::where('faculty_id', $facultyTableId)
             ->with(['subject.program', 'subject'])
             ->get();
 
-        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyId)
+        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyTableId)
             ->orderBy('year_graduated', 'desc')
             ->get();
 
@@ -300,16 +320,22 @@ class FacultyDashboardController extends Controller
         $totalUnits = 0;
         
         foreach ($schedules as $schedule) {
+            // Calculate contact hours from schedule times
             $start = strtotime($schedule->start_time);
             $end = strtotime($schedule->end_time);
             $hours = ($end - $start) / 3600;
             $totalContactHours += $hours;
-            
-            // Calculate units (get from subject or schedule)
-            if (isset($schedule->lecture_units) && isset($schedule->laboratory_units)) {
-                $units = $schedule->lecture_units + $schedule->laboratory_units;
-            } elseif ($schedule->subject) {
-                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+        }
+        
+        // Calculate total units from assigned subjects
+        foreach ($assignedSubjects as $assignment) {
+            // Get units from faculty_subject pivot table (if available)
+            if (isset($assignment->lecture_units) && isset($assignment->laboratory_units)) {
+                $units = $assignment->lecture_units + $assignment->laboratory_units;
+            }
+            // Otherwise get from subject table
+            elseif ($assignment->subject) {
+                $units = ($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0);
             } else {
                 $units = 0;
             }

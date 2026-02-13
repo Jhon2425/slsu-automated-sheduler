@@ -11,6 +11,7 @@ class Schedule extends Model
 
     protected $fillable = [
         'faculty_id',
+        'faculty_code',
         'subject_id',
         'classroom_id',
         'program_id',
@@ -98,9 +99,16 @@ class Schedule extends Model
 
     /**
      * Accessor to get faculty code - prevents N/A display
+     * Returns either the denormalized faculty_code or fetches from relationship
      */
     public function getFacultyCodeAttribute()
     {
+        // First check if faculty_code is stored directly
+        if (isset($this->attributes['faculty_code']) && $this->attributes['faculty_code']) {
+            return $this->attributes['faculty_code'];
+        }
+        
+        // Fallback to relationship
         return $this->faculty ? $this->faculty->faculty_code : 'N/A';
     }
 
@@ -158,5 +166,14 @@ class Schedule extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope to filter by faculty code
+     * Usage: Schedule::byFacultyCode('FAC-001')->get()
+     */
+    public function scopeByFacultyCode($query, $facultyCode)
+    {
+        return $query->where('faculty_code', $facultyCode);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\FacultySubject;
 use App\Models\FacultyUnavailability;
 use App\Models\EducationalBackground;
 use App\Models\Program;
+use App\Models\Schedule;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -101,7 +102,7 @@ class FacultyController extends Controller
             $user = User::create([
                 'name'         => $validated['name'],
                 'email'        => $validated['email'],
-                'faculty_code' => $validated['faculty_code'], // ✅ Added faculty_code to User
+                'faculty_code' => $validated['faculty_code'],
                 'password'     => Hash::make($validated['password']),
                 'role_id'      => 2, // Faculty role - ensure this exists in your roles table
             ]);
@@ -125,11 +126,12 @@ class FacultyController extends Controller
 
             Log::info('Faculty profile created', ['faculty_id' => $faculty->id, 'faculty_code' => $faculty->faculty_code]);
 
-            // 3️⃣ Create Educational Backgrounds
+            // 3️⃣ Create Educational Backgrounds with faculty_code
             $educationCount = 0;
             foreach ($validated['education'] as $education) {
                 EducationalBackground::create([
                     'faculty_id'        => $faculty->id,
+                    'faculty_code'      => $validated['faculty_code'], // ✅ Added faculty_code
                     'degree_earned'     => $education['degree_earned'],
                     'year_graduated'    => $education['year_graduated'],
                     'course'            => $education['course'],
@@ -138,7 +140,7 @@ class FacultyController extends Controller
                 $educationCount++;
             }
 
-            Log::info('Educational backgrounds created', ['faculty_id' => $faculty->id, 'count' => $educationCount]);
+            Log::info('Educational backgrounds created', ['faculty_id' => $faculty->id, 'faculty_code' => $validated['faculty_code'], 'count' => $educationCount]);
 
             // 4️⃣ Assign Subjects (optional)
             $subjectCount = 0;
@@ -292,6 +294,9 @@ class FacultyController extends Controller
                 ->with('error', 'Faculty profile not found');
         }
 
+        // Store old faculty_code before validation for schedule updates
+        $oldFacultyCode = $facultyProfile->faculty_code;
+
         // Validate incoming request
         try {
             $validated = $request->validate([
@@ -345,7 +350,7 @@ class FacultyController extends Controller
             $userData = [
                 'name'         => $validated['name'],
                 'email'        => $validated['email'],
-                'faculty_code' => $validated['faculty_code'], // ✅ Added faculty_code to User update
+                'faculty_code' => $validated['faculty_code'],
             ];
             
             if (!empty($validated['password'])) {
@@ -372,7 +377,7 @@ class FacultyController extends Controller
 
             Log::info('Faculty profile updated', ['faculty_id' => $facultyProfile->id]);
 
-            // 3️⃣ Handle Educational Backgrounds
+            // 3️⃣ Handle Educational Backgrounds with updated faculty_code
             $existingEducationIds = [];
             $educationCount = 0;
             
@@ -382,6 +387,7 @@ class FacultyController extends Controller
                     $education = EducationalBackground::find($educationData['id']);
                     if ($education && $education->faculty_id === $facultyProfile->id) {
                         $education->update([
+                            'faculty_code'      => $validated['faculty_code'], // ✅ Update faculty_code
                             'degree_earned'     => $educationData['degree_earned'],
                             'year_graduated'    => $educationData['year_graduated'],
                             'course'            => $educationData['course'],
@@ -394,6 +400,7 @@ class FacultyController extends Controller
                     // Create new educational background
                     $newEducation = EducationalBackground::create([
                         'faculty_id'        => $facultyProfile->id,
+                        'faculty_code'      => $validated['faculty_code'], // ✅ Add faculty_code
                         'degree_earned'     => $educationData['degree_earned'],
                         'year_graduated'    => $educationData['year_graduated'],
                         'course'            => $educationData['course'],
@@ -411,6 +418,7 @@ class FacultyController extends Controller
 
             Log::info('Educational backgrounds updated', [
                 'faculty_id' => $facultyProfile->id,
+                'faculty_code' => $validated['faculty_code'],
                 'updated' => $educationCount,
                 'deleted' => $deletedEducation
             ]);
@@ -429,7 +437,7 @@ class FacultyController extends Controller
                     if ($lectureUnits > 0 || $laboratoryUnits > 0) {
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
-                            'faculty_code'     => $validated['faculty_code'], // ✅ Use updated faculty_code
+                            'faculty_code'     => $validated['faculty_code'],
                             'subject_id'       => $subject['subject_id'],
                             'program_id'       => $subject['program_id'] ?? null,
                             'lecture_units'    => $lectureUnits,
@@ -456,7 +464,7 @@ class FacultyController extends Controller
                 foreach ($validated['unavailabilities'] as $unavail) {
                     FacultyUnavailability::create([
                         'faculty_id'  => $facultyProfile->id,
-                        'faculty_code' => $validated['faculty_code'], // ✅ Use updated faculty_code
+                        'faculty_code' => $validated['faculty_code'],
                         'day'         => $unavail['day'],
                         'time_from'   => $unavail['time_from'],
                         'time_to'     => $unavail['time_to'],
@@ -472,9 +480,27 @@ class FacultyController extends Controller
                 'created' => $unavailabilityCount
             ]);
 
+            // 6️⃣ Update Schedules with new faculty_code (if faculty_code changed)
+            $scheduleUpdateCount = 0;
+            if ($oldFacultyCode !== $validated['faculty_code']) {
+                $scheduleUpdateCount = Schedule::where('faculty_id', $faculty->id)
+                    ->where('faculty_code', $oldFacultyCode)
+                    ->update(['faculty_code' => $validated['faculty_code']]);
+
+                Log::info('Schedules updated with new faculty_code', [
+                    'faculty_id' => $faculty->id,
+                    'old_faculty_code' => $oldFacultyCode,
+                    'new_faculty_code' => $validated['faculty_code'],
+                    'schedules_updated' => $scheduleUpdateCount
+                ]);
+            }
+
             DB::commit();
 
-            Log::info('Faculty successfully updated', ['faculty_id' => $facultyProfile->id]);
+            Log::info('Faculty successfully updated', [
+                'faculty_id' => $facultyProfile->id,
+                'schedules_updated' => $scheduleUpdateCount
+            ]);
 
             return redirect()
                 ->route('admin.faculty.index')
@@ -518,6 +544,13 @@ class FacultyController extends Controller
                 
                 // Delete unavailabilities
                 FacultyUnavailability::where('faculty_id', $facultyId)->delete();
+                
+                // Delete or handle schedules (depending on your business logic)
+                // Option 1: Delete schedules
+                Schedule::where('faculty_id', $faculty->id)->delete();
+                
+                // Option 2: Set faculty_id to null (if you allow orphaned schedules)
+                // Schedule::where('faculty_id', $faculty->id)->update(['faculty_id' => null, 'faculty_code' => null]);
                 
                 // Delete faculty profile
                 $faculty->faculty->delete();
@@ -676,7 +709,7 @@ class FacultyController extends Controller
                     if ($subject) {
                         FacultySubject::create([
                             'faculty_id' => $facultyProfile->id,
-                            'faculty_code' => $facultyProfile->faculty_code, // ✅ Use faculty_code from faculty profile
+                            'faculty_code' => $facultyProfile->faculty_code,
                             'subject_id' => $subjectId,
                             'program_id' => $subject->program_id ?? null,
                             'lecture_units' => $subject->lec ?? 0,

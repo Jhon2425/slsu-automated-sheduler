@@ -581,7 +581,9 @@ class SchedulerService
                             'classroom' => $classroom->room_name ?? $classroom->name
                         ]);
 
+                        // FIXED: Include assignment_id, faculty_code, and year_section
                         return [
+                            'assignment_id'   => $assignment->assignment_id,
                             'faculty_id'      => $assignment->faculty_id,
                             'faculty_code'    => $assignment->faculty_code,
                             'subject_id'      => $assignment->subject_id,
@@ -908,6 +910,7 @@ class SchedulerService
      * Generate examination for a faculty assignment
      * UPDATED: Examinations are now 1 hour only (not 2 hours)
      * NOTE: Examinations are separate from regular class schedules
+     * FIXED: Include assignment_id, faculty_code, and year_section
      */
     private function generateExaminationForAssignment($assignment, $classrooms, $existingExams, $totalUnits)
     {
@@ -936,7 +939,9 @@ class SchedulerService
                     if ($this->isExamSlotAvailableForAssignment($existingExams, $specificExamDate, $slot, $classroom->id, $assignment)) {
                         $yearSection = $assignment->year_level . '-A';
 
+                        // FIXED: Include assignment_id, faculty_code, and year_section
                         return [
+                            'assignment_id'   => $assignment->assignment_id,
                             'faculty_id'      => $assignment->faculty_id,
                             'faculty_code'    => $assignment->faculty_code,
                             'subject_id'      => $assignment->subject_id,
@@ -993,6 +998,7 @@ class SchedulerService
      * Save schedules and/or examinations to database
      * NOTE: Schedules go to 'schedules' table, examinations go to 'examinations' table
      * Can be called with only schedules, only examinations, or both
+     * FIXED: Now properly saves faculty_code, faculty_subject_id (assignment_id), and year_section
      */
     public function saveSchedule($schedules = [], $examinations = [])
     {
@@ -1032,11 +1038,13 @@ class SchedulerService
                     $dayName = $schedule['day_name'] ?? $schedule['day'];
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Build schedule data
+                    // FIXED: Build schedule data with all required fields
                     $data = [
                         'faculty_id' => $schedule['faculty_id'],
+                        'faculty_code' => $schedule['faculty_code'] ?? null,
                         'subject_id' => $schedule['subject_id'],
                         'classroom_id' => $schedule['classroom_id'],
+                        'faculty_subject_id' => $schedule['assignment_id'] ?? null,
                         'day' => $dayNumber,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
@@ -1045,6 +1053,7 @@ class SchedulerService
                         'semester' => $schedule['semester'] ?? null,
                         'schedule_date' => $schedule['schedule_date'] ?? null,
                         'section' => $schedule['year_section'] ?? null,
+                        'year_section' => $schedule['year_section'] ?? null,
                         'is_active' => true,
                     ];
 
@@ -1056,6 +1065,12 @@ class SchedulerService
                     Schedule::create($data);
 
                     $savedSchedules++;
+
+                    Log::info("✅ Saved schedule {$savedSchedules}", [
+                        'faculty_code' => $data['faculty_code'],
+                        'faculty_subject_id' => $data['faculty_subject_id'],
+                        'year_section' => $data['year_section']
+                    ]);
 
                 } catch (Exception $e) {
                     $error = "Error saving schedule {$index}: " . $e->getMessage();
@@ -1080,11 +1095,13 @@ class SchedulerService
                     $dayName = $examDate->format('l'); // Gets full day name (Monday, Tuesday, etc.)
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Save ONLY to examinations table
+                    // FIXED: Save to examinations table with all required fields
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
+                        'faculty_code' => $exam['faculty_code'] ?? null,
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
+                        'faculty_subject_id' => $exam['assignment_id'] ?? null,
                         'exam_date' => $exam['exam_date'] ?? null,
                         'day' => $dayNumber,
                         'start_time' => $startTime,
@@ -1095,6 +1112,12 @@ class SchedulerService
                     ]);
 
                     $savedExams++;
+
+                    Log::info("✅ Saved examination {$savedExams}", [
+                        'faculty_code' => $exam['faculty_code'] ?? 'N/A',
+                        'faculty_subject_id' => $exam['assignment_id'] ?? 'N/A',
+                        'year_section' => $exam['year_section'] ?? 'N/A'
+                    ]);
 
                 } catch (Exception $e) {
                     $error = "Error saving exam {$index}: " . $e->getMessage();

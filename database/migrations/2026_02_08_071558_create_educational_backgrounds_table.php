@@ -18,6 +18,13 @@ return new class extends Migration
             $table->foreignId('faculty_id')
                 ->constrained('faculty')
                 ->cascadeOnDelete();
+            
+            $table->string('faculty_code')->nullable();
+            $table->foreign('faculty_code')
+                ->references('faculty_code')
+                ->on('faculty')
+                ->cascadeOnUpdate()
+                ->nullOnDelete();
 
             $table->enum('degree_earned', [
                 'Bachelor Degree',
@@ -49,6 +56,7 @@ return new class extends Migration
                     ) {
                         DB::table('educational_backgrounds')->insert([
                             'faculty_id'        => $faculty->id,
+                            'faculty_code'      => $faculty->faculty_code,
                             'degree_earned'     => $faculty->degree_earned,
                             'year_graduated'    => $faculty->year_graduated,
                             'course'            => $faculty->course,
