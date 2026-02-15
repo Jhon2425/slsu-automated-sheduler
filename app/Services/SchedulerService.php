@@ -319,19 +319,14 @@ class SchedulerService
                 }
 
                 if (!$scheduled) {
-                    // Get detailed unavailability information using faculty_code
+                    // Get detailed unavailability information
+                    $unavailabilitySlots = $this->getFacultyUnavailabilitySlots($assignment->faculty_code);
                     $unavailabilityDetails = '';
-                    $facultyUnavailabilities = DB::table('faculty_unavailabilities')
-                        ->where('faculty_code', $assignment->faculty_code)
-                        ->get();
+                    $slotDescriptions = [];
                     
-                    if ($facultyUnavailabilities->isNotEmpty()) {
-                        $unavailableSlots = [];
-                        foreach ($facultyUnavailabilities as $unavail) {
-                            $dayName = array_search($unavail->day, $this->dayNameToNumber) ?: "Day {$unavail->day}";
-                            $unavailableSlots[] = "{$dayName} {$unavail->start_time}-{$unavail->end_time}";
-                        }
-                        $unavailabilityDetails = ' Faculty unavailable on: ' . implode(', ', $unavailableSlots) . '.';
+                    if (!empty($unavailabilitySlots)) {
+                        $slotDescriptions = array_map(fn($slot) => $slot['formatted'], $unavailabilitySlots);
+                        $unavailabilityDetails = ' ⚠️ Faculty unavailable: ' . implode(', ', $slotDescriptions);
                     }
                     
                     $conflicts[] = [
@@ -343,14 +338,17 @@ class SchedulerService
                         'laboratory_units' => $labUnits,
                         'total_units' => $totalUnits,
                         'reason' => 'Could not find available time slots after ' . $maxAttempts . ' attempts.' . $unavailabilityDetails,
-                        'unavailability_count' => $facultyUnavailabilities->count()
+                        'unavailability_count' => count($unavailabilitySlots),
+                        'unavailable_periods' => $slotDescriptions
                     ];
                     
-                    Log::warning("Failed to schedule assignment", [
+                    Log::warning("❌ CONFLICT: Unable to schedule", [
                         'faculty' => $assignment->faculty_name,
+                        'faculty_code' => $assignment->faculty_code,
                         'subject' => $assignment->subject_name,
                         'attempts' => $maxAttempts,
-                        'unavailable_slots' => $facultyUnavailabilities->count()
+                        'unavailable_slots' => count($unavailabilitySlots),
+                        'unavailability_details' => $slotDescriptions
                     ]);
                 }
             }
@@ -495,27 +493,39 @@ class SchedulerService
 
     /**
      * Find an available time slot for a faculty assignment
-     * CRITICAL: Checks faculty unavailability BEFORE attempting to schedule
+     * CRITICAL: Checks faculty unavailability FIRST before attempting to schedule
      * 
      * Process:
-     * 1. Get faculty's unavailable time slots from database
-     * 2. For each day, skip if faculty has unavailability that would conflict
-     * 3. Only attempt scheduling on days/times when faculty is available
-     * 4. Check classroom and other conflicts
+     * 1. Pre-load ALL faculty unavailability slots from database
+     * 2. For each day and time slot, check if faculty is unavailable FIRST
+     * 3. Skip time slots where faculty is unavailable (most efficient)
+     * 4. Only then check classroom and other conflicts
+     * 5. This ensures faculty is NEVER scheduled during their unavailable times
      */
     private function findAvailableSlotForAssignment($assignment, $hours, $classType, $classrooms, $existingSchedules, $usedDays = [])
     {
-        // PRE-CHECK: Load all faculty unavailability slots for this faculty
+        // ============================================================================
+        // STEP 1: PRE-LOAD ALL FACULTY UNAVAILABILITY (CRITICAL CHECK)
+        // ============================================================================
+        // Load ALL unavailability slots for this faculty member BEFORE attempting scheduling
+        // This prevents wasted iterations and ensures we never schedule during unavailable times
         $facultyUnavailabilities = DB::table('faculty_unavailabilities')
             ->where('faculty_code', $assignment->faculty_code)
             ->get()
-            ->groupBy('day'); // Group by day for efficient lookup
+            ->groupBy('day'); // Group by day number for efficient lookup
         
+        // Log unavailability information for debugging
         if ($facultyUnavailabilities->isNotEmpty()) {
-            Log::info("Faculty has unavailability restrictions", [
+            $unavailableDays = $facultyUnavailabilities->keys()->map(function($dayNum) {
+                return array_search($dayNum, $this->dayNameToNumber) ?: "Day $dayNum";
+            })->toArray();
+            
+            Log::info("🚫 Faculty has unavailability restrictions", [
                 'faculty_code' => $assignment->faculty_code,
                 'faculty_name' => $assignment->faculty_name,
-                'unavailable_days' => $facultyUnavailabilities->keys()->toArray()
+                'subject' => $assignment->subject_name,
+                'unavailable_days' => $unavailableDays,
+                'total_restrictions' => $facultyUnavailabilities->flatten()->count()
             ]);
         }
 
@@ -523,14 +533,35 @@ class SchedulerService
         shuffle($shuffledDays);
         $shuffledClassrooms = $classrooms->shuffle();
 
+        // ============================================================================
+        // STEP 2: ITERATE THROUGH DAYS AND TIME SLOTS
+        // ============================================================================
         foreach ($shuffledDays as $day) {
             // Skip if this day was already used for this subject
             if (in_array($day, $usedDays)) {
-                Log::debug("Day already used for this subject", [
+                Log::debug("⏭️ Day already used for this subject", [
                     'day' => $day,
                     'subject' => $assignment->subject_name
                 ]);
                 continue;
+            }
+            
+            // Convert day name to number for unavailability checking
+            $dayNumber = $this->convertDayToNumber($day);
+            
+            // ========================================================================
+            // CRITICAL: Check if faculty has ANY unavailability on this day
+            // ========================================================================
+            // If faculty has unavailability restrictions on this day, we need to be careful
+            $hasUnavailabilityOnDay = isset($facultyUnavailabilities[$dayNumber]);
+            
+            if ($hasUnavailabilityOnDay) {
+                Log::debug("⚠️ Faculty has unavailability on this day", [
+                    'faculty_code' => $assignment->faculty_code,
+                    'day' => $day,
+                    'day_number' => $dayNumber,
+                    'unavailable_slots' => $facultyUnavailabilities[$dayNumber]->count()
+                ]);
             }
             
             // Get available time slots for the required duration
@@ -538,52 +569,59 @@ class SchedulerService
             shuffle($availableSlots);
 
             foreach ($availableSlots as $timeSlot) {
-                // CRITICAL CHECK: Verify faculty is available during this time slot BEFORE checking classrooms
-                $dayNumber = $this->convertDayToNumber($day);
+                // ====================================================================
+                // CRITICAL UNAVAILABILITY CHECK - FIRST PRIORITY
+                // ====================================================================
+                // Check if faculty is unavailable during this specific time slot
+                // This is checked BEFORE classroom availability to avoid wasted checks
                 
-                // Check if faculty has any unavailability on this day
-                if (isset($facultyUnavailabilities[$dayNumber])) {
-                    $isUnavailable = false;
+                if ($hasUnavailabilityOnDay) {
+                    $isTimeSlotUnavailable = false;
+                    $conflictingSlot = null;
                     
+                    // Check each unavailability period on this day
                     foreach ($facultyUnavailabilities[$dayNumber] as $unavail) {
                         if ($this->timesOverlap($timeSlot['start'], $timeSlot['end'], $unavail->start_time, $unavail->end_time)) {
-                            Log::debug("⏰ Faculty unavailable during this time slot", [
-                                'faculty_code' => $assignment->faculty_code,
-                                'faculty_name' => $assignment->faculty_name,
-                                'day' => $day,
-                                'requested_time' => "{$timeSlot['start']} - {$timeSlot['end']}",
-                                'unavailable_time' => "{$unavail->start_time} - {$unavail->end_time}"
-                            ]);
-                            $isUnavailable = true;
+                            $isTimeSlotUnavailable = true;
+                            $conflictingSlot = $unavail;
                             break;
                         }
                     }
                     
-                    // Skip this time slot if faculty is unavailable
-                    if ($isUnavailable) {
-                        continue;
+                    // If faculty is unavailable, skip this time slot entirely
+                    if ($isTimeSlotUnavailable) {
+                        Log::debug("🚫 FACULTY UNAVAILABLE - Skipping time slot", [
+                            'faculty_code' => $assignment->faculty_code,
+                            'faculty_name' => $assignment->faculty_name,
+                            'subject' => $assignment->subject_name,
+                            'day' => $day,
+                            'requested_time' => "{$timeSlot['start']} - {$timeSlot['end']}",
+                            'unavailable_time' => "{$conflictingSlot->start_time} - {$conflictingSlot->end_time}",
+                            'reason' => 'Faculty marked as unavailable during this period'
+                        ]);
+                        continue; // Skip to next time slot
                     }
                 }
 
-                // Faculty is available - now check classroom availability
+                // ====================================================================
+                // Faculty is available at this time - Now check classroom availability
+                // ====================================================================
                 foreach ($shuffledClassrooms as $classroom) {
                     if ($this->isSlotAvailableForAssignment($existingSchedules, $day, $timeSlot['start'], $timeSlot['end'], $classroom->id, $assignment)) {
                         $yearSection = $assignment->year_level . '-A';
-
-                        // Calculate total units for display
                         $totalUnits = (float)($assignment->lecture_units ?? 0) + (float)($assignment->laboratory_units ?? 0);
 
-                        Log::info("✅ Successfully found available slot", [
+                        Log::info("✅ Successfully scheduled (faculty available)", [
                             'faculty' => $assignment->faculty_name,
+                            'faculty_code' => $assignment->faculty_code,
                             'subject' => $assignment->subject_name,
                             'day' => $day,
                             'time' => "{$timeSlot['start']} - {$timeSlot['end']}",
-                            'classroom' => $classroom->room_name ?? $classroom->name
+                            'classroom' => $classroom->room_name ?? $classroom->name,
+                            'hours' => $hours
                         ]);
 
-                        // FIXED: Include assignment_id, faculty_code, and year_section
                         return [
-                            'assignment_id'   => $assignment->assignment_id,
                             'faculty_id'      => $assignment->faculty_id,
                             'faculty_code'    => $assignment->faculty_code,
                             'subject_id'      => $assignment->subject_id,
@@ -611,11 +649,20 @@ class SchedulerService
             }
         }
 
-        Log::warning("❌ Could not find available slot", [
+        // ============================================================================
+        // NO AVAILABLE SLOT FOUND
+        // ============================================================================
+        // Log detailed information about why scheduling failed
+        $unavailabilityDetails = $this->getFacultyUnavailabilitySummary($assignment->faculty_code);
+        
+        Log::warning("❌ SCHEDULING FAILED - No available slots", [
             'faculty' => $assignment->faculty_name,
+            'faculty_code' => $assignment->faculty_code,
             'subject' => $assignment->subject_name,
-            'hours' => $hours,
-            'type' => $classType
+            'hours_needed' => $hours,
+            'type' => $classType,
+            'unavailability' => $unavailabilityDetails,
+            'has_restrictions' => $facultyUnavailabilities->isNotEmpty()
         ]);
 
         return false;
@@ -670,7 +717,7 @@ class SchedulerService
     /**
      * Check if faculty is unavailable at the given day and time
      * UPDATED: Now uses faculty_code instead of faculty_id
-     * This is the PRIMARY check that prevents scheduling conflicts with faculty unavailability
+     * This is a BACKUP check - the primary check is in findAvailableSlotForAssignment
      */
     private function isFacultyUnavailable($facultyCode, $day, $startTime, $endTime)
     {
@@ -766,12 +813,12 @@ class SchedulerService
         $assignmentSection = $assignment->year_level . '-A';
 
         // ===================================================================
-        // CHECK 1: Faculty Unavailability
+        // CHECK 1: Faculty Unavailability (BACKUP CHECK)
         // ===================================================================
-        // Verify the faculty member hasn't marked themselves as unavailable 
-        // during this time slot
+        // Note: Primary unavailability check is in findAvailableSlotForAssignment
+        // This is a secondary safeguard
         if ($this->isFacultyUnavailable($assignment->faculty_code, $day, $startTime, $endTime)) {
-            Log::debug("❌ Faculty unavailable", [
+            Log::debug("❌ Faculty unavailable (backup check)", [
                 'faculty_code' => $assignment->faculty_code,
                 'faculty_name' => $assignment->faculty_name,
                 'day' => $day,
@@ -910,7 +957,6 @@ class SchedulerService
      * Generate examination for a faculty assignment
      * UPDATED: Examinations are now 1 hour only (not 2 hours)
      * NOTE: Examinations are separate from regular class schedules
-     * FIXED: Include assignment_id, faculty_code, and year_section
      */
     private function generateExaminationForAssignment($assignment, $classrooms, $existingExams, $totalUnits)
     {
@@ -939,9 +985,7 @@ class SchedulerService
                     if ($this->isExamSlotAvailableForAssignment($existingExams, $specificExamDate, $slot, $classroom->id, $assignment)) {
                         $yearSection = $assignment->year_level . '-A';
 
-                        // FIXED: Include assignment_id, faculty_code, and year_section
                         return [
-                            'assignment_id'   => $assignment->assignment_id,
                             'faculty_id'      => $assignment->faculty_id,
                             'faculty_code'    => $assignment->faculty_code,
                             'subject_id'      => $assignment->subject_id,
@@ -998,7 +1042,6 @@ class SchedulerService
      * Save schedules and/or examinations to database
      * NOTE: Schedules go to 'schedules' table, examinations go to 'examinations' table
      * Can be called with only schedules, only examinations, or both
-     * FIXED: Now properly saves faculty_code, faculty_subject_id (assignment_id), and year_section
      */
     public function saveSchedule($schedules = [], $examinations = [])
     {
@@ -1038,13 +1081,11 @@ class SchedulerService
                     $dayName = $schedule['day_name'] ?? $schedule['day'];
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // FIXED: Build schedule data with all required fields
+                    // Build schedule data
                     $data = [
                         'faculty_id' => $schedule['faculty_id'],
-                        'faculty_code' => $schedule['faculty_code'] ?? null,
                         'subject_id' => $schedule['subject_id'],
                         'classroom_id' => $schedule['classroom_id'],
-                        'faculty_subject_id' => $schedule['assignment_id'] ?? null,
                         'day' => $dayNumber,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
@@ -1053,7 +1094,6 @@ class SchedulerService
                         'semester' => $schedule['semester'] ?? null,
                         'schedule_date' => $schedule['schedule_date'] ?? null,
                         'section' => $schedule['year_section'] ?? null,
-                        'year_section' => $schedule['year_section'] ?? null,
                         'is_active' => true,
                     ];
 
@@ -1065,12 +1105,6 @@ class SchedulerService
                     Schedule::create($data);
 
                     $savedSchedules++;
-
-                    Log::info("✅ Saved schedule {$savedSchedules}", [
-                        'faculty_code' => $data['faculty_code'],
-                        'faculty_subject_id' => $data['faculty_subject_id'],
-                        'year_section' => $data['year_section']
-                    ]);
 
                 } catch (Exception $e) {
                     $error = "Error saving schedule {$index}: " . $e->getMessage();
@@ -1095,13 +1129,11 @@ class SchedulerService
                     $dayName = $examDate->format('l'); // Gets full day name (Monday, Tuesday, etc.)
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // FIXED: Save to examinations table with all required fields
+                    // Save ONLY to examinations table
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
-                        'faculty_code' => $exam['faculty_code'] ?? null,
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
-                        'faculty_subject_id' => $exam['assignment_id'] ?? null,
                         'exam_date' => $exam['exam_date'] ?? null,
                         'day' => $dayNumber,
                         'start_time' => $startTime,
@@ -1112,12 +1144,6 @@ class SchedulerService
                     ]);
 
                     $savedExams++;
-
-                    Log::info("✅ Saved examination {$savedExams}", [
-                        'faculty_code' => $exam['faculty_code'] ?? 'N/A',
-                        'faculty_subject_id' => $exam['assignment_id'] ?? 'N/A',
-                        'year_section' => $exam['year_section'] ?? 'N/A'
-                    ]);
 
                 } catch (Exception $e) {
                     $error = "Error saving exam {$index}: " . $e->getMessage();
