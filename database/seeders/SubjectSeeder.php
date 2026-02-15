@@ -510,8 +510,8 @@ class SubjectSeeder extends Seeder
             [
                 'course_code' => 'SIP01',
                 'subject_name' => 'Student Internship Program 1 (600 hrs)',
-                'lec' => 0,
-                'lab' => 6,
+                'lec' => 6,
+                'lab' => 0,
                 'total' => 6,
                 'pre_req' => '4th Year Standing',
                 'year_level' => 4,
@@ -522,8 +522,8 @@ class SubjectSeeder extends Seeder
             [
                 'course_code' => 'SIP02',
                 'subject_name' => 'Student Internship Program 2 (600 hrs)',
-                'lec' => 0,
-                'lab' => 6,
+                'lec' => 6,
+                'lab' => 0,
                 'total' => 6,
                 'pre_req' => 'SIP01',
                 'year_level' => 4,

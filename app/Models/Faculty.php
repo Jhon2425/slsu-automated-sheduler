@@ -20,10 +20,13 @@ class Faculty extends Model
         'birthdate',
         'employment_status',
         'home_address',
+        'years_of_service',
+        'rank',
     ];
 
     protected $casts = [
         'birthdate' => 'date',
+        'years_of_service' => 'integer',
     ];
 
     /* ================= RELATIONSHIPS ================= */
@@ -51,7 +54,7 @@ class Faculty extends Model
             'faculty_id',
             'subject_id'
         )
-        ->withPivot('program_id', 'lecture_units', 'laboratory_units', 'year_level', 'semester')
+        ->withPivot('program_id', 'lecture_units', 'laboratory_units', 'year_level', 'semester', 'class_size')
         ->withTimestamps();
     }
 

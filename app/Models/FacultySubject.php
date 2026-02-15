@@ -20,11 +20,13 @@ class FacultySubject extends Model
         'laboratory_units',
         'year_level',
         'semester',
+        'class_size',
     ];
 
     protected $casts = [
         'lecture_units' => 'float',
         'laboratory_units' => 'float',
+        'class_size' => 'integer',
     ];
 
     public function faculty()

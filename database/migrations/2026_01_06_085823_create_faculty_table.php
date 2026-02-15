@@ -22,6 +22,10 @@ return new class extends Migration
             $table->enum('employment_status', ['Full-Time', 'Part-Time', 'Contractual']);
             $table->text('home_address');
             
+            // Professional Information
+            $table->integer('years_of_service')->default(0);
+            $table->string('rank')->nullable(); // e.g., Instructor, Assistant Professor, Associate Professor, Professor
+            
             // Account Credentials (foreign key to users table)
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             
@@ -42,6 +46,9 @@ return new class extends Migration
             $table->string('semester')->nullable();
             $table->decimal('lecture_units', 3, 1)->nullable();
             $table->decimal('laboratory_units', 3, 1)->nullable();
+            
+            // Class information
+            $table->integer('class_size')->default(0);
             
             $table->timestamps();
             

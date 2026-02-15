@@ -118,6 +118,32 @@
                             </select>
                         </div>
 
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Rank -->
+                            <div>
+                                <label class="block text-white font-semibold mb-2">
+                                    <i class="fas fa-award mr-2"></i>Rank <span class="text-red-400">*</span>
+                                </label>
+                                <input type="text" name="rank" value="{{ old('rank') }}" required
+                                       placeholder="Instructor I, Professor II"
+                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                            </div>
+
+                            <!-- Years of Service in SLSU -->
+                            <div>
+                                <label class="block text-white font-semibold mb-2">
+                                    <i class="fas fa-hourglass-half mr-2"></i>Years of Service in SLSU <span class="text-red-400">*</span>
+                                </label>
+                                <input type="number" name="years_of_service" value="{{ old('years_of_service') }}" required
+                                       min="0" max="50" step="0.5"
+                                       placeholder="e.g., 5"
+                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                                <p class="mt-1 text-sm text-white/60">
+                                    <i class="fas fa-info-circle mr-1"></i>Enter number of years (e.g., 5.5 for 5 years and 6 months)
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- Home Address -->
                         <div>
                             <label class="block text-white font-semibold mb-2">
@@ -605,6 +631,23 @@
                             readonly
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
+                </div>
+
+                <!-- Class Size -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-users mr-2"></i>Class Size <span class="text-red-400">*</span>
+                    </label>
+                    <input type="number"
+                        name="subjects[${rowIndex}][class_size]"
+                        min="1"
+                        max="100"
+                        placeholder="e.g., 40"
+                        required
+                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="mt-1 text-sm text-white/60">
+                        <i class="fas fa-info-circle mr-1"></i>Expected number of students in this class
+                    </p>
                 </div>
 
                 <!-- Hidden program ID field -->

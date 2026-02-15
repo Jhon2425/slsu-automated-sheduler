@@ -61,6 +61,7 @@ class SchedulerService
     /**
      * Generate examination preview separately from class schedules
      * This should be called independently when you want to generate exams
+     * UPDATED: Now properly checks faculty unavailability for examinations
      */
     public function generateExaminationPreview()
     {
@@ -120,12 +121,23 @@ class SchedulerService
                 if ($exam) {
                     $examinations[] = $exam;
                 } else {
+                    // Get unavailability details for better conflict reporting
+                    $unavailabilitySlots = $this->getFacultyUnavailabilitySlots($assignment->faculty_code);
+                    $unavailabilityDetails = '';
+                    
+                    if (!empty($unavailabilitySlots)) {
+                        $slotDescriptions = array_map(fn($slot) => $slot['formatted'], $unavailabilitySlots);
+                        $unavailabilityDetails = ' ⚠️ Faculty unavailable: ' . implode(', ', $slotDescriptions);
+                    }
+                    
                     $conflicts[] = [
                         'assignment_id' => $assignment->assignment_id,
                         'faculty_code' => $assignment->faculty_code,
                         'faculty' => $assignment->faculty_name,
                         'subject' => $assignment->subject_name . ' (' . $assignment->course_code . ')',
-                        'reason' => 'Could not find available examination slot'
+                        'reason' => 'Could not find available examination slot' . $unavailabilityDetails,
+                        'unavailability_count' => count($unavailabilitySlots),
+                        'unavailable_periods' => $slotDescriptions ?? []
                     ];
                 }
             }
@@ -717,6 +729,7 @@ class SchedulerService
     /**
      * Check if faculty is unavailable at the given day and time
      * UPDATED: Now uses faculty_code instead of faculty_id
+     * IMPROVED: Returns true (unavailable) on errors for safety
      * This is a BACKUP check - the primary check is in findAvailableSlotForAssignment
      */
     private function isFacultyUnavailable($facultyCode, $day, $startTime, $endTime)
@@ -739,7 +752,7 @@ class SchedulerService
             // Check if any unavailability conflicts with the proposed time
             foreach ($unavailabilities as $unavailability) {
                 if ($this->timesOverlap($startTime, $endTime, $unavailability->start_time, $unavailability->end_time)) {
-                    Log::info("⏰ Faculty unavailability conflict detected", [
+                    Log::info("⏰ Faculty unavailability conflict detected (backup check)", [
                         'faculty_code' => $facultyCode,
                         'day_number' => $dayNumber,
                         'day_name' => $day,
@@ -753,9 +766,13 @@ class SchedulerService
             
             return false;
         } catch (Exception $e) {
-            Log::warning("Error checking faculty unavailability: " . $e->getMessage());
-            // If there's an error checking unavailability, assume available to not block scheduling
-            return false;
+            Log::error("CRITICAL: Error checking faculty unavailability - treating as UNAVAILABLE for safety", [
+                'faculty_code' => $facultyCode,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // SAFETY: Return true (unavailable) on error to prevent scheduling
+            return true;
         }
     }
 
@@ -955,11 +972,34 @@ class SchedulerService
 
     /**
      * Generate examination for a faculty assignment
+     * UPDATED: Now checks faculty unavailability for examinations
      * UPDATED: Examinations are now 1 hour only (not 2 hours)
      * NOTE: Examinations are separate from regular class schedules
      */
     private function generateExaminationForAssignment($assignment, $classrooms, $existingExams, $totalUnits)
     {
+        // ============================================================================
+        // STEP 1: PRE-LOAD FACULTY UNAVAILABILITY FOR EXAM SCHEDULING
+        // ============================================================================
+        $facultyUnavailabilities = DB::table('faculty_unavailabilities')
+            ->where('faculty_code', $assignment->faculty_code)
+            ->get()
+            ->groupBy('day');
+        
+        if ($facultyUnavailabilities->isNotEmpty()) {
+            $unavailableDays = $facultyUnavailabilities->keys()->map(function($dayNum) {
+                return array_search($dayNum, $this->dayNameToNumber) ?: "Day $dayNum";
+            })->toArray();
+            
+            Log::info("🚫 Faculty has unavailability restrictions (EXAM scheduling)", [
+                'faculty_code' => $assignment->faculty_code,
+                'faculty_name' => $assignment->faculty_name,
+                'subject' => $assignment->subject_name,
+                'unavailable_days' => $unavailableDays,
+                'total_restrictions' => $facultyUnavailabilities->flatten()->count()
+            ]);
+        }
+        
         $weeksAhead = rand(8, 10);
         $shuffledDays = $this->daysOfWeek; 
         shuffle($shuffledDays);
@@ -978,12 +1018,70 @@ class SchedulerService
         shuffle($examTimeSlots);
 
         foreach ($shuffledDays as $day) {
+            $dayNumber = $this->convertDayToNumber($day);
+            
+            // ========================================================================
+            // CHECK: Does faculty have unavailability on this day?
+            // ========================================================================
+            $hasUnavailabilityOnDay = isset($facultyUnavailabilities[$dayNumber]);
+            
+            if ($hasUnavailabilityOnDay) {
+                Log::debug("⚠️ Faculty has unavailability on this day (EXAM)", [
+                    'faculty_code' => $assignment->faculty_code,
+                    'day' => $day,
+                    'day_number' => $dayNumber,
+                    'unavailable_slots' => $facultyUnavailabilities[$dayNumber]->count()
+                ]);
+            }
+            
             foreach ($examTimeSlots as $slot) {
+                // ====================================================================
+                // CRITICAL: Check faculty unavailability BEFORE scheduling exam
+                // ====================================================================
+                if ($hasUnavailabilityOnDay) {
+                    $isTimeSlotUnavailable = false;
+                    $conflictingSlot = null;
+                    
+                    foreach ($facultyUnavailabilities[$dayNumber] as $unavail) {
+                        if ($this->timesOverlap($slot['start'], $slot['end'], $unavail->start_time, $unavail->end_time)) {
+                            $isTimeSlotUnavailable = true;
+                            $conflictingSlot = $unavail;
+                            break;
+                        }
+                    }
+                    
+                    if ($isTimeSlotUnavailable) {
+                        Log::debug("🚫 EXAM: Faculty unavailable - Skipping time slot", [
+                            'faculty_code' => $assignment->faculty_code,
+                            'faculty_name' => $assignment->faculty_name,
+                            'subject' => $assignment->subject_name,
+                            'day' => $day,
+                            'exam_time' => "{$slot['start']} - {$slot['end']}",
+                            'unavailable_time' => "{$conflictingSlot->start_time} - {$conflictingSlot->end_time}",
+                            'reason' => 'Faculty marked as unavailable during this exam period'
+                        ]);
+                        continue; // Skip this time slot
+                    }
+                }
+                
+                // ====================================================================
+                // Faculty is available - Now check classroom availability
+                // ====================================================================
                 foreach ($classrooms->shuffle() as $classroom) {
                     $specificExamDate = $this->getDateForDayInFuture($day, $weeksAhead);
 
                     if ($this->isExamSlotAvailableForAssignment($existingExams, $specificExamDate, $slot, $classroom->id, $assignment)) {
                         $yearSection = $assignment->year_level . '-A';
+
+                        Log::info("✅ EXAM scheduled successfully (faculty available)", [
+                            'faculty' => $assignment->faculty_name,
+                            'faculty_code' => $assignment->faculty_code,
+                            'subject' => $assignment->subject_name,
+                            'day' => $day,
+                            'exam_date' => $specificExamDate,
+                            'time' => "{$slot['start']} - {$slot['end']}",
+                            'classroom' => $classroom->room_name ?? $classroom->name
+                        ]);
 
                         return [
                             'faculty_id'      => $assignment->faculty_id,
@@ -1009,6 +1107,19 @@ class SchedulerService
                 }
             }
         }
+
+        // ============================================================================
+        // NO AVAILABLE EXAM SLOT FOUND
+        // ============================================================================
+        $unavailabilityDetails = $this->getFacultyUnavailabilitySummary($assignment->faculty_code);
+        
+        Log::warning("❌ EXAM SCHEDULING FAILED - No available slots", [
+            'faculty' => $assignment->faculty_name,
+            'faculty_code' => $assignment->faculty_code,
+            'subject' => $assignment->subject_name,
+            'unavailability' => $unavailabilityDetails,
+            'has_restrictions' => $facultyUnavailabilities->isNotEmpty()
+        ]);
 
         return null;
     }
@@ -1042,6 +1153,7 @@ class SchedulerService
      * Save schedules and/or examinations to database
      * NOTE: Schedules go to 'schedules' table, examinations go to 'examinations' table
      * Can be called with only schedules, only examinations, or both
+     * FIXED: Now includes faculty_code when saving
      */
     public function saveSchedule($schedules = [], $examinations = [])
     {
@@ -1081,9 +1193,10 @@ class SchedulerService
                     $dayName = $schedule['day_name'] ?? $schedule['day'];
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Build schedule data
+                    // Build schedule data - FIXED: Now includes faculty_code
                     $data = [
                         'faculty_id' => $schedule['faculty_id'],
+                        'faculty_code' => $schedule['faculty_code'] ?? null,  // ✓ FIXED: Added faculty_code
                         'subject_id' => $schedule['subject_id'],
                         'classroom_id' => $schedule['classroom_id'],
                         'day' => $dayNumber,
@@ -1129,9 +1242,10 @@ class SchedulerService
                     $dayName = $examDate->format('l'); // Gets full day name (Monday, Tuesday, etc.)
                     $dayNumber = $this->convertDayToNumber($dayName);
 
-                    // Save ONLY to examinations table
+                    // Save ONLY to examinations table - FIXED: Now includes faculty_code
                     Examination::create([
                         'faculty_id' => $exam['faculty_id'],
+                        'faculty_code' => $exam['faculty_code'] ?? null,  // ✓ FIXED: Added faculty_code
                         'subject_id' => $exam['subject_id'],
                         'classroom_id' => $exam['classroom_id'],
                         'exam_date' => $exam['exam_date'] ?? null,
@@ -1284,5 +1398,47 @@ class SchedulerService
                 'message' => 'Error clearing examinations: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Test method to verify faculty unavailability is being respected
+     * Call this from a controller to verify the system is working
+     * 
+     * Usage in controller:
+     * $result = app(SchedulerService::class)->testFacultyUnavailability('FAC001');
+     * return response()->json($result);
+     */
+    public function testFacultyUnavailability($facultyCode)
+    {
+        $unavailabilities = DB::table('faculty_unavailabilities')
+            ->where('faculty_code', $facultyCode)
+            ->get();
+        
+        if ($unavailabilities->isEmpty()) {
+            return [
+                'faculty_code' => $facultyCode,
+                'has_unavailability' => false,
+                'message' => 'No unavailability restrictions found'
+            ];
+        }
+        
+        $details = [];
+        foreach ($unavailabilities as $unavail) {
+            $dayName = array_search($unavail->day, $this->dayNameToNumber);
+            $details[] = [
+                'day' => $dayName,
+                'day_number' => $unavail->day,
+                'start_time' => $unavail->start_time,
+                'end_time' => $unavail->end_time
+            ];
+        }
+        
+        return [
+            'faculty_code' => $facultyCode,
+            'has_unavailability' => true,
+            'count' => count($unavailabilities),
+            'details' => $details,
+            'message' => "Found {count($unavailabilities)} unavailability restrictions for faculty {$facultyCode}"
+        ];
     }
 }

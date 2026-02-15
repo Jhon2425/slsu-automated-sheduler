@@ -63,6 +63,8 @@ class FacultyController extends Controller
                 'birthdate'          => 'required|date|before:today',
                 'employment_status'  => 'required|string',
                 'home_address'       => 'required|string',
+                'years_of_service'   => 'required|integer|min:0',
+                'rank'               => 'nullable|string|max:255',
                 
                 // Educational backgrounds - at least one required
                 'education' => 'required|array|min:1',
@@ -79,6 +81,7 @@ class FacultyController extends Controller
                 'subjects.*.laboratory_units'    => 'nullable|numeric|min:0',
                 'subjects.*.year_level'          => 'nullable|integer|min:1|max:4',
                 'subjects.*.semester'            => 'nullable|string',
+                'subjects.*.class_size'          => 'nullable|integer|min:0',
 
                 // Unavailabilities (optional)
                 'unavailabilities'               => 'nullable|array',
@@ -122,6 +125,8 @@ class FacultyController extends Controller
                 'birthdate'          => $validated['birthdate'],
                 'employment_status'  => $validated['employment_status'],
                 'home_address'       => $validated['home_address'],
+                'years_of_service'   => $validated['years_of_service'],
+                'rank'               => $validated['rank'] ?? null,
             ]);
 
             Log::info('Faculty profile created', ['faculty_id' => $faculty->id, 'faculty_code' => $faculty->faculty_code]);
@@ -131,7 +136,7 @@ class FacultyController extends Controller
             foreach ($validated['education'] as $education) {
                 EducationalBackground::create([
                     'faculty_id'        => $faculty->id,
-                    'faculty_code'      => $validated['faculty_code'], // ✅ Added faculty_code
+                    'faculty_code'      => $validated['faculty_code'],
                     'degree_earned'     => $education['degree_earned'],
                     'year_graduated'    => $education['year_graduated'],
                     'course'            => $education['course'],
@@ -161,6 +166,7 @@ class FacultyController extends Controller
                             'laboratory_units' => $laboratoryUnits,
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
+                            'class_size'       => $subject['class_size'] ?? 0,
                         ]);
                         $subjectCount++;
                     }
@@ -245,14 +251,18 @@ class FacultyController extends Controller
 
         // Transform faculty subjects for easier frontend consumption
         $facultySubjects = $facultyProfile->facultySubjects->map(function($facultySubject) {
-            return (object)[
-                'id' => $facultySubject->subject->id,
+            return [
+                'id' => $facultySubject->id, // FacultySubject ID for editing
+                'subject_id' => $facultySubject->subject->id,
                 'subject_name' => $facultySubject->subject->subject_name,
                 'course_code' => $facultySubject->subject->course_code,
                 'year_level' => $facultySubject->year_level ?? $facultySubject->subject->year_level,
                 'semester' => $facultySubject->semester ?? $facultySubject->subject->semester,
-                'lec' => $facultySubject->lecture_units ?? $facultySubject->subject->lec,
-                'lab' => $facultySubject->laboratory_units ?? $facultySubject->subject->lab,
+                'lecture_units' => $facultySubject->lecture_units ?? $facultySubject->subject->lec ?? 0,
+                'laboratory_units' => $facultySubject->laboratory_units ?? $facultySubject->subject->lab ?? 0,
+                'lec' => $facultySubject->lecture_units ?? $facultySubject->subject->lec ?? 0, // For backward compatibility
+                'lab' => $facultySubject->laboratory_units ?? $facultySubject->subject->lab ?? 0, // For backward compatibility
+                'class_size' => $facultySubject->class_size ?? 0,
                 'pre_req' => $facultySubject->subject->pre_req,
                 'program_id' => $facultySubject->program_id ?? $facultySubject->subject->program_id ?? null,
             ];
@@ -260,18 +270,36 @@ class FacultyController extends Controller
 
         // Transform unavailabilities for easier frontend consumption
         $unavailabilities = $facultyProfile->unavailabilities->map(function($unavail) {
-            return (object)[
+            return [
                 'id' => $unavail->id,
                 'day' => $unavail->day,
-                'time_from' => $unavail->time_from,
-                'time_to' => $unavail->time_to,
-                'reason' => $unavail->reason,
+                'time_from' => $unavail->time_from, // This will be in H:i format (e.g., "08:00")
+                'time_to' => $unavail->time_to,     // This will be in H:i format (e.g., "10:00")
+                'reason' => $unavail->reason ?? '',
             ];
         });
+
+        // Get schedules for this faculty
+        $schedules = Schedule::where('faculty_id', $faculty->id)
+            ->with('subject')
+            ->get()
+            ->map(function($schedule) {
+                return [
+                    'id' => $schedule->id,
+                    'subject_name' => $schedule->subject->subject_name ?? 'N/A',
+                    'course_code' => $schedule->subject->course_code ?? 'N/A',
+                    'day' => $schedule->day,
+                    'time_from' => $schedule->time_from,
+                    'time_to' => $schedule->time_to,
+                    'room' => $schedule->room ?? 'TBA',
+                    'section' => $schedule->section ?? 'N/A',
+                ];
+            });
 
         // Assign the transformed data to the faculty profile
         $facultyProfile->subjects = $facultySubjects;
         $facultyProfile->unavailabilities = $unavailabilities;
+        $facultyProfile->schedules = $schedules;
 
         return view('admin.faculty.edit', [
             'user' => $faculty,
@@ -309,6 +337,8 @@ class FacultyController extends Controller
                 'birthdate'          => 'required|date|before:today',
                 'employment_status'  => 'required|string',
                 'home_address'       => 'required|string',
+                'years_of_service'   => 'required|integer|min:0',
+                'rank'               => 'nullable|string|max:255',
                 
                 // Educational backgrounds - at least one required
                 'education' => 'required|array|min:1',
@@ -326,6 +356,7 @@ class FacultyController extends Controller
                 'subjects.*.laboratory_units'    => 'nullable|numeric|min:0',
                 'subjects.*.year_level'          => 'nullable|integer|min:1|max:4',
                 'subjects.*.semester'            => 'nullable|string',
+                'subjects.*.class_size'          => 'nullable|integer|min:0',
 
                 // Unavailabilities (optional)
                 'unavailabilities'               => 'nullable|array',
@@ -373,6 +404,8 @@ class FacultyController extends Controller
                 'birthdate'          => $validated['birthdate'],
                 'employment_status'  => $validated['employment_status'],
                 'home_address'       => $validated['home_address'],
+                'years_of_service'   => $validated['years_of_service'],
+                'rank'               => $validated['rank'] ?? null,
             ]);
 
             Log::info('Faculty profile updated', ['faculty_id' => $facultyProfile->id]);
@@ -387,7 +420,7 @@ class FacultyController extends Controller
                     $education = EducationalBackground::find($educationData['id']);
                     if ($education && $education->faculty_id === $facultyProfile->id) {
                         $education->update([
-                            'faculty_code'      => $validated['faculty_code'], // ✅ Update faculty_code
+                            'faculty_code'      => $validated['faculty_code'],
                             'degree_earned'     => $educationData['degree_earned'],
                             'year_graduated'    => $educationData['year_graduated'],
                             'course'            => $educationData['course'],
@@ -400,7 +433,7 @@ class FacultyController extends Controller
                     // Create new educational background
                     $newEducation = EducationalBackground::create([
                         'faculty_id'        => $facultyProfile->id,
-                        'faculty_code'      => $validated['faculty_code'], // ✅ Add faculty_code
+                        'faculty_code'      => $validated['faculty_code'],
                         'degree_earned'     => $educationData['degree_earned'],
                         'year_graduated'    => $educationData['year_graduated'],
                         'course'            => $educationData['course'],
@@ -444,6 +477,7 @@ class FacultyController extends Controller
                             'laboratory_units' => $laboratoryUnits,
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
+                            'class_size'       => $subject['class_size'] ?? 0,
                         ]);
                         $subjectCount++;
                     }
@@ -652,6 +686,7 @@ class FacultyController extends Controller
                     'enrolled_student' => $fs->subject->enrolled_student ?? 0,
                     'lecture_units' => $fs->lecture_units,
                     'laboratory_units' => $fs->laboratory_units,
+                    'class_size' => $fs->class_size,
                     'faculty_code' => $fs->faculty_code,
                 ]);
 
@@ -716,6 +751,7 @@ class FacultyController extends Controller
                             'laboratory_units' => $subject->lab ?? 0,
                             'year_level' => $subject->year_level ?? null,
                             'semester' => $subject->semester ?? null,
+                            'class_size' => 0, // Default class size
                         ]);
                         $assignedCount++;
                     }

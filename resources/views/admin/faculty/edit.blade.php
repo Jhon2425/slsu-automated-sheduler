@@ -120,6 +120,32 @@
                             </select>
                         </div>
 
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Rank -->
+                            <div>
+                                <label class="block text-white font-semibold mb-2">
+                                    <i class="fas fa-award mr-2"></i>Rank <span class="text-red-400">*</span>
+                                </label>
+                                <input type="text" name="rank" value="{{ old('rank', $faculty->rank) }}" required
+                                       placeholder="Instructor I, Professor II"
+                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                            </div>
+
+                            <!-- Years of Service in SLSU -->
+                            <div>
+                                <label class="block text-white font-semibold mb-2">
+                                    <i class="fas fa-hourglass-half mr-2"></i>Years of Service in SLSU <span class="text-red-400">*</span>
+                                </label>
+                                <input type="number" name="years_of_service" value="{{ old('years_of_service', $faculty->years_of_service) }}" required
+                                       min="0" max="50" step="0.5"
+                                       placeholder="e.g., 5"
+                                       class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                                <p class="mt-1 text-sm text-white/60">
+                                    <i class="fas fa-info-circle mr-1"></i>Enter number of years (e.g., 5.5 for 5 years and 6 months)
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- Home Address -->
                         <div>
                             <label class="block text-white font-semibold mb-2">
@@ -405,6 +431,9 @@
 
         // Load existing data on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Existing subjects:', existingSubjects);
+            console.log('Existing unavailabilities:', existingUnavailabilities);
+            
             // Load existing education
             if (existingEducation && existingEducation.length > 0) {
                 existingEducation.forEach(edu => {
@@ -521,6 +550,8 @@
             const rowIndex = subjectRowCounter++;
             const rowId = `subject-row-${rowIndex}`;
 
+            console.log('Adding subject row with data:', existingData);
+
             const row = document.createElement('div');
             row.id = rowId;
             row.className = 'glass-item p-6 rounded-xl space-y-4';
@@ -548,7 +579,7 @@
                         <option value="">Choose a subject</option>
                         ${availableSubjects.map(subject => `
                             <option value="${subject.id}"
-                                    ${existingData?.id === subject.id ? 'selected' : ''}
+                                    ${existingData?.subject_id === subject.id ? 'selected' : ''}
                                     data-code="${subject.course_code || ''}"
                                     data-year="${subject.year_level || ''}"
                                     data-lecture="${subject.lec || 0}"
@@ -609,7 +640,7 @@
                             name="subjects[${rowIndex}][lecture_units]"
                             step="0.5"
                             readonly
-                            value="${existingData?.lec || 0}"
+                            value="${existingData?.lecture_units || existingData?.lec || 0}"
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
 
@@ -622,9 +653,27 @@
                             name="subjects[${rowIndex}][laboratory_units]"
                             step="0.5"
                             readonly
-                            value="${existingData?.lab || 0}"
+                            value="${existingData?.laboratory_units || existingData?.lab || 0}"
                             class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
+                </div>
+
+                <!-- Class Size - Editable -->
+                <div>
+                    <label class="block text-white font-medium mb-2">
+                        <i class="fas fa-users mr-2"></i>Class Size <span class="text-red-400">*</span>
+                    </label>
+                    <input type="number"
+                        name="subjects[${rowIndex}][class_size]"
+                        min="1"
+                        max="100"
+                        placeholder="e.g., 40"
+                        value="${existingData?.class_size || ''}"
+                        required
+                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <p class="mt-1 text-sm text-white/60">
+                        <i class="fas fa-info-circle mr-1"></i>Expected number of students in this class
+                    </p>
                 </div>
 
                 <!-- Hidden program ID field -->
@@ -692,11 +741,33 @@
             const rowIndex = unavailabilityRowCounter++;
             const rowId = `unavail-row-${rowIndex}`;
 
+            console.log('Adding unavailability row with data:', existingData);
+            
+            // Debug: Check time formats
+            if (existingData) {
+                console.log('Time from:', existingData.time_from, 'Type:', typeof existingData.time_from);
+                console.log('Time to:', existingData.time_to, 'Type:', typeof existingData.time_to);
+            }
+
             const row = document.createElement('div');
             row.id = rowId;
             row.className = 'glass-item p-6 rounded-xl space-y-4';
             row.style.background = 'rgba(220, 38, 38, 0.08)';
             row.style.border = '1px solid rgba(220, 38, 38, 0.2)';
+
+            // Normalize time format - convert HH:MM:SS to HH:MM if needed
+            let timeFrom = existingData?.time_from || '';
+            let timeTo = existingData?.time_to || '';
+            
+            if (timeFrom && timeFrom.length > 5) {
+                timeFrom = timeFrom.substring(0, 5); // Convert "08:00:00" to "08:00"
+            }
+            if (timeTo && timeTo.length > 5) {
+                timeTo = timeTo.substring(0, 5); // Convert "10:00:00" to "10:00"
+            }
+            
+            console.log('Normalized time from:', timeFrom);
+            console.log('Normalized time to:', timeTo);
 
             row.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
@@ -734,7 +805,7 @@
                                 required
                                 class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-red-500">
                             <option value="">Select Time</option>
-                            ${timeSlots.map(time => `<option value="${time}" ${existingData?.time_from === time ? 'selected' : ''}>${formatTime(time)}</option>`).join('')}
+                            ${timeSlots.map(time => `<option value="${time}" ${timeFrom === time ? 'selected' : ''}>${formatTime(time)}</option>`).join('')}
                         </select>
                     </div>
 
@@ -748,7 +819,7 @@
                                 required
                                 class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-red-500">
                             <option value="">Select Time</option>
-                            ${timeSlots.map(time => `<option value="${time}" ${existingData?.time_to === time ? 'selected' : ''}>${formatTime(time)}</option>`).join('')}
+                            ${timeSlots.map(time => `<option value="${time}" ${timeTo === time ? 'selected' : ''}>${formatTime(time)}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -770,7 +841,7 @@
             container.appendChild(row);
 
             // Update time_to options if there's existing data
-            if (existingData?.time_from) {
+            if (timeFrom) {
                 setTimeout(() => updateTimeToOptions(rowId, rowIndex), 0);
             }
         }
