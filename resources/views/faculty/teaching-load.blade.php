@@ -50,7 +50,7 @@
                     <h1 class="text-xl font-bold text-gray-900">SOUTHERN LUZON STATE UNIVERSITY</h1>
                     <p class="text-sm text-gray-600">Lucban, Quezon</p>
                     <h3 class="text-lg font-bold text-gray-800 mt-4">FACULTY TEACHING LOAD</h3>
-                    <p class="text-sm text-gray-600">SCHOOL YEAR: {{ $schoolYear ?? '2023-2024' }}</p>
+                    <p class="text-sm text-gray-600">SCHOOL YEAR: {{ $schoolYear ?? '2025-2026' }}</p>
                     <p class="text-sm text-gray-600">SEMESTER: {{ $semester ?? '1st' }}</p>
                 </div>
 
@@ -147,15 +147,12 @@
                                 <th class="border border-gray-300 px-2 py-2">Day</th>
                                 <th class="border border-gray-300 px-2 py-2">Room</th>
                                 <th class="border border-gray-300 px-2 py-2">Course</th>
+                                <th class="border border-gray-300 px-2 py-2">Class Size</th>
                                 <th class="border border-gray-300 px-2 py-2">Contact Hours</th>
                                 <th class="border border-gray-300 px-2 py-2">Units</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @php
-                                $displayTotalContactHours = 0;
-                                $displayTotalUnits = 0;
-                            @endphp
                             @forelse($schedules as $schedule)
                             <tr>
                                 <td class="border border-gray-300 px-2 py-2">
@@ -178,39 +175,23 @@
                                     {{ $schedule->subject->program->code ?? 'N/A' }} {{ $schedule->year_level ?? '' }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
+                                    {{ $schedule->class_size ?? $schedule->student_count ?? 0 }}
+                                </td>
+                                <td class="border border-gray-300 px-2 py-2 text-center">
                                     @php
                                         $start = strtotime($schedule->start_time);
                                         $end = strtotime($schedule->end_time);
                                         $hours = ($end - $start) / 3600;
-                                        $displayTotalContactHours += $hours;
                                     @endphp
                                     {{ number_format($hours, 1) }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-center">
-                                    @php
-                                        // Get units from faculty_subject pivot table (preferred) or subject table (fallback)
-                                        $units = 0;
-                                        if (isset($schedule->faculty_subject)) {
-                                            // Units from pivot table
-                                            if ($schedule->faculty_subject->lecture_units !== null && $schedule->faculty_subject->laboratory_units !== null) {
-                                                $units = $schedule->faculty_subject->lecture_units + $schedule->faculty_subject->laboratory_units;
-                                            }
-                                            // Fallback to subject table
-                                            elseif ($schedule->subject) {
-                                                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
-                                            }
-                                        } elseif ($schedule->subject) {
-                                            // Direct from subject if no pivot data
-                                            $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
-                                        }
-                                        $displayTotalUnits += $units;
-                                    @endphp
-                                    {{ number_format($units, 1) }}
+                                    {{ number_format($schedule->calculated_units ?? 0, 1) }}
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="border border-gray-300 px-2 py-2 text-center text-gray-500">
+                                <td colspan="8" class="border border-gray-300 px-2 py-2 text-center text-gray-500">
                                     No teaching load assigned yet
                                 </td>
                             </tr>
@@ -328,7 +309,7 @@
 
                 <div class="text-center mt-12">
                     <div class="border-t-2 border-gray-800 pt-2 inline-block min-w-[300px]">
-                        <p class="font-bold">{{ $vicePresident ?? 'GONDELINA A. MADOVAN, PhD' }}</p>
+                        <p class="font-bold">{{ $vicePresident ?? 'Dhenalyn A. Dejelo, PhD' }}</p>
                         <p class="text-xs text-gray-600">Vice President, Academic Affairs</p>
                     </div>
                     <p class="text-xs mt-2">Approved:</p>

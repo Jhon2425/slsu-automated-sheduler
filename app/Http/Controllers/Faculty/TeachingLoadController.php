@@ -49,7 +49,7 @@ class TeachingLoadController extends Controller
         $schoolYear = $request->get('school_year', $defaultSchoolYear);
         $semester = $request->get('semester', $defaultSemester);
         
-        // IMPROVED: Fetch schedules directly from schedules table
+        // Fetch schedules using faculty_code with necessary relationships
         $schedules = Schedule::where('faculty_code', $faculty->faculty_code)
             ->where('is_active', true)
             ->where('academic_year', $schoolYear)
@@ -79,11 +79,30 @@ class TeachingLoadController extends Controller
             ->get()
             ->keyBy('subject_id'); // Key by subject_id for easy lookup
         
-        // Attach faculty_subject data to each schedule for unit override if exists
+        // Attach faculty_subject data and calculate units for each schedule
         foreach ($schedules as $schedule) {
             if (isset($facultySubjects[$schedule->subject_id])) {
                 $schedule->faculty_subject = $facultySubjects[$schedule->subject_id];
             }
+            
+            // Calculate and attach units for this schedule
+            $units = 0;
+            if (isset($schedule->faculty_subject)) {
+                // Units from pivot table (preferred)
+                if ($schedule->faculty_subject->lecture_units !== null && $schedule->faculty_subject->laboratory_units !== null) {
+                    $units = $schedule->faculty_subject->lecture_units + $schedule->faculty_subject->laboratory_units;
+                }
+                // Fallback to subject table
+                elseif ($schedule->subject) {
+                    $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+                }
+            } elseif ($schedule->subject) {
+                // Direct from subject if no pivot data
+                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+            }
+            
+            // Attach the calculated units to the schedule for display
+            $schedule->calculated_units = $units;
         }
         
         // Get educational qualifications from educational_backgrounds table using faculty_code
@@ -100,14 +119,14 @@ class TeachingLoadController extends Controller
             'Production' => null,
         ];
         
-        // IMPROVED: Calculate totals from schedules (avoiding double counting)
+        // Calculate totals from schedules (avoiding double counting for units)
         $totalContactHours = 0;
         $totalUnits = 0;
         $uniqueSubjects = [];
         
         // Calculate contact hours and collect unique subjects
         foreach ($schedules as $schedule) {
-            // Calculate contact hours for this schedule slot
+            // Calculate contact hours for this schedule slot (ALL slots count towards contact hours)
             $start = strtotime($schedule->start_time);
             $end = strtotime($schedule->end_time);
             $hours = ($end - $start) / 3600;
@@ -118,26 +137,14 @@ class TeachingLoadController extends Controller
             $uniqueKey = $schedule->subject_id . '-' . ($schedule->year_level ?? 'default') . '-' . ($schedule->section ?? 'default');
             
             if (!isset($uniqueSubjects[$uniqueKey])) {
-                // Get units - priority: faculty_subject override > subject table
-                $units = 0;
-                if (isset($schedule->faculty_subject)) {
-                    if ($schedule->faculty_subject->lecture_units !== null && $schedule->faculty_subject->laboratory_units !== null) {
-                        $units = $schedule->faculty_subject->lecture_units + $schedule->faculty_subject->laboratory_units;
-                    }
-                }
-                
-                // Fallback to subject table if no override
-                if ($units == 0 && $schedule->subject) {
-                    $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
-                }
-                
+                // Use the already calculated units from schedule
                 $uniqueSubjects[$uniqueKey] = [
                     'subject_id' => $schedule->subject_id,
-                    'units' => $units,
+                    'units' => $schedule->calculated_units,
                     'subject_name' => $schedule->subject->subject_name ?? 'N/A',
                 ];
                 
-                $totalUnits += $units;
+                $totalUnits += $schedule->calculated_units;
             }
         }
         
@@ -238,7 +245,7 @@ class TeachingLoadController extends Controller
         $schoolYear = $request->get('school_year', $defaultSchoolYear);
         $semester = $request->get('semester', $defaultSemester);
         
-        // IMPROVED: Fetch schedules directly from schedules table
+        // Fetch schedules using faculty_code with necessary relationships
         $schedules = Schedule::where('faculty_code', $faculty->faculty_code)
             ->where('is_active', true)
             ->where('academic_year', $schoolYear)
@@ -268,11 +275,26 @@ class TeachingLoadController extends Controller
             ->get()
             ->keyBy('subject_id');
         
-        // Attach faculty_subject data to each schedule
+        // Attach faculty_subject data and calculate units for each schedule
         foreach ($schedules as $schedule) {
             if (isset($facultySubjects[$schedule->subject_id])) {
                 $schedule->faculty_subject = $facultySubjects[$schedule->subject_id];
             }
+            
+            // Calculate and attach units for this schedule
+            $units = 0;
+            if (isset($schedule->faculty_subject)) {
+                if ($schedule->faculty_subject->lecture_units !== null && $schedule->faculty_subject->laboratory_units !== null) {
+                    $units = $schedule->faculty_subject->lecture_units + $schedule->faculty_subject->laboratory_units;
+                }
+                elseif ($schedule->subject) {
+                    $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+                }
+            } elseif ($schedule->subject) {
+                $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
+            }
+            
+            $schedule->calculated_units = $units;
         }
         
         // Get educational qualifications from educational_backgrounds table using faculty_code
@@ -303,24 +325,13 @@ class TeachingLoadController extends Controller
             $uniqueKey = $schedule->subject_id . '-' . ($schedule->year_level ?? 'default') . '-' . ($schedule->section ?? 'default');
             
             if (!isset($uniqueSubjects[$uniqueKey])) {
-                $units = 0;
-                if (isset($schedule->faculty_subject)) {
-                    if ($schedule->faculty_subject->lecture_units !== null && $schedule->faculty_subject->laboratory_units !== null) {
-                        $units = $schedule->faculty_subject->lecture_units + $schedule->faculty_subject->laboratory_units;
-                    }
-                }
-                
-                if ($units == 0 && $schedule->subject) {
-                    $units = ($schedule->subject->lecture_units ?? 0) + ($schedule->subject->laboratory_units ?? 0);
-                }
-                
                 $uniqueSubjects[$uniqueKey] = [
                     'subject_id' => $schedule->subject_id,
-                    'units' => $units,
+                    'units' => $schedule->calculated_units,
                     'subject_name' => $schedule->subject->subject_name ?? 'N/A',
                 ];
                 
-                $totalUnits += $units;
+                $totalUnits += $schedule->calculated_units;
             }
         }
         
