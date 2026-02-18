@@ -156,7 +156,7 @@
                             <i class="fas fa-user-circle text-white text-3xl"></i>
                         </div>
                         <div class="flex-grow flex flex-col justify-center">
-                            <p class="font-bold text-white text-lg mb-2">View Faculty Profile</p>
+                            <p class="font-bold text-white text-lg mb-2">Manage Faculty Profile</p>
                             <p class="text-xs text-white/70 leading-relaxed">Access faculty information and details</p>
                         </div>
                     </a>
