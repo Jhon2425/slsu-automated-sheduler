@@ -15,6 +15,7 @@ class Faculty extends Model
     protected $fillable = [
         'faculty_code',
         'user_id',
+        'program_id',
         'name',
         'civil_status',
         'birthdate',
@@ -25,7 +26,7 @@ class Faculty extends Model
     ];
 
     protected $casts = [
-        'birthdate' => 'date',
+        'birthdate'        => 'date',
         'years_of_service' => 'integer',
     ];
 
@@ -34,6 +35,14 @@ class Faculty extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The program this faculty member primarily belongs to.
+     */
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
     }
 
     public function educationalBackgrounds()
@@ -79,10 +88,10 @@ class Faculty extends Model
         }
 
         $degreeOrder = [
-            'Doctorate Degree' => 4,
-            'Master Degree' => 3,
-            'Professional Degree' => 2,
-            'Bachelor Degree' => 1,
+            'Doctorate Degree'   => 4,
+            'Master Degree'      => 3,
+            'Professional Degree'=> 2,
+            'Bachelor Degree'    => 1,
         ];
 
         return $educations->sortByDesc(

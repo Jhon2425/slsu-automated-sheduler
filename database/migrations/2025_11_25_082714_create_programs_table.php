@@ -13,13 +13,16 @@ return new class extends Migration
             $table->string('name');
             $table->string('code')->unique();
             $table->text('description')->nullable();
+            $table->string('semester')->nullable();
+            $table->string('academic_year')->nullable();
+            $table->foreignId('admin_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
+            $table->softDeletes();
         });
 
-        // Add program and department to users table
         Schema::table('users', function (Blueprint $table) {
-            $table->string('program')->nullable(); // For admin - text field
-            $table->string('faculty_id')->nullable(); // For faculty - text field
+            $table->string('program')->nullable();
+            $table->string('faculty_id')->nullable();
         });
     }
 
@@ -28,7 +31,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn(['program', 'faculty_id']);
         });
-        
+
         Schema::dropIfExists('programs');
     }
 };

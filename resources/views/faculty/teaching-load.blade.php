@@ -77,19 +77,57 @@
                             </div>
                         @endforeach
 
-                        {{-- Program / Course assigned to this faculty --}}
+                        {{-- ── PROGRAM/COURSE ────────────────────────────────────────────── --}}
+                        {{--
+                            Resolution priority (controller already handles this order, but we
+                            add extra blade-level fallbacks so nothing is ever blank):
+
+                            1. $linkedProgram  — resolved from faculty->program_id (Faculty FK) or
+                                                  user->program_id (User FK) in the controller
+                            2. $userPrograms   — resolved from faculty_enrollments pivot or
+                                                  subject.program eager-load
+                            3. Raw string on the user record  ($user->program)
+                            4. Raw string on the faculty record ($faculty->program)
+                        --}}
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">PROGRAM/COURSE:</div>
                             <div class="px-3 py-2 w-2/3">
-                                @if($userPrograms->isNotEmpty())
-                                    {{ $userPrograms->map(fn($p) => $p->code ?? $p->program_name ?? $p->name)->filter()->implode(', ') }}
-                                @elseif(!empty($user->program))
-                                    {{ $user->program }}
-                                @else
-                                    N/A
-                                @endif
+                                @php
+                                    $programDisplay = null;
+
+                                    // 1. $linkedProgram — comes directly from faculty->program_id
+                                    //    or user->program_id (already resolved in controller)
+                                    if (!empty($linkedProgram)) {
+                                        $programDisplay = $linkedProgram->code
+                                            ?? $linkedProgram->program_name
+                                            ?? $linkedProgram->name
+                                            ?? null;
+                                    }
+
+                                    // 2. $userPrograms collection (faculty_enrollments pivot /
+                                    //    subject.program fallback — also already prioritised in controller)
+                                    if (!$programDisplay && $userPrograms->isNotEmpty()) {
+                                        $programDisplay = $userPrograms
+                                            ->map(fn($p) => $p->code ?? $p->program_name ?? $p->name ?? null)
+                                            ->filter()
+                                            ->implode(', ');
+                                    }
+
+                                    // 3. Raw program string on the user record
+                                    if (!$programDisplay && !empty($user?->program)) {
+                                        $programDisplay = $user->program;
+                                    }
+
+                                    // 4. Raw program string on the faculty record
+                                    if (!$programDisplay && !empty($faculty->program)) {
+                                        $programDisplay = $faculty->program;
+                                    }
+                                @endphp
+
+                                {{ $programDisplay ?? 'N/A' }}
                             </div>
                         </div>
+                        {{-- ── END PROGRAM/COURSE ───────────────────────────────────────── --}}
                     </div>
 
                     {{-- Right column --}}

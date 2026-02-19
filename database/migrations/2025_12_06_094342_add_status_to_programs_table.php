@@ -6,17 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-   public function up()
-{
-    Schema::table('programs', function (Blueprint $table) {
-        $table->string('status')->default('active');
-    });
-}
+    public function up(): void
+    {
+        Schema::table('programs', function (Blueprint $table) {
+            $table->string('status')->default('active');
+        });
+    }
 
     public function down(): void
     {
         Schema::table('programs', function (Blueprint $table) {
-            //
+            $table->dropColumn('status');
         });
     }
 };

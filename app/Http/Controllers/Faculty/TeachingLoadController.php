@@ -72,12 +72,19 @@ class TeachingLoadController extends Controller
      * Fetch the faculty's program/course using multiple resolution strategies.
      *
      * Priority:
+     *   0. Direct program_id on the Faculty record itself
      *   1. programs() relationship via faculty_enrollments pivot
      *   2. Direct program_id on the user record
      *   3. From subject.program eager-loaded on assigned subjects
      */
-    private function resolveFacultyPrograms(User $user, $assignedSubjects): \Illuminate\Support\Collection
+    private function resolveFacultyPrograms(User $user, $assignedSubjects, Faculty $faculty = null): \Illuminate\Support\Collection
     {
+        // 0. Direct program_id on the Faculty record itself
+        if ($faculty && !empty($faculty->program_id)) {
+            $program = Program::find($faculty->program_id);
+            if ($program) return collect([$program]);
+        }
+
         // 1. Via faculty_enrollments pivot → programs table
         if ($user->programs && $user->programs->isNotEmpty()) {
             return $user->programs;
@@ -150,26 +157,27 @@ class TeachingLoadController extends Controller
      * Resolve the best program code for a display row.
      *
      * Priority:
-     *   1. Program fetched directly from programs table via user->program_id (FK)
-     *   2. Programs linked via faculty_enrollments pivot → programs table
-     *   3. Subject's own program via faculty_subject eager load
-     *   4. Schedule's subject program or schedule's program relation
+     *   1. Program fetched directly from programs table via faculty->program_id (FK) — highest priority
+     *   2. Program fetched directly from programs table via user->program_id (FK)
+     *   3. Programs linked via faculty_enrollments pivot → programs table
+     *   4. Subject's own program via faculty_subject eager load
+     *   5. Schedule's subject program or schedule's program relation
      */
     private function resolveProgramCode($fs, $schedule, $linkedProgram, $userPrograms): string
     {
-        // 1. Direct FK: user->program_id → programs table
+        // 1 & 2. Direct FK: faculty->program_id or user->program_id → programs table
         if ($linkedProgram) return $this->programLabel($linkedProgram);
 
-        // 2. Via faculty_enrollments pivot → programs table
+        // 3. Via faculty_enrollments pivot → programs table
         if ($userPrograms->isNotEmpty()) {
             return $this->programLabel($userPrograms->first());
         }
 
-        // 3. Subject's own program (eager-loaded on faculty_subject)
+        // 4. Subject's own program (eager-loaded on faculty_subject)
         if (!empty($fs->subject->program->code)) return $fs->subject->program->code;
         if (!empty($fs->subject->program->name)) return $fs->subject->program->name;
 
-        // 4. Schedule's subject program or schedule's program relation
+        // 5. Schedule's subject program or schedule's program relation
         if ($schedule) {
             if (!empty($schedule->subject->program->code)) return $schedule->subject->program->code;
             if (!empty($schedule->program->code))          return $schedule->program->code;
@@ -206,18 +214,34 @@ class TeachingLoadController extends Controller
             ])
             ->first();
 
-        // Resolve Program model directly from programs table via user->program_id (FK)
-        $linkedProgram = ($user && !empty($user->program_id))
-            ? Program::find($user->program_id)
-            : null;
+        // ── Resolve Program model ─────────────────────────────────────────
+        // Priority: faculty->program_id first, then user->program_id
+        $linkedProgram = null;
+
+        if (!empty($faculty->program_id)) {
+            $linkedProgram = Program::find($faculty->program_id);
+        }
+
+        if (!$linkedProgram && $user && !empty($user->program_id)) {
+            $linkedProgram = Program::find($user->program_id);
+        }
 
         // ── Step 1: Fetch ALL assigned subjects by faculty_code ───────────
         $assignedSubjects = $this->fetchAssignedSubjects($faculty);
 
         // ── Step 2: Resolve faculty programs ─────────────────────────────
+        // Pass $faculty so faculty->program_id is checked first
         $userPrograms = $user
-            ? $this->resolveFacultyPrograms($user, $assignedSubjects)
+            ? $this->resolveFacultyPrograms($user, $assignedSubjects, $faculty)
             : collect();
+
+        // If no user record exists, still attempt to resolve from faculty->program_id directly
+        if (!$user && !empty($faculty->program_id)) {
+            $program = Program::find($faculty->program_id);
+            if ($program) {
+                $userPrograms = collect([$program]);
+            }
+        }
 
         // ── Step 3: Fetch ALL schedules by faculty_code ───────────────────
         $schedules            = $this->fetchSchedules($faculty, $schoolYear, $semester);
@@ -340,7 +364,7 @@ class TeachingLoadController extends Controller
         ];
 
         return compact(
-            'faculty', 'user', 'userPrograms',
+            'faculty', 'user', 'userPrograms', 'linkedProgram',
             'displayRows', 'schedules', 'assignedSubjects',
             'educationalQualifications', 'assignmentsByType',
             'totalContactHours', 'totalUnits', 'excessLoadDisplay',
