@@ -23,10 +23,12 @@ class Faculty extends Model
         'home_address',
         'years_of_service',
         'rank',
+        'appointment_date',
     ];
 
     protected $casts = [
         'birthdate'        => 'date',
+        'appointment_date' => 'date',
         'years_of_service' => 'integer',
     ];
 
@@ -37,9 +39,6 @@ class Faculty extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * The program this faculty member primarily belongs to.
-     */
     public function program()
     {
         return $this->belongsTo(Program::class);
@@ -88,10 +87,10 @@ class Faculty extends Model
         }
 
         $degreeOrder = [
-            'Doctorate Degree'   => 4,
-            'Master Degree'      => 3,
-            'Professional Degree'=> 2,
-            'Bachelor Degree'    => 1,
+            'Doctorate Degree'    => 4,
+            'Master Degree'       => 3,
+            'Professional Degree' => 2,
+            'Bachelor Degree'     => 1,
         ];
 
         return $educations->sortByDesc(

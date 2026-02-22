@@ -9,6 +9,8 @@ use App\Models\Subject;
 use App\Models\FacultyEnrollment;
 use App\Models\Schedule;
 use App\Models\Classroom;
+use App\Models\Examination; // ✅ Exam Schedules card
+use App\Models\Faculty;     // ✅ Added Faculty card
 
 class AdminDashboardController extends Controller
 {
@@ -20,6 +22,12 @@ class AdminDashboardController extends Controller
         $totalSchedules   = Schedule::count();
         $totalClassrooms  = Classroom::count();
         $totalEnrollments = FacultyEnrollment::count();
+
+        // ✅ Added Faculty card — total faculty members in the faculty table
+        $acceptedFaculties = Faculty::count();
+
+        // ✅ Exam Schedules card — total generated exam schedules
+        $examSchedules = Examination::count();
 
         // Provide $programs for dashboard display
         $programs = Program::withCount(['enrollments'])
@@ -51,6 +59,8 @@ class AdminDashboardController extends Controller
             'totalSchedules',
             'totalClassrooms',
             'totalEnrollments',
+            'acceptedFaculties',  // ✅ Added Faculty card
+            'examSchedules',      // ✅ Exam Schedules card
             'programs',
             'recentPrograms',
             'pendingEnrollments',

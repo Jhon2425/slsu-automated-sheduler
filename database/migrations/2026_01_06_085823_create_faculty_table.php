@@ -23,6 +23,7 @@ return new class extends Migration
             // Professional Information
             $table->integer('years_of_service')->default(0);
             $table->string('rank')->nullable();
+            $table->date('appointment_date')->nullable();
 
             // Program Assignment (required)
             $table->foreignId('program_id')->constrained('programs')->onDelete('restrict');

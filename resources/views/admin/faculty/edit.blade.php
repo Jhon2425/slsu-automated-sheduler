@@ -111,6 +111,22 @@
                                        class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             </div>
                         </div>
+
+                        <!-- Month/Year of Appointment -->
+                        <div>
+                            <label class="block text-white font-semibold mb-2">
+                                <i class="fas fa-calendar-check mr-2"></i>Month/Year of Appointment <span class="text-red-400">*</span>
+                            </label>
+                            <input type="text" name="appointment_date"
+                                   value="{{ old('appointment_date', $faculty->appointment_date ? \Carbon\Carbon::parse($faculty->appointment_date)->format('F Y') : '') }}"
+                                   required
+                                   placeholder="e.g., January 2020"
+                                   class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                            <p class="mt-1 text-sm text-white/60">
+                                <i class="fas fa-info-circle mr-1"></i>Type the month and year of appointment (e.g., January 2020)
+                            </p>
+                        </div>
+
                         <div>
                             <label class="block text-white font-semibold mb-2"><i class="fas fa-home mr-2"></i>Home Address <span class="text-red-400">*</span></label>
                             <textarea name="home_address" rows="3" required
@@ -359,7 +375,6 @@
             row.id = rowId;
             row.className = 'glass-item p-6 rounded-xl space-y-4';
 
-            // Find matching subject for label
             const matchedSubject = existingData
                 ? availableSubjects.find(s => s.id === existingData.subject_id)
                 : null;
@@ -372,8 +387,6 @@
                     <h4 class="text-white font-semibold"><i class="fas fa-book mr-2"></i>Subject ${rowIndex + 1}</h4>
                     <button type="button" onclick="removeSubjectRow('${rowId}')" class="text-red-400 hover:text-red-300 transition"><i class="fas fa-times-circle text-xl"></i></button>
                 </div>
-
-                <!-- Searchable Subject -->
                 <div>
                     <label class="block text-white font-medium mb-2"><i class="fas fa-search mr-2"></i>Search & Select Subject</label>
                     <div class="subject-search-wrapper">
@@ -387,8 +400,6 @@
                     </div>
                     <input type="hidden" id="${rowId}-subject-id" name="subjects[${rowIndex}][subject_id]" value="${existingData?.subject_id || ''}">
                 </div>
-
-                <!-- Auto-filled fields -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-white font-medium mb-2"><i class="fas fa-code mr-2"></i>Subject Code</label>

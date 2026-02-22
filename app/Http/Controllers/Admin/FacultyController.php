@@ -11,6 +11,7 @@ use App\Models\Program;
 use App\Models\Schedule;
 use App\Models\Subject;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -41,9 +42,26 @@ class FacultyController extends Controller
     public function create()
     {
         $subjects = Subject::all();
-        $programs = Program::active()->orderBy('name')->get(); // ← fixed
+        $programs = Program::active()->orderBy('name')->get();
 
         return view('admin.faculty.create', compact('subjects', 'programs'));
+    }
+
+    /**
+     * Parse a free-text appointment date string (e.g. "January 2020") into a Carbon date.
+     * Returns null if the string is empty or unparseable.
+     */
+    private function parseAppointmentDate(?string $value): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->startOfMonth();
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
@@ -53,40 +71,49 @@ class FacultyController extends Controller
     {
         try {
             $validated = $request->validate([
-                'name'         => 'required|string|max:255',
-                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code|unique:users,faculty_code',
-                'email'        => 'required|email|unique:users,email',
-                'password'     => 'required|confirmed|min:8',
+                'name'              => 'required|string|max:255',
+                'faculty_code'      => 'required|string|max:255|unique:faculty,faculty_code|unique:users,faculty_code',
+                'email'             => 'required|email|unique:users,email',
+                'password'          => 'required|confirmed|min:8',
 
-                'program_id'   => 'required|exists:programs,id',
+                'program_id'        => 'required|exists:programs,id',
 
-                'civil_status'       => 'required|string',
-                'birthdate'          => 'required|date|before:today',
-                'employment_status'  => 'required|string',
-                'home_address'       => 'required|string',
-                'years_of_service'   => 'required|integer|min:0',
-                'rank'               => 'nullable|string|max:255',
+                'civil_status'      => 'required|string',
+                'birthdate'         => 'required|date|before:today',
+                'employment_status' => 'required|string',
+                'home_address'      => 'required|string',
+                'years_of_service'  => 'required|integer|min:0',
+                'rank'              => 'nullable|string|max:255',
+                'appointment_date'  => [
+                    'required',
+                    'string',
+                    function ($attribute, $value, $fail) {
+                        if (!strtotime($value)) {
+                            $fail('The appointment date must be a valid month and year (e.g., January 2020).');
+                        }
+                    },
+                ],
 
-                'education'                         => 'required|array|min:1',
-                'education.*.degree_earned'         => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
-                'education.*.year_graduated'        => 'required|integer|min:1950|max:' . date('Y'),
-                'education.*.course'                => 'required|string|max:255',
-                'education.*.school_graduated'      => 'required|string|max:255',
+                'education'                     => 'required|array|min:1',
+                'education.*.degree_earned'     => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
+                'education.*.year_graduated'    => 'required|integer|min:1950|max:' . date('Y'),
+                'education.*.course'            => 'required|string|max:255',
+                'education.*.school_graduated'  => 'required|string|max:255',
 
-                'subjects'                       => 'nullable|array',
-                'subjects.*.subject_id'          => 'required_with:subjects|exists:subjects,id',
-                'subjects.*.program_id'          => 'nullable|exists:programs,id',
-                'subjects.*.lecture_units'       => 'nullable|numeric|min:0',
-                'subjects.*.laboratory_units'    => 'nullable|numeric|min:0',
-                'subjects.*.year_level'          => 'nullable|integer|min:1|max:4',
-                'subjects.*.semester'            => 'nullable|string',
-                'subjects.*.class_size'          => 'nullable|integer|min:0',
+                'subjects'                      => 'nullable|array',
+                'subjects.*.subject_id'         => 'required_with:subjects|exists:subjects,id',
+                'subjects.*.program_id'         => 'nullable|exists:programs,id',
+                'subjects.*.lecture_units'      => 'nullable|numeric|min:0',
+                'subjects.*.laboratory_units'   => 'nullable|numeric|min:0',
+                'subjects.*.year_level'         => 'nullable|integer|min:1|max:4',
+                'subjects.*.semester'           => 'nullable|string',
+                'subjects.*.class_size'         => 'nullable|integer|min:0',
 
-                'unavailabilities'               => 'nullable|array',
-                'unavailabilities.*.day'         => 'required_with:unavailabilities|string',
-                'unavailabilities.*.time_from'   => 'required_with:unavailabilities|date_format:H:i',
-                'unavailabilities.*.time_to'     => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
-                'unavailabilities.*.reason'      => 'nullable|string|max:500',
+                'unavailabilities'              => 'nullable|array',
+                'unavailabilities.*.day'        => 'required_with:unavailabilities|string',
+                'unavailabilities.*.time_from'  => 'required_with:unavailabilities|date_format:H:i',
+                'unavailabilities.*.time_to'    => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
+                'unavailabilities.*.reason'     => 'nullable|string|max:500',
             ]);
         } catch (ValidationException $e) {
             Log::warning('Faculty validation failed', [
@@ -118,12 +145,14 @@ class FacultyController extends Controller
                 'home_address'       => $validated['home_address'],
                 'years_of_service'   => $validated['years_of_service'],
                 'rank'               => $validated['rank'] ?? null,
+                'appointment_date'   => $this->parseAppointmentDate($validated['appointment_date']),
             ]);
 
             Log::info('Faculty profile created', [
-                'faculty_id'   => $faculty->id,
-                'program_id'   => $faculty->program_id,
-                'faculty_code' => $faculty->faculty_code,
+                'faculty_id'       => $faculty->id,
+                'program_id'       => $faculty->program_id,
+                'faculty_code'     => $faculty->faculty_code,
+                'appointment_date' => $faculty->appointment_date,
             ]);
 
             foreach ($validated['education'] as $education) {
@@ -214,7 +243,7 @@ class FacultyController extends Controller
         ]);
 
         $subjects       = Subject::all();
-        $programs       = Program::active()->orderBy('name')->get(); // ← fixed
+        $programs       = Program::active()->orderBy('name')->get();
         $facultyProfile = $faculty->faculty;
 
         if (!$facultyProfile) {
@@ -296,41 +325,50 @@ class FacultyController extends Controller
 
         try {
             $validated = $request->validate([
-                'name'         => 'required|string|max:255',
-                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code,' . $facultyProfile->id . '|unique:users,faculty_code,' . $faculty->id,
-                'email'        => 'required|email|unique:users,email,' . $faculty->id,
-                'password'     => 'nullable|confirmed|min:8',
+                'name'              => 'required|string|max:255',
+                'faculty_code'      => 'required|string|max:255|unique:faculty,faculty_code,' . $facultyProfile->id . '|unique:users,faculty_code,' . $faculty->id,
+                'email'             => 'required|email|unique:users,email,' . $faculty->id,
+                'password'          => 'nullable|confirmed|min:8',
 
-                'program_id'   => 'required|exists:programs,id',
+                'program_id'        => 'required|exists:programs,id',
 
-                'civil_status'       => 'required|string',
-                'birthdate'          => 'required|date|before:today',
-                'employment_status'  => 'required|string',
-                'home_address'       => 'required|string',
-                'years_of_service'   => 'required|integer|min:0',
-                'rank'               => 'nullable|string|max:255',
+                'civil_status'      => 'required|string',
+                'birthdate'         => 'required|date|before:today',
+                'employment_status' => 'required|string',
+                'home_address'      => 'required|string',
+                'years_of_service'  => 'required|integer|min:0',
+                'rank'              => 'nullable|string|max:255',
+                'appointment_date'  => [
+                    'required',
+                    'string',
+                    function ($attribute, $value, $fail) {
+                        if (!strtotime($value)) {
+                            $fail('The appointment date must be a valid month and year (e.g., January 2020).');
+                        }
+                    },
+                ],
 
-                'education'                         => 'required|array|min:1',
-                'education.*.id'                    => 'nullable|exists:educational_backgrounds,id',
-                'education.*.degree_earned'         => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
-                'education.*.year_graduated'        => 'required|integer|min:1950|max:' . date('Y'),
-                'education.*.course'                => 'required|string|max:255',
-                'education.*.school_graduated'      => 'required|string|max:255',
+                'education'                     => 'required|array|min:1',
+                'education.*.id'                => 'nullable|exists:educational_backgrounds,id',
+                'education.*.degree_earned'     => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
+                'education.*.year_graduated'    => 'required|integer|min:1950|max:' . date('Y'),
+                'education.*.course'            => 'required|string|max:255',
+                'education.*.school_graduated'  => 'required|string|max:255',
 
-                'subjects'                       => 'nullable|array',
-                'subjects.*.subject_id'          => 'required_with:subjects|exists:subjects,id',
-                'subjects.*.program_id'          => 'nullable|exists:programs,id',
-                'subjects.*.lecture_units'       => 'nullable|numeric|min:0',
-                'subjects.*.laboratory_units'    => 'nullable|numeric|min:0',
-                'subjects.*.year_level'          => 'nullable|integer|min:1|max:4',
-                'subjects.*.semester'            => 'nullable|string',
-                'subjects.*.class_size'          => 'nullable|integer|min:0',
+                'subjects'                      => 'nullable|array',
+                'subjects.*.subject_id'         => 'required_with:subjects|exists:subjects,id',
+                'subjects.*.program_id'         => 'nullable|exists:programs,id',
+                'subjects.*.lecture_units'      => 'nullable|numeric|min:0',
+                'subjects.*.laboratory_units'   => 'nullable|numeric|min:0',
+                'subjects.*.year_level'         => 'nullable|integer|min:1|max:4',
+                'subjects.*.semester'           => 'nullable|string',
+                'subjects.*.class_size'         => 'nullable|integer|min:0',
 
-                'unavailabilities'               => 'nullable|array',
-                'unavailabilities.*.day'         => 'required_with:unavailabilities|string',
-                'unavailabilities.*.time_from'   => 'required_with:unavailabilities|date_format:H:i',
-                'unavailabilities.*.time_to'     => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
-                'unavailabilities.*.reason'      => 'nullable|string|max:500',
+                'unavailabilities'              => 'nullable|array',
+                'unavailabilities.*.day'        => 'required_with:unavailabilities|string',
+                'unavailabilities.*.time_from'  => 'required_with:unavailabilities|date_format:H:i',
+                'unavailabilities.*.time_to'    => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
+                'unavailabilities.*.reason'     => 'nullable|string|max:500',
             ]);
         } catch (ValidationException $e) {
             Log::warning('Faculty update validation failed', [
@@ -366,6 +404,7 @@ class FacultyController extends Controller
                 'home_address'       => $validated['home_address'],
                 'years_of_service'   => $validated['years_of_service'],
                 'rank'               => $validated['rank'] ?? null,
+                'appointment_date'   => $this->parseAppointmentDate($validated['appointment_date']),
             ]);
 
             $existingEducationIds = [];
@@ -447,8 +486,9 @@ class FacultyController extends Controller
             DB::commit();
 
             Log::info('Faculty successfully updated', [
-                'faculty_id' => $facultyProfile->id,
-                'program_id' => $validated['program_id'],
+                'faculty_id'       => $facultyProfile->id,
+                'program_id'       => $validated['program_id'],
+                'appointment_date' => $facultyProfile->appointment_date,
             ]);
 
             return redirect()
