@@ -29,7 +29,7 @@ class Faculty extends Model
     protected $casts = [
         'birthdate'        => 'date',
         'appointment_date' => 'date',
-        'years_of_service' => 'integer',
+        'years_of_service' => 'float',
     ];
 
     /* ================= RELATIONSHIPS ================= */

@@ -37,59 +37,102 @@
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
                 <!-- Total Contact Hours -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform hover:scale-105">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-blue-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-clock text-3xl text-white"></i>
                         </div>
+                        <span class="text-white/40 text-xs uppercase tracking-widest">Weekly</span>
                     </div>
-                    <h3 class="text-white/80 text-sm font-medium mb-2">Contact Hours/Week</h3>
-                    <p class="text-4xl font-bold text-white">{{ number_format($totalContactHours ?? 0, 1) }}</p>
-                    <p class="text-white/60 text-xs mt-2">Total weekly teaching hours</p>
+                    <h3 class="text-white/80 text-sm font-medium mb-2">Contact Hours / Week</h3>
+                    <p class="text-4xl font-bold text-white">
+                        {{ number_format($totalContactHours ?? 0, 1) }}
+                        <span class="text-lg font-normal text-white/60">hrs</span>
+                    </p>
+                    <p class="text-white/60 text-xs mt-2">
+                        @if(($totalContactHours ?? 0) > 0)
+                            <span class="text-blue-300">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                {{ number_format(($totalContactHours ?? 0) / 5, 1) }} hrs/day avg
+                            </span>
+                        @else
+                            <span><i class="fas fa-info-circle mr-1"></i>No schedule assigned</span>
+                        @endif
+                    </p>
                 </div>
 
                 <!-- Total Units -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform hover:scale-105">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-green-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-book text-3xl text-white"></i>
                         </div>
+                        <span class="text-white/40 text-xs uppercase tracking-widest">Load</span>
                     </div>
                     <h3 class="text-white/80 text-sm font-medium mb-2">Total Units</h3>
-                    <p class="text-4xl font-bold text-white">{{ $totalUnits ?? 0 }}</p>
+                    <p class="text-4xl font-bold text-white">
+                        {{ $totalUnits ?? 0 }}
+                        <span class="text-lg font-normal text-white/60">units</span>
+                    </p>
                     <p class="text-white/60 text-xs mt-2">
                         @if(($totalUnits ?? 0) > 18)
-                            <span class="text-yellow-300"><i class="fas fa-exclamation-triangle mr-1"></i>Overload: {{ ($totalUnits ?? 0) - 18 }} units</span>
+                            <span class="text-yellow-300">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Overload: {{ ($totalUnits ?? 0) - 18 }} units
+                            </span>
                         @else
-                            <span class="text-green-300"><i class="fas fa-check-circle mr-1"></i>Normal load</span>
+                            <span class="text-green-300">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Normal load
+                            </span>
                         @endif
                     </p>
                 </div>
 
                 <!-- Number of Subjects -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform hover:scale-105">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-purple-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-chalkboard-teacher text-3xl text-white"></i>
                         </div>
+                        <span class="text-white/40 text-xs uppercase tracking-widest">Courses</span>
                     </div>
                     <h3 class="text-white/80 text-sm font-medium mb-2">Subjects Teaching</h3>
-                    <p class="text-4xl font-bold text-white">{{ $assignedSubjects->count() ?? 0 }}</p>
-                    <p class="text-white/60 text-xs mt-2">Active courses this semester</p>
+                    <p class="text-4xl font-bold text-white">
+                        {{ $assignedSubjects->count() ?? 0 }}
+                        <span class="text-lg font-normal text-white/60">subj</span>
+                    </p>
+                    <p class="text-white/60 text-xs mt-2">
+                        <span class="text-purple-300">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Active courses this semester
+                        </span>
+                    </p>
                 </div>
 
                 <!-- Total Schedules -->
-                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform">
+                <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20 transition-transform hover:scale-105">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-pink-500/30 backdrop-blur-md p-4 rounded-xl">
                             <i class="fas fa-calendar-check text-3xl text-white"></i>
                         </div>
+                        <span class="text-white/40 text-xs uppercase tracking-widest">Sessions</span>
                     </div>
                     <h3 class="text-white/80 text-sm font-medium mb-2">Class Schedules</h3>
-                    <p class="text-4xl font-bold text-white">{{ $schedules->count() ?? 0 }}</p>
-                    <p class="text-white/60 text-xs mt-2">Total class sessions</p>
+                    <p class="text-4xl font-bold text-white">
+                        {{ $schedules->count() ?? 0 }}
+                        <span class="text-lg font-normal text-white/60">rows</span>
+                    </p>
+                    <p class="text-white/60 text-xs mt-2">
+                        <span class="text-pink-300">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            Total class sessions
+                        </span>
+                    </p>
                 </div>
+
             </div>
 
             <!-- Quick Access - My Teaching Schedule -->
@@ -125,7 +168,7 @@
 
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 <!-- Left Column - Schedule Preview -->
                 <div class="lg:col-span-2">
                     <div class="glass-card rounded-2xl shadow-xl p-8 border border-white/20">
@@ -133,23 +176,16 @@
                             <i class="fas fa-calendar-week"></i>
                             This Week's Classes
                         </h2>
-                        
+
                         @if(isset($schedules) && $schedules->isNotEmpty())
                             <div class="space-y-4">
                                 @php
-                                    $today = date('l'); // Get current day name
+                                    $today = date('l');
                                     $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                                    
-                                    // Helper function to convert day number to name
-                                    function getDayName($dayNumber) {
-                                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                        return $days[$dayNumber - 1] ?? 'Unknown';
-                                    }
                                 @endphp
-                                
+
                                 @foreach($daysOfWeek as $dayIndex => $day)
                                     @php
-                                        // Filter schedules by day number (1 = Monday, 2 = Tuesday, etc.)
                                         $dayNumber = $dayIndex + 1;
                                         $daySchedules = $schedules->where('day', $dayNumber);
                                         $isToday = $day === $today;
@@ -163,7 +199,9 @@
                                                         <span class="bg-yellow-500/30 px-3 py-1 rounded-lg text-sm">Today</span>
                                                     @endif
                                                 </h3>
-                                                <span class="text-white/60 text-sm">{{ $daySchedules->count() }} {{ $daySchedules->count() == 1 ? 'class' : 'classes' }}</span>
+                                                <span class="text-white/60 text-sm">
+                                                    {{ $daySchedules->count() }} {{ $daySchedules->count() == 1 ? 'class' : 'classes' }}
+                                                </span>
                                             </div>
                                             <div class="space-y-3">
                                                 @foreach($daySchedules->sortBy('start_time') as $schedule)
@@ -177,8 +215,14 @@
                                                                     {{ $schedule->subject->subject_name ?? 'N/A' }}
                                                                 </p>
                                                                 <div class="flex items-center gap-4 mt-2 text-white/70 text-sm">
-                                                                    <span><i class="fas fa-door-open mr-1"></i>{{ $schedule->classroom->room_name ?? 'TBA' }}</span>
-                                                                    <span><i class="fas fa-graduation-cap mr-1"></i>{{ $schedule->subject->program->code ?? 'N/A' }} {{ $schedule->year_level ?? '' }}</span>
+                                                                    <span>
+                                                                        <i class="fas fa-door-open mr-1"></i>
+                                                                        {{ $schedule->classroom->room_name ?? 'TBA' }}
+                                                                    </span>
+                                                                    <span>
+                                                                        <i class="fas fa-graduation-cap mr-1"></i>
+                                                                        {{ $schedule->subject->program->code ?? 'N/A' }} {{ $schedule->year_level ?? '' }}
+                                                                    </span>
                                                                 </div>
                                                             </div>
                                                             <div class="text-right ml-4">
@@ -191,8 +235,8 @@
                                                                 <p class="text-white/50 text-xs mt-1">
                                                                     @php
                                                                         $start = strtotime($schedule->start_time);
-                                                                        $end = strtotime($schedule->end_time);
-                                                                        $hours = ($end - $start) / 3600;
+                                                                        $end   = strtotime($schedule->end_time);
+                                                                        $hours = round(($end - $start) / 3600, 1);
                                                                     @endphp
                                                                     {{ $hours }} {{ $hours == 1 ? 'hour' : 'hours' }}
                                                                 </p>
@@ -219,7 +263,7 @@
 
                 <!-- Right Column - Profile & Info -->
                 <div class="space-y-6">
-                    
+
                     <!-- Profile Summary -->
                     <div class="glass-card rounded-2xl shadow-xl p-6 border border-white/20">
                         <h2 class="text-xl font-bold text-white flex items-center gap-2 mb-4">
@@ -354,9 +398,9 @@
 
         @keyframes blob {
             0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(20px, -50px) scale(1.1); }
-            50% { transform: translate(-20px, 20px) scale(0.9); }
-            75% { transform: translate(50px, 50px) scale(1.05); }
+            25%       { transform: translate(20px, -50px) scale(1.1); }
+            50%       { transform: translate(-20px, 20px) scale(0.9); }
+            75%       { transform: translate(50px, 50px) scale(1.05); }
         }
 
         .animate-blob {

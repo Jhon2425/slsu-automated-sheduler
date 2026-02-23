@@ -82,7 +82,7 @@ class FacultyController extends Controller
                 'birthdate'         => 'required|date|before:today',
                 'employment_status' => 'required|string',
                 'home_address'      => 'required|string',
-                'years_of_service'  => 'required|integer|min:0',
+                'years_of_service'  => 'required|numeric|min:0',
                 'rank'              => 'nullable|string|max:255',
                 'appointment_date'  => [
                     'required',
@@ -336,7 +336,7 @@ class FacultyController extends Controller
                 'birthdate'         => 'required|date|before:today',
                 'employment_status' => 'required|string',
                 'home_address'      => 'required|string',
-                'years_of_service'  => 'required|integer|min:0',
+                'years_of_service'  => 'required|numeric|min:0',
                 'rank'              => 'nullable|string|max:255',
                 'appointment_date'  => [
                     'required',

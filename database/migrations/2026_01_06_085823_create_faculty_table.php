@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('home_address');
 
             // Professional Information
-            $table->integer('years_of_service')->default(0);
+            $table->float('years_of_service')->default(0);
             $table->string('rank')->nullable();
             $table->date('appointment_date')->nullable();
 

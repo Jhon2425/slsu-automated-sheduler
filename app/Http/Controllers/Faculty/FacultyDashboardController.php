@@ -8,378 +8,306 @@ use App\Models\Schedule;
 use App\Models\FacultySubject;
 use App\Models\EducationalBackground;
 use App\Models\Faculty;
+use App\Models\Program;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class FacultyDashboardController extends Controller
 {
+    /**
+     * Resolve units — mirrors TeachingLoadController::resolveUnits()
+     */
+    private function resolveUnits($pivot, $subject = null): float
+    {
+        if ($pivot) {
+            $l = $pivot->lecture_units    ?? null;
+            $b = $pivot->laboratory_units ?? null;
+            if ($l !== null || $b !== null) return (float)($l ?? 0) + (float)($b ?? 0);
+            if (isset($pivot->units))        return (float)$pivot->units;
+            if (isset($pivot->credit_units)) return (float)$pivot->credit_units;
+            if (isset($pivot->credit_hours)) return (float)$pivot->credit_hours;
+        }
+
+        if ($subject) {
+            if (isset($subject->lecture_units) || isset($subject->laboratory_units)) {
+                return (float)($subject->lecture_units ?? 0) + (float)($subject->laboratory_units ?? 0);
+            }
+            if (isset($subject->units))        return (float)$subject->units;
+            if (isset($subject->credit_units)) return (float)$subject->credit_units;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Normalize semester strings — mirrors TeachingLoadController::normalizeSemester()
+     */
+    private function normalizeSemester(string $semester): string
+    {
+        $s = strtolower(trim($semester));
+
+        if (in_array($s, ['1', '1st', 'first', '1st semester'], true))                     return '1st';
+        if (in_array($s, ['2', '2nd', 'second', '2nd semester'], true))                    return '2nd';
+        if (in_array($s, ['3', 'summer', 'midyear', 'mid-year', 'summer semester'], true)) return 'Summer';
+
+        return $semester;
+    }
+
+    /**
+     * All realistic stored variants — mirrors TeachingLoadController::semesterVariants()
+     */
+    private function semesterVariants(string $semester): array
+    {
+        $map = [
+            '1st'    => ['1st', '1', 'First', 'first', '1st Semester', '1st semester', 'First Semester'],
+            '2nd'    => ['2nd', '2', 'Second', 'second', '2nd Semester', '2nd semester', 'Second Semester'],
+            'Summer' => ['Summer', 'summer', '3', 'Midyear', 'midyear', 'Mid-year', 'Summer Semester'],
+        ];
+
+        return $map[$this->normalizeSemester($semester)] ?? [$semester];
+    }
+
+    /**
+     * Fetch schedules — mirrors TeachingLoadController::fetchSchedules()
+     */
+    private function fetchSchedules(Faculty $faculty, string $schoolYear, string $semester)
+    {
+        $base = Schedule::where('faculty_code', $faculty->faculty_code)
+            ->where('is_active', true)
+            ->with(['subject', 'subject.program', 'classroom', 'program'])
+            ->orderBy('day')
+            ->orderBy('start_time');
+
+        // Try school_year + semester first
+        $schedules = (clone $base)
+            ->where('academic_year', $schoolYear)
+            ->whereIn('semester', $this->semesterVariants($semester))
+            ->get();
+
+        if ($schedules->isNotEmpty()) return $schedules;
+
+        // Fall back to school_year only
+        $schedules = (clone $base)->where('academic_year', $schoolYear)->get();
+        if ($schedules->isNotEmpty()) return $schedules;
+
+        // Fall back to all active
+        return (clone $base)->get();
+    }
+
+    /**
+     * Fetch assigned subjects — mirrors TeachingLoadController::fetchAssignedSubjects()
+     */
+    private function fetchAssignedSubjects(Faculty $faculty)
+    {
+        return FacultySubject::where('faculty_code', $faculty->faculty_code)
+            ->with(['subject', 'subject.program'])
+            ->get();
+    }
+
+    /**
+     * Get current academic period
+     */
+    private function getAcademicPeriod(): array
+    {
+        $currentYear  = (int) date('Y');
+        $currentMonth = (int) date('n');
+
+        if ($currentMonth >= 6) {
+            $schoolYear = "{$currentYear}-" . ($currentYear + 1);
+        } else {
+            $schoolYear = ($currentYear - 1) . "-{$currentYear}";
+        }
+
+        $academicYear = $schoolYear;
+
+        if ($currentMonth >= 6 && $currentMonth <= 10)     $semester = '1st';
+        elseif ($currentMonth >= 11 || $currentMonth <= 3) $semester = '2nd';
+        else                                                $semester = 'Summer';
+
+        return compact('academicYear', 'schoolYear', 'semester');
+    }
+
+    /**
+     * Resolve faculty record from authenticated user
+     */
+    private function resolveFaculty(): Faculty
+    {
+        $user = Auth::user();
+        return Faculty::where('faculty_code', $user->faculty_code)->firstOrFail();
+    }
+
+    /**
+     * Compute totals using the SAME logic as TeachingLoadController::resolveData()
+     *
+     * - totalContactHours: sum of (end - start) / 3600 for EVERY schedule row
+     * - totalUnits: counted once per unique subject_id + year_level + section key
+     * - workloadPerDay: grouped by day_name, then averaged
+     */
+    private function computeTotals(Faculty $faculty, string $schoolYear, string $semester): array
+    {
+        $assignedSubjects = $this->fetchAssignedSubjects($faculty);
+        $schedules        = $this->fetchSchedules($faculty, $schoolYear, $semester);
+
+        $schedulesBySubjectId = $schedules->groupBy('subject_id');
+
+        $totalContactHours = 0;
+        $totalUnits        = 0;
+        $uniqueSubjects    = [];
+        $workloadPerDay    = [];
+
+        foreach ($assignedSubjects as $fs) {
+            $subjectSchedules = $schedulesBySubjectId->get($fs->subject_id, collect());
+            $units            = $this->resolveUnits($fs, $fs->subject ?? null);
+
+            if ($subjectSchedules->isNotEmpty()) {
+                foreach ($subjectSchedules as $schedule) {
+                    $start        = strtotime($schedule->start_time);
+                    $end          = strtotime($schedule->end_time);
+                    $contactHours = ($end - $start) / 3600;
+
+                    $totalContactHours += $contactHours;
+
+                    // Workload per day — grouped by day_name
+                    $dayName = $schedule->day_name ?? null;
+                    if ($dayName) {
+                        $workloadPerDay[$dayName] = ($workloadPerDay[$dayName] ?? 0) + $contactHours;
+                    }
+                }
+            }
+
+            // Count units only once per unique subject+year_level+section
+            $key = ($fs->subject->id ?? 'x')
+                 . '-' . ($fs->year_level ?: 'default')
+                 . '-' . ($fs->section    ?: 'default');
+
+            if (!isset($uniqueSubjects[$key])) {
+                $uniqueSubjects[$key] = true;
+                $totalUnits += $units;
+            }
+        }
+
+        $standardLoad      = 21;
+        $excessLoad        = max(0, $totalUnits - $standardLoad);
+        $excessLoadDisplay = $excessLoad > 0 ? number_format($excessLoad, 1) . ' units' : 'NONE';
+
+        $totalWorkloadPerDay = !empty($workloadPerDay)
+            ? number_format(array_sum($workloadPerDay) / count($workloadPerDay), 2) . ' hours/day'
+            : 'Not set';
+
+        return [
+            'assignedSubjects'  => $assignedSubjects,
+            'schedules'         => $schedules,
+            'totalContactHours' => round($totalContactHours, 2),
+            'totalUnits'        => $totalUnits,
+            'excessLoad'        => $excessLoadDisplay,
+            'totalWorkloadPerDay' => $totalWorkloadPerDay,
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function index()
     {
-        $facultyId = Auth::id();
-        $user = Auth::user();
-        
-        // Get faculty details from faculty table using faculty_code
-        $faculty = Faculty::where('faculty_code', $user->faculty_code)->first();
-        
-        // If no faculty record exists, fall back to user data
-        if (!$faculty) {
-            $faculty = $user;
-        }
-        
-        // Get the faculty table's ID to use in queries
-        $facultyTableId = $faculty->id ?? $facultyId;
+        $faculty = $this->resolveFaculty();
 
-        // Get assigned subjects for this faculty member with their programs
-        $assignedSubjects = FacultySubject::where('faculty_id', $facultyTableId)
-            ->with(['subject.program', 'subject'])
+        $period       = $this->getAcademicPeriod();
+        $academicYear = $period['academicYear'];
+        $schoolYear   = $period['schoolYear'];
+        $semester     = $period['semester'];
+
+        $totals = $this->computeTotals($faculty, $schoolYear, $semester);
+
+        $educationalQualifications = EducationalBackground::where('faculty_code', $faculty->faculty_code)
+            ->orderByDesc('year_graduated')
             ->get();
 
-        // Get schedules for this faculty member
-        $schedules = Schedule::where('faculty_id', $facultyTableId)
-            ->with(['subject.program', 'subject', 'classroom'])
-            ->orderBy('day')
-            ->orderBy('start_time')
-            ->get();
-
-        // Get educational background
-        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyTableId)
-            ->orderBy('year_graduated', 'desc')
-            ->get();
-
-        // Academic Year and Semester (you can adjust this logic based on your needs)
-        $currentYear = date('Y');
-        $currentMonth = date('n');
-        
-        // Determine academic year (e.g., if month >= 6, it's the start of new academic year)
-        if ($currentMonth >= 6) {
-            $academicYear = $currentYear . '-' . ($currentYear + 1);
-            $schoolYear = $currentYear . '-' . ($currentYear + 1);
-        } else {
-            $academicYear = ($currentYear - 1) . '-' . $currentYear;
-            $schoolYear = ($currentYear - 1) . '-' . $currentYear;
-        }
-        
-        // Determine semester (adjust months as needed for your institution)
-        if ($currentMonth >= 6 && $currentMonth <= 10) {
-            $semester = '1st';
-        } elseif ($currentMonth >= 11 || $currentMonth <= 3) {
-            $semester = '2nd';
-        } else {
-            $semester = 'Summer';
-        }
-
-        // Calculate total contact hours and units
-        $totalContactHours = 0;
-        $totalUnits = 0;
-        
-        foreach ($schedules as $schedule) {
-            // Calculate contact hours from schedule times
-            $start = strtotime($schedule->start_time);
-            $end = strtotime($schedule->end_time);
-            $hours = ($end - $start) / 3600;
-            $totalContactHours += $hours;
-        }
-        
-        // Calculate total units from assigned subjects
-        foreach ($assignedSubjects as $assignment) {
-            // Get units from faculty_subject pivot table (if available)
-            if (isset($assignment->lecture_units) && isset($assignment->laboratory_units)) {
-                $units = $assignment->lecture_units + $assignment->laboratory_units;
-            }
-            // Otherwise get from subject table
-            elseif ($assignment->subject) {
-                $units = ($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0);
-            } else {
-                $units = 0;
-            }
-            $totalUnits += $units;
-        }
-
-        // Calculate excess load (assuming normal load is 18 units for full-time, 12 for part-time)
-        $normalLoad = $faculty->employment_status === 'FULL-TIME' ? 18 : 12;
-        $excessLoad = $totalUnits > $normalLoad ? ($totalUnits - $normalLoad) . ' units' : 'NONE';
-
-        // Total workload per day calculation
-        $workloadPerDay = $schedules->groupBy(function($schedule) {
-            return $schedule->day;
-        })->map(function($daySchedules) {
-            $dailyHours = 0;
-            foreach ($daySchedules as $schedule) {
-                $start = strtotime($schedule->start_time);
-                $end = strtotime($schedule->end_time);
-                $dailyHours += ($end - $start) / 3600;
-            }
-            return $dailyHours;
-        });
-        
-        $totalWorkloadPerDay = $workloadPerDay->avg() ?? 0;
-        $totalWorkloadPerDay = round($totalWorkloadPerDay, 2) . ' hours/day';
-
-        // Other officials (you can store these in settings table or env)
         $campusDirector = config('app.campus_director', 'ALMA J. CARINGAL');
-        $vicePresident = config('app.vice_president', 'GONDELINA A. MADOVAN, PhD');
-        
-        // Date effective (you can adjust based on your needs)
-        $dateEffective = date('F d, Y', strtotime($faculty->created_at ?? now()));
+        $vicePresident  = config('app.vice_president',  'GONDELINA A. MADOVAN, PhD');
+        $dateEffective  = date('F d, Y', strtotime(config('app.default_date_effective', 'August 30, 2023')));
 
-        return view('faculty.dashboard', compact(
-            'assignedSubjects',
+        return view('faculty.dashboard', array_merge($totals, compact(
             'faculty',
-            'schedules',
             'academicYear',
             'schoolYear',
             'semester',
             'educationalQualifications',
-            'totalContactHours',
-            'totalUnits',
-            'excessLoad',
-            'totalWorkloadPerDay',
             'campusDirector',
             'vicePresident',
             'dateEffective'
-        ));
+        )));
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
      * View schedule - Shows the faculty's complete teaching load document
      */
     public function viewSchedule()
     {
-        $facultyId = Auth::id();
-        $user = Auth::user();
-        
-        // Get faculty details from faculty table using faculty_code
-        $faculty = Faculty::where('faculty_code', $user->faculty_code)->first();
-        
-        // If no faculty record exists, fall back to user data
-        if (!$faculty) {
-            $faculty = $user;
-        }
-        
-        // Get the faculty table's ID to use in queries
-        $facultyTableId = $faculty->id ?? $facultyId;
+        $faculty = $this->resolveFaculty();
 
-        // Get schedules for this faculty member
-        $schedules = Schedule::where('faculty_id', $facultyTableId)
-            ->with(['subject.program', 'subject', 'classroom'])
-            ->orderBy('day')
-            ->orderBy('start_time')
+        $period       = $this->getAcademicPeriod();
+        $academicYear = $period['academicYear'];
+        $schoolYear   = $period['schoolYear'];
+        $semester     = $period['semester'];
+
+        $totals = $this->computeTotals($faculty, $schoolYear, $semester);
+
+        $educationalQualifications = EducationalBackground::where('faculty_code', $faculty->faculty_code)
+            ->orderByDesc('year_graduated')
             ->get();
-
-        // Get assigned subjects
-        $assignedSubjects = FacultySubject::where('faculty_id', $facultyTableId)
-            ->with(['subject.program', 'subject'])
-            ->get();
-
-        // Get educational background
-        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyTableId)
-            ->orderBy('year_graduated', 'desc')
-            ->get();
-
-        // Academic year and semester
-        $currentYear = date('Y');
-        $currentMonth = date('n');
-        
-        if ($currentMonth >= 6) {
-            $academicYear = $currentYear . '-' . ($currentYear + 1);
-            $schoolYear = $currentYear . '-' . ($currentYear + 1);
-        } else {
-            $academicYear = ($currentYear - 1) . '-' . $currentYear;
-            $schoolYear = ($currentYear - 1) . '-' . $currentYear;
-        }
-        
-        if ($currentMonth >= 6 && $currentMonth <= 10) {
-            $semester = '1st';
-        } elseif ($currentMonth >= 11 || $currentMonth <= 3) {
-            $semester = '2nd';
-        } else {
-            $semester = 'Summer';
-        }
-
-        // Calculate totals
-        $totalContactHours = 0;
-        $totalUnits = 0;
-        
-        foreach ($schedules as $schedule) {
-            // Calculate contact hours from schedule times
-            $start = strtotime($schedule->start_time);
-            $end = strtotime($schedule->end_time);
-            $hours = ($end - $start) / 3600;
-            $totalContactHours += $hours;
-        }
-        
-        // Calculate total units from assigned subjects
-        foreach ($assignedSubjects as $assignment) {
-            // Get units from faculty_subject pivot table (if available)
-            if (isset($assignment->lecture_units) && isset($assignment->laboratory_units)) {
-                $units = $assignment->lecture_units + $assignment->laboratory_units;
-            }
-            // Otherwise get from subject table
-            elseif ($assignment->subject) {
-                $units = ($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0);
-            } else {
-                $units = 0;
-            }
-            $totalUnits += $units;
-        }
-
-        $normalLoad = $faculty->employment_status === 'FULL-TIME' ? 18 : 12;
-        $excessLoad = $totalUnits > $normalLoad ? ($totalUnits - $normalLoad) . ' units' : 'NONE';
-
-        $workloadPerDay = $schedules->groupBy(function($schedule) {
-            return $schedule->day;
-        })->map(function($daySchedules) {
-            $dailyHours = 0;
-            foreach ($daySchedules as $schedule) {
-                $start = strtotime($schedule->start_time);
-                $end = strtotime($schedule->end_time);
-                $dailyHours += ($end - $start) / 3600;
-            }
-            return $dailyHours;
-        });
-        
-        $totalWorkloadPerDay = round($workloadPerDay->avg() ?? 0, 2) . ' hours/day';
 
         $campusDirector = config('app.campus_director', 'ALMA J. CARINGAL');
-        $vicePresident = config('app.vice_president', 'GONDELINA A. MADOVAN, PhD');
-        $dateEffective = date('F d, Y', strtotime($faculty->created_at ?? now()));
+        $vicePresident  = config('app.vice_president',  'GONDELINA A. MADOVAN, PhD');
+        $dateEffective  = date('F d, Y', strtotime(config('app.default_date_effective', 'August 30, 2023')));
 
-        // Return the teaching load view
-        return view('faculty.teaching-load', compact(
+        return view('faculty.teaching-load', array_merge($totals, compact(
             'faculty',
-            'schedules',
             'academicYear',
             'schoolYear',
             'semester',
             'educationalQualifications',
-            'totalContactHours',
-            'totalUnits',
-            'excessLoad',
-            'totalWorkloadPerDay',
             'campusDirector',
             'vicePresident',
-            'dateEffective',
-            'assignedSubjects'
-        ));
+            'dateEffective'
+        )));
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
      * Download teaching load as PDF
      */
     public function downloadPDF()
     {
-        $facultyId = Auth::id();
-        $user = Auth::user();
-        
-        // Get faculty details from faculty table using faculty_code
-        $faculty = Faculty::where('faculty_code', $user->faculty_code)->first();
-        
-        // If no faculty record exists, fall back to user data
-        if (!$faculty) {
-            $faculty = $user;
-        }
-        
-        // Get the faculty table's ID to use in queries
-        $facultyTableId = $faculty->id ?? $facultyId;
-        
-        // Get all the same data as viewSchedule method
-        $schedules = Schedule::where('faculty_id', $facultyTableId)
-            ->with(['subject.program', 'subject', 'classroom'])
-            ->orderBy('day')
-            ->orderBy('start_time')
+        $faculty = $this->resolveFaculty();
+
+        $period       = $this->getAcademicPeriod();
+        $academicYear = $period['academicYear'];
+        $schoolYear   = $period['schoolYear'];
+        $semester     = $period['semester'];
+
+        $totals = $this->computeTotals($faculty, $schoolYear, $semester);
+
+        $educationalQualifications = EducationalBackground::where('faculty_code', $faculty->faculty_code)
+            ->orderByDesc('year_graduated')
             ->get();
-
-        $assignedSubjects = FacultySubject::where('faculty_id', $facultyTableId)
-            ->with(['subject.program', 'subject'])
-            ->get();
-
-        $educationalQualifications = EducationalBackground::where('faculty_id', $facultyTableId)
-            ->orderBy('year_graduated', 'desc')
-            ->get();
-
-        $currentYear = date('Y');
-        $currentMonth = date('n');
-        
-        if ($currentMonth >= 6) {
-            $academicYear = $currentYear . '-' . ($currentYear + 1);
-            $schoolYear = $currentYear . '-' . ($currentYear + 1);
-        } else {
-            $academicYear = ($currentYear - 1) . '-' . $currentYear;
-            $schoolYear = ($currentYear - 1) . '-' . $currentYear;
-        }
-        
-        if ($currentMonth >= 6 && $currentMonth <= 10) {
-            $semester = '1st';
-        } elseif ($currentMonth >= 11 || $currentMonth <= 3) {
-            $semester = '2nd';
-        } else {
-            $semester = 'Summer';
-        }
-
-        $totalContactHours = 0;
-        $totalUnits = 0;
-        
-        foreach ($schedules as $schedule) {
-            // Calculate contact hours from schedule times
-            $start = strtotime($schedule->start_time);
-            $end = strtotime($schedule->end_time);
-            $hours = ($end - $start) / 3600;
-            $totalContactHours += $hours;
-        }
-        
-        // Calculate total units from assigned subjects
-        foreach ($assignedSubjects as $assignment) {
-            // Get units from faculty_subject pivot table (if available)
-            if (isset($assignment->lecture_units) && isset($assignment->laboratory_units)) {
-                $units = $assignment->lecture_units + $assignment->laboratory_units;
-            }
-            // Otherwise get from subject table
-            elseif ($assignment->subject) {
-                $units = ($assignment->subject->lecture_units ?? 0) + ($assignment->subject->laboratory_units ?? 0);
-            } else {
-                $units = 0;
-            }
-            $totalUnits += $units;
-        }
-
-        $normalLoad = $faculty->employment_status === 'FULL-TIME' ? 18 : 12;
-        $excessLoad = $totalUnits > $normalLoad ? ($totalUnits - $normalLoad) . ' units' : 'NONE';
-
-        $workloadPerDay = $schedules->groupBy(function($schedule) {
-            return $schedule->day;
-        })->map(function($daySchedules) {
-            $dailyHours = 0;
-            foreach ($daySchedules as $schedule) {
-                $start = strtotime($schedule->start_time);
-                $end = strtotime($schedule->end_time);
-                $dailyHours += ($end - $start) / 3600;
-            }
-            return $dailyHours;
-        });
-        
-        $totalWorkloadPerDay = round($workloadPerDay->avg() ?? 0, 2) . ' hours/day';
 
         $campusDirector = config('app.campus_director', 'ALMA J. CARINGAL');
-        $vicePresident = config('app.vice_president', 'GONDELINA A. MADOVAN, PhD');
-        $dateEffective = date('F d, Y', strtotime($faculty->created_at ?? now()));
+        $vicePresident  = config('app.vice_president',  'GONDELINA A. MADOVAN, PhD');
+        $dateEffective  = date('F d, Y', strtotime(config('app.default_date_effective', 'August 30, 2023')));
 
-        $pdf = \PDF::loadView('faculty.teaching-load-pdf', compact(
+        $pdf = \PDF::loadView('faculty.teaching-load-pdf', array_merge($totals, compact(
             'faculty',
-            'assignedSubjects',
-            'schedules',
             'academicYear',
             'schoolYear',
             'semester',
             'educationalQualifications',
-            'totalContactHours',
-            'totalUnits',
-            'excessLoad',
-            'totalWorkloadPerDay',
             'campusDirector',
             'vicePresident',
             'dateEffective'
-        ));
-        
+        )));
+
         return $pdf->download('teaching-load-' . $faculty->name . '.pdf');
     }
 }
