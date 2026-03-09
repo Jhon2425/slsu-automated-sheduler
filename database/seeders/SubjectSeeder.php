@@ -744,8 +744,8 @@ class SubjectSeeder extends Seeder
                 'semester' => 'Second Semester'
             ],
             [
-                'course_code' => 'IPM01',
-                'subject_name' => 'Industrial Planning and Material Handling',
+                'course_code' => 'IOM01',
+                'subject_name' => 'Industrial Organization and Management',
                 'lec' => 3,
                 'lab' => 0,
                 'units' => 3,
