@@ -61,27 +61,12 @@ class SchedulerService
     // ============================================================================
     // UNAVAILABILITY CACHE
     // ============================================================================
-    // Caches faculty_unavailabilities per request so the DB is not hit repeatedly
-    // for the same faculty_code during a single schedule generation run.
-    // Structure: [ faculty_code => Collection grouped by day_number ]
-    // ============================================================================
     private $unavailabilityCache = [];
 
     // ============================================================================
     // CORE: Load and cache unavailability for a faculty member
-    // This is the SINGLE source of truth for all unavailability checks.
-    // Every other method MUST call this instead of querying the DB directly.
     // ============================================================================
 
-    /**
-     * Load (or return cached) unavailability records for a faculty member.
-     * Returns a Collection grouped by day number.
-     * On any DB error returns an EMPTY collection so scheduling is allowed
-     * but the error is logged for investigation.
-     *
-     * @param  string $facultyCode
-     * @return array<int, stdClass[]>  plain PHP array keyed by integer day number
-     */
     private function loadFacultyUnavailability(string $facultyCode): array
     {
         if (array_key_exists($facultyCode, $this->unavailabilityCache)) {
@@ -89,41 +74,14 @@ class SchedulerService
         }
 
         try {
-            // -----------------------------------------------------------------------
-            // NORMALIZE: The `day` column in faculty_unavailabilities may be stored
-            // as a day-name string ("Monday") OR as an integer/numeric-string (1/"1").
-            //
-            // We build a plain PHP array keyed by integer day number so that:
-            //   - isFacultyUnavailable() can do a simple isset($grouped[$intKey]) lookup
-            //   - foreach over $grouped[$dayNumber] always yields plain stdClass objects
-            //     with ->start_time and ->end_time properties directly accessible.
-            //
-            // We intentionally avoid Laravel's groupBy() here because when the key
-            // is an integer, groupBy wraps each group in a nested Collection and the
-            // numeric key type can behave inconsistently, causing "$record->start_time"
-            // to throw "Undefined property: stdClass::$start_time" when the foreach
-            // iterates a Collection object instead of the raw stdClass record.
-            // -----------------------------------------------------------------------
             $rows = DB::table('faculty_unavailabilities')
                 ->where('faculty_code', $facultyCode)
                 ->get();
 
-            // -----------------------------------------------------------------------
-            // COLUMN NAME NORMALISATION
-            // The faculty_unavailabilities table may use different column names
-            // depending on how the migration was written:
-            //   start_time / end_time       (most common)
-            //   time_from  / time_to        (alternative)
-            //   start      / end            (short form)
-            // We resolve whichever pair is present and always store as a plain
-            // stdClass with guaranteed ->start_time and ->end_time properties
-            // so every downstream caller can use those names safely.
-            // -----------------------------------------------------------------------
             $grouped = [];
             foreach ($rows as $record) {
-                $raw = (array) $record; // convert to array so we can inspect keys
+                $raw = (array) $record;
 
-                // --- Resolve start time ---
                 if (isset($raw['start_time'])) {
                     $start = $raw['start_time'];
                 } elseif (isset($raw['time_from'])) {
@@ -135,7 +93,6 @@ class SchedulerService
                     continue;
                 }
 
-                // --- Resolve end time ---
                 if (isset($raw['end_time'])) {
                     $end = $raw['end_time'];
                 } elseif (isset($raw['time_to'])) {
@@ -147,7 +104,6 @@ class SchedulerService
                     continue;
                 }
 
-                // --- Resolve day (integer or name string) ---
                 $rawDay = $raw['day'] ?? null;
                 if ($rawDay === null) {
                     Log::warning("loadFacultyUnavailability: missing day column for faculty {$facultyCode}");
@@ -164,7 +120,6 @@ class SchedulerService
                     }
                 }
 
-                // Build a clean normalised object with guaranteed property names
                 $normalised              = new \stdClass();
                 $normalised->day         = $dayInt;
                 $normalised->start_time  = $start;
@@ -174,12 +129,6 @@ class SchedulerService
                 $grouped[$dayInt][] = $normalised;
             }
 
-            // Store as a plain PHP array: [ int $dayNumber => stdClass[] ]
-            // We deliberately do NOT wrap in a Laravel Collection because collect()
-            // on an integer-keyed array can re-index keys to 0,1,2… in some Laravel
-            // versions, silently destroying the day-number semantics and causing
-            // isset($grouped[$dayNumber]) to always return false.
-            // All callers use plain isset() / foreach on the raw array instead.
             $this->unavailabilityCache[$facultyCode] = $grouped;
 
             if (!empty($grouped)) {
@@ -200,30 +149,14 @@ class SchedulerService
             return $grouped;
 
         } catch (Exception $e) {
-            Log::error("CRITICAL: Failed to load unavailability for faculty {$facultyCode} — scheduling will PROCEED without restrictions. Investigate immediately.", [
+            Log::error("CRITICAL: Failed to load unavailability for faculty {$facultyCode}", [
                 'faculty_code' => $facultyCode,
                 'error'        => $e->getMessage(),
             ]);
-            // Return empty collection; do NOT cache the error so next call retries.
-            return []; // empty plain array — matches return type array
+            return [];
         }
     }
 
-    /**
-     * MANDATORY HARD GATE — call this before attempting to place ANY session
-     * (lecture, laboratory, or examination) into a time slot.
-     *
-     * Returns TRUE  → faculty IS unavailable; the slot MUST be skipped.
-     * Returns FALSE → faculty is available; proceed with other conflict checks.
-     *
-     * Works for both day-name strings ("Monday") and day numbers (1).
-     *
-     * @param  string       $facultyCode
-     * @param  string|int   $day          Day name or day number
-     * @param  string       $startTime    HH:MM:SS
-     * @param  string       $endTime      HH:MM:SS
-     * @return bool
-     */
     private function isFacultyUnavailable($facultyCode, $day, string $startTime, string $endTime): bool
     {
         $dayNumber = is_numeric($day) ? (int) $day : ($this->dayNameToNumber[$day] ?? null);
@@ -235,7 +168,6 @@ class SchedulerService
 
         $unavailabilities = $this->loadFacultyUnavailability($facultyCode);
 
-        // $unavailabilities is a plain PHP array: [ int $dayNumber => stdClass[] ]
         if (!isset($unavailabilities[$dayNumber])) {
             return false;
         }
@@ -248,24 +180,13 @@ class SchedulerService
                     'requested_time'   => "{$startTime}–{$endTime}",
                     'blocked_by_rule'  => "{$record->start_time}–{$record->end_time}",
                 ]);
-                return true; // Hard block
+                return true;
             }
         }
 
         return false;
     }
 
-    /**
-     * Pre-filter: given a day name, return only the continuous time slots for
-     * `$hours` hours that do NOT overlap any unavailability for the faculty on
-     * that day.  This eliminates unavailable slots before the classroom loop
-     * even begins, making scheduling more efficient.
-     *
-     * @param  string $facultyCode
-     * @param  string $dayName     e.g. "Monday"
-     * @param  int    $hours
-     * @return array  Array of ['start' => ..., 'end' => ...] that are free
-     */
     private function getAvailableTimeSlots(string $facultyCode, string $dayName, int $hours): array
     {
         $all = $this->getContinuousTimeSlots($hours);
@@ -280,29 +201,159 @@ class SchedulerService
         return $allowed;
     }
 
-    /**
-     * Returns TRUE if the faculty has at least one fully-blocked day
-     * (the unavailability range covers the entire operating window 07:00–19:00).
-     * Used only for logging / conflict reporting.
-     */
     private function isDayFullyBlocked(string $facultyCode, string $dayName): bool
     {
         return $this->isFacultyUnavailable($facultyCode, $dayName, '07:00:00', '19:00:00');
     }
 
     // ============================================================================
-    // EXAMINATION GENERATION
+    // SPLIT-SESSION DISTRIBUTION
     // ============================================================================
 
     /**
-     * Generate examination preview separately from class schedules.
-     * Fully respects faculty_unavailabilities for all exam slots.
+     * Split a total number of hours into smaller chunks for multi-day scheduling.
+     *
+     * Rules:
+     *   - Minimum chunk size: 1 hour
+     *   - Maximum chunk size: 3 hours (keeps sessions digestible)
+     *   - Prefer splitting into 2-hour + remainder when total > 2
+     *   - Randomise split points so every run produces varied schedules
+     *
+     * Examples:
+     *   3 hours → [2, 1]  or  [1, 2]
+     *   4 hours → [2, 2]
+     *   5 hours → [2, 3]  or  [3, 2]  or  [2, 2, 1] etc.
+     *   6 hours → [3, 3]  or  [2, 2, 2]
+     *
+     * @param  int $totalHours
+     * @return int[]  Array of hour chunks that sum to $totalHours
      */
+    private function splitHoursAcrossDays(int $totalHours): array
+    {
+        if ($totalHours <= 2) {
+            // 1 or 2 hours: keep as a single session — splitting further gains nothing
+            return [$totalHours];
+        }
+
+        $chunks  = [];
+        $remaining = $totalHours;
+
+        // Allowed chunk sizes (largest first so we fill days efficiently)
+        $allowedChunks = [3, 2, 1];
+
+        while ($remaining > 0) {
+            // How many chunks do we still want to create?
+            $chunksLeft = max(1, intdiv($remaining, 2));
+
+            // Pick a random valid chunk size
+            shuffle($allowedChunks);
+            $chunk = null;
+            foreach ($allowedChunks as $candidate) {
+                // Don't leave a 0-hour remainder; also don't exceed remaining
+                if ($candidate <= $remaining && ($remaining - $candidate) !== 0 || $candidate === $remaining) {
+                    $chunk = $candidate;
+                    break;
+                }
+            }
+
+            // Safety fallback: just take 1 hour at a time
+            if ($chunk === null) {
+                $chunk = 1;
+            }
+
+            $chunks[]  = $chunk;
+            $remaining -= $chunk;
+        }
+
+        // Shuffle the final order so days are assigned randomly
+        shuffle($chunks);
+
+        Log::debug("🔀 [SPLIT] {$totalHours}h split into chunks", ['chunks' => $chunks]);
+
+        return $chunks;
+    }
+
+    /**
+     * Build the full multi-day session distribution for a faculty-subject assignment.
+     *
+     * Lecture hours  → split into N chunks, each tagged as 'Lecture'
+     * Laboratory hours (already converted to contact hours) → split into M chunks,
+     * each tagged as 'Laboratory'
+     *
+     * The caller receives a flat list like:
+     *   [
+     *     ['type' => 'Lecture',    'hours' => 2],
+     *     ['type' => 'Lecture',    'hours' => 1],
+     *     ['type' => 'Laboratory', 'hours' => 3],
+     *   ]
+     * and each entry is scheduled on a DIFFERENT day.
+     *
+     * @param  float $lectureUnits
+     * @param  float $labUnits      Raw lab units (will be ×3 for contact hours)
+     * @return array
+     */
+    private function getClassDistributionFromFacultySubject($lectureUnits, $labUnits): array
+    {
+        $distribution = [];
+
+        // ── Lecture ──────────────────────────────────────────────────────────────
+        if ($lectureUnits > 0) {
+            $lectureHours  = (int) $lectureUnits;               // 1 unit = 1 contact hour
+            $lectureChunks = $this->splitHoursAcrossDays($lectureHours);
+
+            foreach ($lectureChunks as $chunkHours) {
+                $distribution[] = ['type' => 'Lecture', 'hours' => $chunkHours];
+            }
+
+            Log::info("📚 [DISTRIBUTION] Lecture split", [
+                'lecture_units'  => $lectureUnits,
+                'lecture_hours'  => $lectureHours,
+                'chunks'         => $lectureChunks,
+            ]);
+        }
+
+        // ── Laboratory ───────────────────────────────────────────────────────────
+        if ($labUnits > 0) {
+            $labContactHours = (int) ($labUnits * 3);           // 1 lab unit = 3 contact hours
+            $labChunks       = $this->splitHoursAcrossDays($labContactHours);
+
+            foreach ($labChunks as $chunkHours) {
+                $distribution[] = ['type' => 'Laboratory', 'hours' => $chunkHours];
+            }
+
+            Log::info("🔬 [DISTRIBUTION] Laboratory split", [
+                'lab_units'        => $labUnits,
+                'lab_contact_hours' => $labContactHours,
+                'chunks'           => $labChunks,
+            ]);
+        }
+
+        return $distribution;
+    }
+
+    /** @deprecated Keep for backward compatibility only */
+    private function getClassDistribution($units): array
+    {
+        $units = (int)$units;
+        switch ($units) {
+            case 2:  return [['type' => 'Lecture', 'hours' => 2]];
+            case 3:  return [['type' => 'Lecture', 'hours' => 2], ['type' => 'Laboratory', 'hours' => 3]];
+            case 4:  return [['type' => 'Lecture', 'hours' => 2], ['type' => 'Laboratory', 'hours' => 6]];
+            case 5:  return [['type' => 'Lecture', 'hours' => 5]];
+            case 6:  return [['type' => 'Lecture', 'hours' => 6]];
+            default: return [['type' => 'Lecture', 'hours' => $units]];
+        }
+    }
+
+    // ============================================================================
+    // EXAMINATION GENERATION
+    // ============================================================================
+
     public function generateExaminationPreview()
     {
         try {
             Log::info('=== EXAMINATION GENERATION START ===');
-            $this->unavailabilityCache = []; // Reset cache for each generation run
+            $this->unavailabilityCache = [];
 
             $facultyAssignments = DB::table('faculty_subject')
                 ->join('users', 'faculty_subject.faculty_code', '=', 'users.faculty_code')
@@ -352,11 +403,11 @@ class SchedulerService
                         : '';
 
                     $conflicts[] = [
-                        'assignment_id'      => $assignment->assignment_id,
-                        'faculty_code'       => $assignment->faculty_code,
-                        'faculty'            => $assignment->faculty_name,
-                        'subject'            => $assignment->subject_name . ' (' . $assignment->course_code . ')',
-                        'reason'             => 'Could not find available examination slot' . $unavailabilityDetails,
+                        'assignment_id'       => $assignment->assignment_id,
+                        'faculty_code'        => $assignment->faculty_code,
+                        'faculty'             => $assignment->faculty_name,
+                        'subject'             => $assignment->subject_name . ' (' . $assignment->course_code . ')',
+                        'reason'              => 'Could not find available examination slot' . $unavailabilityDetails,
                         'unavailability_count' => count($unavailabilitySlots),
                         'unavailable_periods' => $slotDescriptions,
                     ];
@@ -380,8 +431,8 @@ class SchedulerService
                 'conflicts'    => $conflicts,
                 'message'      => count($examinations) . ' examinations generated successfully',
                 'stats'        => [
-                    'total_exams'      => count($examinations),
-                    'total_conflicts'  => count($conflicts),
+                    'total_exams'     => count($examinations),
+                    'total_conflicts' => count($conflicts),
                 ],
             ];
 
@@ -396,16 +447,11 @@ class SchedulerService
     // SCHEDULE GENERATION
     // ============================================================================
 
-    /**
-     * Generate schedule preview (regular class schedules only).
-     * Faculty unavailability is enforced as a mandatory hard gate for BOTH
-     * lecture and laboratory sessions via isFacultyUnavailable().
-     */
     public function generateSchedulePreview()
     {
         try {
             Log::info('=== SCHEDULE GENERATION START ===');
-            $this->unavailabilityCache = []; // Reset cache for each generation run
+            $this->unavailabilityCache = [];
 
             $facultyAssignments = DB::table('faculty_subject')
                 ->join('users', 'faculty_subject.faculty_code', '=', 'users.faculty_code')
@@ -432,7 +478,6 @@ class SchedulerService
                 'sample_data' => $facultyAssignments->take(2)->toArray(),
             ]);
 
-            // Log unavailability summary for all faculty who have restrictions
             $this->logUnavailabilitySummary();
 
             if ($facultyAssignments->isEmpty()) {
@@ -480,17 +525,31 @@ class SchedulerService
 
                 if ($totalUnits < 1) continue;
 
-                // Pre-warm unavailability cache for this faculty member
                 $this->loadFacultyUnavailability($assignment->faculty_code);
 
+                // getClassDistributionFromFacultySubject now returns MULTIPLE entries
+                // per type (one per split chunk), each requiring its own unique day
                 $distribution = $this->getClassDistributionFromFacultySubject($lectureUnits, $labUnits);
 
-                $scheduled   = false;
+                Log::info("📋 [SESSION PLAN] Assignment distribution", [
+                    'faculty'      => $assignment->faculty_name,
+                    'subject'      => $assignment->subject_name,
+                    'lecture_units' => $lectureUnits,
+                    'lab_units'    => $labUnits,
+                    'sessions'     => $distribution,
+                ]);
+
+                $scheduled    = false;
                 $attemptCount = 0;
                 $maxAttempts  = 100;
 
                 while (!$scheduled && $attemptCount < $maxAttempts) {
                     $attemptCount++;
+
+                    // Re-split on each retry so we try different hour combinations
+                    if ($attemptCount > 1) {
+                        $distribution = $this->getClassDistributionFromFacultySubject($lectureUnits, $labUnits);
+                    }
 
                     $sessionSchedules = $this->scheduleAssignmentSessions(
                         $assignment,
@@ -523,24 +582,24 @@ class SchedulerService
                         : '';
 
                     $conflicts[] = [
-                        'assignment_id'      => $assignment->assignment_id,
-                        'faculty_code'       => $assignment->faculty_code,
-                        'faculty'            => $assignment->faculty_name,
-                        'subject'            => $assignment->subject_name . ' (' . $assignment->course_code . ')',
-                        'lecture_units'      => $lectureUnits,
-                        'laboratory_units'   => $labUnits,
-                        'total_units'        => $totalUnits,
-                        'reason'             => 'Could not find available time slots after ' . $maxAttempts . ' attempts.' . $unavailabilityDetails,
+                        'assignment_id'       => $assignment->assignment_id,
+                        'faculty_code'        => $assignment->faculty_code,
+                        'faculty'             => $assignment->faculty_name,
+                        'subject'             => $assignment->subject_name . ' (' . $assignment->course_code . ')',
+                        'lecture_units'       => $lectureUnits,
+                        'laboratory_units'    => $labUnits,
+                        'total_units'         => $totalUnits,
+                        'reason'              => 'Could not find available time slots after ' . $maxAttempts . ' attempts.' . $unavailabilityDetails,
                         'unavailability_count' => count($unavailabilitySlots),
                         'unavailable_periods' => $slotDescriptions,
                     ];
 
                     Log::warning("❌ CONFLICT: Unable to schedule", [
-                        'faculty'              => $assignment->faculty_name,
-                        'faculty_code'         => $assignment->faculty_code,
-                        'subject'              => $assignment->subject_name,
-                        'attempts'             => $maxAttempts,
-                        'unavailable_slots'    => count($unavailabilitySlots),
+                        'faculty'               => $assignment->faculty_name,
+                        'faculty_code'          => $assignment->faculty_code,
+                        'subject'               => $assignment->subject_name,
+                        'attempts'              => $maxAttempts,
+                        'unavailable_slots'     => count($unavailabilitySlots),
                         'unavailability_details' => $slotDescriptions,
                     ]);
                 }
@@ -561,14 +620,14 @@ class SchedulerService
             return [
                 'success'      => true,
                 'schedules'    => $schedules,
-                'examinations' => [], // Examinations generated separately
+                'examinations' => [],
                 'conflicts'    => $conflicts,
                 'message'      => count($schedules) . ' schedule sessions generated successfully',
                 'stats'        => [
-                    'total_schedules'  => count($schedules),
-                    'total_exams'      => 0,
-                    'total_conflicts'  => count($conflicts),
-                    'faculty_count'    => count($facultyAssignments),
+                    'total_schedules' => count($schedules),
+                    'total_exams'     => 0,
+                    'total_conflicts' => count($conflicts),
+                    'faculty_count'   => count($facultyAssignments),
                 ],
             ];
 
@@ -580,42 +639,17 @@ class SchedulerService
     }
 
     // ============================================================================
-    // DISTRIBUTION HELPERS
-    // ============================================================================
-
-    private function getClassDistributionFromFacultySubject($lectureUnits, $labUnits): array
-    {
-        $distribution = [];
-
-        if ($lectureUnits > 0) {
-            $distribution[] = ['type' => 'Lecture', 'hours' => (int)$lectureUnits];
-        }
-
-        if ($labUnits > 0) {
-            $distribution[] = ['type' => 'Laboratory', 'hours' => (int)($labUnits * 3)];
-        }
-
-        return $distribution;
-    }
-
-    /** @deprecated Keep for backward compatibility only */
-    private function getClassDistribution($units): array
-    {
-        $units = (int)$units;
-        switch ($units) {
-            case 2:  return [['type' => 'Lecture', 'hours' => 2]];
-            case 3:  return [['type' => 'Lecture', 'hours' => 2], ['type' => 'Laboratory', 'hours' => 3]];
-            case 4:  return [['type' => 'Lecture', 'hours' => 2], ['type' => 'Laboratory', 'hours' => 6]];
-            case 5:  return [['type' => 'Lecture', 'hours' => 5]];
-            case 6:  return [['type' => 'Lecture', 'hours' => 6]];
-            default: return [['type' => 'Lecture', 'hours' => $units]];
-        }
-    }
-
-    // ============================================================================
     // SLOT FINDING — APPLIES TO BOTH LECTURE AND LABORATORY
     // ============================================================================
 
+    /**
+     * Schedule every session chunk in the distribution onto a unique day.
+     *
+     * KEY CHANGE: because getClassDistributionFromFacultySubject() now returns
+     * multiple entries per type (e.g. two Lecture entries for a 3-unit subject),
+     * each entry MUST land on a different day.  The $usedDays array accumulates
+     * days as sessions are placed so the next iteration cannot reuse them.
+     */
     private function scheduleAssignmentSessions($assignment, $distribution, $lectureRooms, $labRooms, $existingSchedules, $subjectDayUsage)
     {
         $sessionSchedules = [];
@@ -637,6 +671,8 @@ class SchedulerService
                 $classType,
                 $rooms,
                 array_merge($existingSchedules, $sessionSchedules),
+                // Combine already-used days (from previous calls) with days used
+                // in the current batch so we never reuse a day within one assignment
                 array_merge($usedDays, $existingDays)
             );
 
@@ -650,24 +686,11 @@ class SchedulerService
     }
 
     /**
-     * Find an available time slot for an assignment session (lecture OR laboratory).
-     *
-     * MANDATORY UNAVAILABILITY ENFORCEMENT STRATEGY:
-     * ─────────────────────────────────────────────
-     * 1. Load faculty unavailability via the cache (loadFacultyUnavailability).
-     * 2. For each day, call getAvailableTimeSlots() which pre-filters out ALL
-     *    slots that overlap any unavailability rule — this is O(slots) not O(slots×rules).
-     * 3. Days where NO time slot survives the filter are skipped entirely before
-     *    any classroom check is attempted.
-     * 4. isSlotAvailableForAssignment() adds a second gate (isFacultyUnavailable)
-     *    as a final safety net in case the caller bypasses this method.
-     *
-     * This applies identically to both Lecture and Laboratory sessions.
+     * Find an available time slot for a single session chunk.
+     * Enforces faculty unavailability as a mandatory hard gate.
      */
     private function findAvailableSlotForAssignment($assignment, $hours, $classType, $classrooms, $existingSchedules, $usedDays = [])
     {
-        // ── STEP 1: Ensure unavailability is loaded (may be cached already) ──────
-        // Returns a plain PHP array: [ int $dayNumber => stdClass[] ]
         $facultyUnavailabilities = $this->loadFacultyUnavailability($assignment->faculty_code);
 
         if (!empty($facultyUnavailabilities)) {
@@ -688,20 +711,15 @@ class SchedulerService
             ]);
         }
 
-        $shuffledDays      = $this->daysOfWeek;
+        $shuffledDays       = $this->daysOfWeek;
         shuffle($shuffledDays);
         $shuffledClassrooms = $classrooms->shuffle();
 
-        // ── STEP 2: Iterate days ──────────────────────────────────────────────────
         foreach ($shuffledDays as $day) {
 
-            // Skip day already used for this subject
+            // Skip days already used for this subject (ensures different-day placement)
             if (in_array($day, $usedDays)) continue;
 
-            // ── STEP 3: Pre-filter slots — removes ANY slot that overlaps a rule ──
-            // This is the MANDATORY hard gate for both lecture and laboratory.
-            // getAvailableTimeSlots() internally calls isFacultyUnavailable() for
-            // every candidate slot and discards blocked ones.
             $allowedSlots = $this->getAvailableTimeSlots($assignment->faculty_code, $day, $hours);
 
             if (empty($allowedSlots)) {
@@ -713,12 +731,11 @@ class SchedulerService
                     'day'          => $day,
                     'hours'        => $hours,
                 ]);
-                continue; // No point checking classrooms on a fully blocked day
+                continue;
             }
 
             shuffle($allowedSlots);
 
-            // ── STEP 4: Check classrooms for each remaining (allowed) slot ─────────
             foreach ($allowedSlots as $timeSlot) {
                 foreach ($shuffledClassrooms as $classroom) {
                     if ($this->isSlotAvailableForAssignment(
@@ -768,25 +785,24 @@ class SchedulerService
             }
         }
 
-        // ── NO SLOT FOUND ─────────────────────────────────────────────────────────
         $unavailabilityDetails = $this->getFacultyUnavailabilitySummary($assignment->faculty_code);
 
         Log::warning("❌ [SCHEDULING FAILED] No available slots found", [
-            'faculty'             => $assignment->faculty_name,
-            'faculty_code'        => $assignment->faculty_code,
-            'subject'             => $assignment->subject_name,
-            'class_type'          => $classType,
-            'hours_needed'        => $hours,
-            'unavailability'      => $unavailabilityDetails,
-            'has_restrictions'    => !empty($facultyUnavailabilities),
+            'faculty'          => $assignment->faculty_name,
+            'faculty_code'     => $assignment->faculty_code,
+            'subject'          => $assignment->subject_name,
+            'class_type'       => $classType,
+            'hours_needed'     => $hours,
+            'unavailability'   => $unavailabilityDetails,
+            'has_restrictions' => !empty($facultyUnavailabilities),
         ]);
 
         return false;
     }
 
     /**
-     * FIXED: Get continuous time slots for a given number of hours.
-     * 1 hour = 2 × 30-minute slots.
+     * Returns all possible continuous time windows of a given duration.
+     * Each window is expressed as a start/end pair.
      */
     private function getContinuousTimeSlots($hours): array
     {
@@ -805,26 +821,14 @@ class SchedulerService
     }
 
     // ============================================================================
-    // SLOT AVAILABILITY (includes second-gate unavailability check)
+    // SLOT AVAILABILITY
     // ============================================================================
 
-    /**
-     * Check that a time slot is free of ALL conflict types:
-     *
-     *   1. Faculty Unavailability  — MANDATORY hard block (second gate)
-     *   2. Classroom Conflict      — room already in use
-     *   3. Faculty Double-booking  — faculty already teaching
-     *   4. Section Conflict        — section already has a class
-     *
-     * The unavailability check here acts as a SAFETY NET.  The primary filter
-     * is in findAvailableSlotForAssignment → getAvailableTimeSlots.  Both gates
-     * must pass independently; removing either would be a bug.
-     */
     private function isSlotAvailableForAssignment($schedules, $day, $startTime, $endTime, $classroomId, $assignment): bool
     {
         $assignmentSection = $assignment->year_level . '-A';
 
-        // ── GATE 1: Faculty Unavailability (second/safety-net check) ─────────────
+        // Gate 1: Faculty Unavailability (safety-net / second gate)
         if ($this->isFacultyUnavailable($assignment->faculty_code, $day, $startTime, $endTime)) {
             Log::debug("❌ [UNAVAILABILITY BLOCK — SAFETY NET] Faculty blocked at second gate", [
                 'faculty_code' => $assignment->faculty_code,
@@ -835,7 +839,6 @@ class SchedulerService
             return false;
         }
 
-        // ── GATES 2–4: Iterate existing schedules ────────────────────────────────
         foreach ($schedules as $schedule) {
             $scheduleDay = $schedule['day_name'] ?? $schedule['day'];
 
@@ -898,14 +901,8 @@ class SchedulerService
     // EXAMINATION SLOT GENERATION
     // ============================================================================
 
-    /**
-     * Generate a single examination for an assignment.
-     * Faculty unavailability is enforced via the same isFacultyUnavailable gate
-     * used for regular sessions — no special-casing.
-     */
     private function generateExaminationForAssignment($assignment, $classrooms, $existingExams, $totalUnits)
     {
-        // Ensure unavailability is loaded — returns plain PHP array: [ int => stdClass[] ]
         $facultyUnavailabilities = $this->loadFacultyUnavailability($assignment->faculty_code);
 
         if (!empty($facultyUnavailabilities)) {
@@ -920,7 +917,6 @@ class SchedulerService
 
         $weeksAhead = rand(8, 10);
 
-        // All examination slots are 1 hour
         $examTimeSlots = [
             ['start' => '08:00:00', 'end' => '09:00:00'],
             ['start' => '09:00:00', 'end' => '10:00:00'],
@@ -937,9 +933,6 @@ class SchedulerService
 
         foreach ($shuffledDays as $day) {
 
-            // ── Pre-filter exam slots for this day ────────────────────────────────
-            // Remove any slot that overlaps an unavailability rule on this day.
-            // This is the MANDATORY hard gate for examination scheduling.
             $allowedSlots = array_filter($examTimeSlots, fn($slot) =>
                 !$this->isFacultyUnavailable($assignment->faculty_code, $day, $slot['start'], $slot['end'])
             );
@@ -973,31 +966,30 @@ class SchedulerService
                         ]);
 
                         return [
-                            'faculty_id'    => $assignment->faculty_id,
-                            'faculty_code'  => $assignment->faculty_code,
-                            'subject_id'    => $assignment->subject_id,
-                            'classroom_id'  => $classroom->id,
-                            'exam_date'     => $specificExamDate,
-                            'day'           => $day,
-                            'day_name'      => $day,
-                            'start_time'    => $slot['start'],
-                            'end_time'      => $slot['end'],
-                            'exam_type'     => 'Final',
-                            'faculty_name'  => $assignment->faculty_name,
+                            'faculty_id'     => $assignment->faculty_id,
+                            'faculty_code'   => $assignment->faculty_code,
+                            'subject_id'     => $assignment->subject_id,
+                            'classroom_id'   => $classroom->id,
+                            'exam_date'      => $specificExamDate,
+                            'day'            => $day,
+                            'day_name'       => $day,
+                            'start_time'     => $slot['start'],
+                            'end_time'       => $slot['end'],
+                            'exam_type'      => 'Final',
+                            'faculty_name'   => $assignment->faculty_name,
                             'course_subject' => $assignment->subject_name,
-                            'course_code'   => $assignment->course_code,
-                            'units'         => $totalUnits,
-                            'year_section'  => $yearSection,
+                            'course_code'    => $assignment->course_code,
+                            'units'          => $totalUnits,
+                            'year_section'   => $yearSection,
                             'classroom_name' => $classroom->room_name ?? $classroom->name ?? 'Room ' . $classroom->id,
-                            'year_level'    => $assignment->year_level,
-                            'semester'      => $assignment->semester,
+                            'year_level'     => $assignment->year_level,
+                            'semester'       => $assignment->semester,
                         ];
                     }
                 }
             }
         }
 
-        // No available exam slot found
         $unavailabilityDetails = $this->getFacultyUnavailabilitySummary($assignment->faculty_code);
 
         Log::warning("❌ [EXAM SCHEDULING FAILED] No available exam slots", [
@@ -1035,10 +1027,6 @@ class SchedulerService
         return $this->dayNameToNumber[$dayName] ?? 1;
     }
 
-    /**
-     * Check if two time ranges overlap.
-     * Returns true when start1 < end2 AND end1 > start2.
-     */
     private function timesOverlap($start1, $end1, $start2, $end2): bool
     {
         return ($start1 < $end2) && ($end1 > $start2);
@@ -1054,9 +1042,6 @@ class SchedulerService
         return Carbon::now()->addWeeks($weeks)->next($dayName)->format('Y-m-d');
     }
 
-    /**
-     * Get all unavailability slots for a faculty member (formatted for display).
-     */
     private function getFacultyUnavailabilitySlots($facultyCode): array
     {
         try {
@@ -1106,10 +1091,6 @@ class SchedulerService
         }
     }
 
-    /**
-     * Log a full summary of all faculty who have unavailability restrictions.
-     * Called at the start of each generation run.
-     */
     private function logUnavailabilitySummary(): void
     {
         $facultiesWithUnavailability = DB::table('faculty_unavailabilities')
@@ -1140,10 +1121,6 @@ class SchedulerService
     // SAVE / PERSIST
     // ============================================================================
 
-    /**
-     * Save schedules and/or examinations to database.
-     * Schedules → 'schedules' table.  Examinations → 'examinations' table.
-     */
     public function saveSchedule($schedules = [], $examinations = [])
     {
         try {
@@ -1160,8 +1137,8 @@ class SchedulerService
 
             foreach ($schedules as $index => $schedule) {
                 try {
-                    if (empty($schedule['faculty_id']))  { $errors[] = "Schedule {$index}: Missing faculty_id";  continue; }
-                    if (empty($schedule['subject_id']))  { $errors[] = "Schedule {$index}: Missing subject_id";  continue; }
+                    if (empty($schedule['faculty_id']))   { $errors[] = "Schedule {$index}: Missing faculty_id";  continue; }
+                    if (empty($schedule['subject_id']))   { $errors[] = "Schedule {$index}: Missing subject_id";  continue; }
                     if (empty($schedule['classroom_id'])) { $errors[] = "Schedule {$index}: Missing classroom_id"; continue; }
 
                     $startTime = $this->ensureTimeFormat($schedule['start_time']);
@@ -1333,13 +1310,6 @@ class SchedulerService
     // DIAGNOSTIC / TEST
     // ============================================================================
 
-    /**
-     * Test method to verify faculty unavailability is being respected.
-     *
-     * Usage in a controller:
-     *   $result = app(SchedulerService::class)->testFacultyUnavailability('FAC001');
-     *   return response()->json($result);
-     */
     public function testFacultyUnavailability($facultyCode): array
     {
         $unavailabilities = $this->loadFacultyUnavailability($facultyCode);
@@ -1376,15 +1346,6 @@ class SchedulerService
         ];
     }
 
-    /**
-     * Verify that a specific time slot would be blocked for a faculty member.
-     * Useful for testing individual rules from a controller or Tinker.
-     *
-     * Example:
-     *   $result = app(SchedulerService::class)
-     *       ->verifySlotBlocked('FAC001', 'Monday', '07:00:00', '19:00:00');
-     *   // Returns ['blocked' => true, ...]
-     */
     public function verifySlotBlocked(string $facultyCode, string $day, string $startTime, string $endTime): array
     {
         $blocked = $this->isFacultyUnavailable($facultyCode, $day, $startTime, $endTime);
@@ -1398,6 +1359,33 @@ class SchedulerService
             'message'      => $blocked
                 ? "✅ Correctly blocked — faculty is unavailable during {$day} {$startTime}–{$endTime}"
                 : "⚠️ NOT blocked — faculty is considered available during {$day} {$startTime}–{$endTime}",
+        ];
+    }
+
+    /**
+     * Test the hour-splitting logic in isolation.
+     * Call from Tinker: app(SchedulerService::class)->testSplitHours(3, 1)
+     *
+     * @param float $lectureUnits
+     * @param float $labUnits
+     */
+    public function testSplitHours(float $lectureUnits, float $labUnits): array
+    {
+        $distribution = $this->getClassDistributionFromFacultySubject($lectureUnits, $labUnits);
+
+        $lectureSessions = array_filter($distribution, fn($s) => $s['type'] === 'Lecture');
+        $labSessions     = array_filter($distribution, fn($s) => $s['type'] === 'Laboratory');
+
+        return [
+            'lecture_units'         => $lectureUnits,
+            'lab_units'             => $labUnits,
+            'lecture_contact_hours' => (int) $lectureUnits,
+            'lab_contact_hours'     => (int) ($labUnits * 3),
+            'total_sessions'        => count($distribution),
+            'lecture_sessions'      => array_values($lectureSessions),
+            'lab_sessions'          => array_values($labSessions),
+            'full_distribution'     => $distribution,
+            'days_required'         => count($distribution),  // one unique day per session
         ];
     }
 }

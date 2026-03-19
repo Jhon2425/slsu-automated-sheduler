@@ -1,692 +1,524 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Examination Schedule - Print View</title>
-    <style>
-        @page {
-            size: landscape;
-            margin: 0.75cm;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Examination Schedule — SLSU Tiaong Campus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --forest:#2D4A35; --forest-mid:#3E6347; --forest-light:#6D9773; --forest-pale:#B8D4BC;
+    --ink:#0F1A13; --ink-mid:#2D3830; --ink-soft:#4A5C4E; --ink-muted:#7A8C7E; --ink-ghost:#B4C1B7;
+    --cream:#F8F6F0; --cream-border:#DDD9CE; --white:#FFFFFF; --accent-gold:#C8A84B;
+    --c1:#2D4A35;--c1b:#EDF4EE; --c2:#1A3A5C;--c2b:#EAF1F8; --c3:#5C2D1A;--c3b:#FAF0EB;
+    --c4:#3D1A5C;--c4b:#F2EAF8; --c5:#1A4A4A;--c5b:#EAF5F5; --c6:#4A3D1A;--c6b:#F5F1E8;
+    --c7:#1A3D1A;--c7b:#E8F5E8; --c8:#4A1A2D;--c8b:#F8EAF0; --c9:#1A2D4A;--c9b:#E8EDF5;
+    --c10:#2D4A1A;--c10b:#EEF5E8; --c11:#4A2D1A;--c11b:#F5EFE8; --c12:#1A4A3D;--c12b:#E8F5F2;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:#dde3de;color:var(--ink);padding:24px 24px 80px;}
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+/* ── Print button ── */
+.btn-wrap{width:100%;max-width:1340px;margin:0 auto 10px;display:flex;justify-content:flex-end;}
+.btn-print{display:flex;align-items:center;gap:8px;padding:11px 22px;background:var(--forest);color:#fff;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;box-shadow:0 4px 16px rgba(45,74,53,.35);transition:transform .15s,box-shadow .15s;}
+.btn-print:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(45,74,53,.45);}
+.btn-print svg{width:15px;height:15px;}
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            font-size: 9pt;
-            position: relative;
-            padding: 15px;
-            background: #f8f9fa;
-            color: #1a1a1a;
-        }
+/* ── Page card ── */
+.page{width:100%;max-width:1340px;margin:0 auto;background:var(--white);border:1px solid var(--cream-border);border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.06),0 16px 48px rgba(0,0,0,.09);padding:18px 24px 14px;}
 
-        /* Watermark - Behind everything */
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            opacity: 0.08;
-            z-index: -1;
-            pointer-events: none;
-            width: 700px;
-            height: 700px;
-        }
+/* ── Header ── */
+.hdr{display:grid;grid-template-columns:60px 1fr 60px;align-items:center;gap:12px;margin-bottom:8px;}
+.hdr-logo{display:flex;align-items:center;justify-content:center;}
+.hdr-logo img{width:52px;height:52px;object-fit:contain;}
+.hdr-center{text-align:center;}
+.hdr-uni{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:var(--forest);letter-spacing:.09em;text-transform:uppercase;line-height:1;}
+.hdr-campus{font-family:'Playfair Display',serif;font-size:11px;font-weight:700;color:var(--forest-mid);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
+.hdr-addr{font-size:9px;color:var(--ink-muted);margin-top:2px;}
+.hdr-rule{height:1px;margin-bottom:7px;background:linear-gradient(90deg,transparent,var(--forest-pale) 20%,var(--forest-light) 50%,var(--forest-pale) 80%,transparent);}
 
-        .watermark img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: grayscale(30%) contrast(1.2);
-        }
+/* ── Banner ── */
+.banner{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:var(--forest);position:relative;overflow:hidden;margin-bottom:8px;}
+.banner::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-55deg,transparent,transparent 10px,rgba(255,255,255,.03) 10px,rgba(255,255,255,.03) 20px);}
+.banner::after{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent-gold);}
+.banner-l,.banner-r{position:relative;z-index:1;}
+.banner-r{text-align:right;}
+.banner-title{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:.12em;text-transform:uppercase;}
+.banner-sub{font-size:9px;color:var(--forest-pale);margin-top:1px;}
+.banner-meta{font-size:9px;color:var(--forest-pale);font-weight:500;}
+.banner-meta strong{color:#fff;}
 
-        /* Print Button */
-        .print-button {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #6D9773 0%, #5a7d5f 100%);
-            color: white;
-            border: none;
-            padding: 14px 32px;
-            font-size: 13px;
-            font-weight: 600;
-            border-radius: 10px;
-            cursor: pointer;
-            box-shadow: 0 6px 25px rgba(109, 151, 115, 0.35);
-            z-index: 1000;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+/* ── Table ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;table-layout:fixed;}
+col.col-t{width:52px;}
+col.col-d{width:calc((100% - 52px)/6);}
+thead th{padding:7px 4px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--forest);border:1px solid var(--forest-mid);}
+thead th:first-child{background:var(--ink);color:var(--ink-ghost);}
+td.td-t{background:var(--cream);border:1px solid var(--cream-border);text-align:right;vertical-align:top;padding:4px 6px 0;}
+.tl{font-family:'DM Mono',monospace;font-size:9px;font-weight:600;color:var(--ink-soft);display:block;white-space:nowrap;}
+.tap{font-size:7px;color:var(--ink-muted);display:block;letter-spacing:.05em;}
+td.td-s{border:1px solid #E0E5E1;padding:3px;vertical-align:top;background:var(--white);}
+tr:nth-child(even) td.td-s{background:#F8FAF8;}
+tr.h-start td{border-top:2px solid #B8C8BA !important;}
+.ci{display:flex;gap:3px;height:100%;}
 
-        .print-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 35px rgba(109, 151, 115, 0.5);
-        }
+/* ── Exam block ── */
+.sb{
+    flex:1;min-width:0;
+    border-radius:3px;border-left:4px solid;
+    padding:5px 6px 4px;
+    display:flex;flex-direction:column;gap:2px;
+    position:relative;overflow:hidden;
+}
+.sb::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.35) 0%,transparent 50%);pointer-events:none;}
 
-        .print-button:active {
-            transform: translateY(-1px);
-        }
+/* Exam type badge */
+.sb-badge{
+    display:inline-flex;align-items:center;
+    font-size:6.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    padding:1px 5px;border-radius:2px;
+    background:var(--forest);color:#fff;
+    align-self:flex-start;
+    position:relative;z-index:1;
+    margin-bottom:1px;
+}
 
-        /* Main Container */
-        .print-container {
-            position: relative;
-            z-index: 1;
-            max-width: 100%;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            padding: 25px;
-        }
+/* Course code */
+.sb-code{
+    font-family:'DM Mono',monospace;
+    font-size:9px;font-weight:700;
+    letter-spacing:.04em;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    position:relative;z-index:1;
+}
 
-        /* Header */
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #6D9773;
-            position: relative;
-        }
+/* Subject name */
+.sb-name{
+    font-size:8.5px;font-weight:900;line-height:1.3;
+    overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    position:relative;z-index:1;
+}
 
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 120px;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #5a7d5f, transparent);
-        }
+/* Detail rows */
+.sb-row{display:flex;flex-wrap:wrap;gap:1px 6px;margin-top:2px;position:relative;z-index:1;}
+.sb-tag{font-size:7.5px;font-weight:700;display:flex;align-items:center;gap:2px;white-space:nowrap;}
+.sb-lbl{font-weight:800;text-transform:uppercase;font-size:6.5px;letter-spacing:.06em;opacity:.65;}
 
-        .header-logo-section {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 35px;
-            margin-bottom: 12px;
-        }
+/* Date highlight */
+.sb-date{
+    font-size:7.5px;font-weight:800;
+    color:var(--forest);
+    display:flex;align-items:center;gap:2px;
+    position:relative;z-index:1;
+    margin-top:1px;
+}
 
-        .header-logo {
-            width: 75px;
-            height: 75px;
-            background: linear-gradient(135deg, #6D977315, #5a7d5f15);
-            border-radius: 50%;
-            padding: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+/* Time + section badges */
+.sb-bdg{display:flex;align-items:center;gap:3px;margin-top:2px;flex-wrap:wrap;position:relative;z-index:1;}
+.sb-type{font-size:7px;font-weight:800;letter-spacing:.08em;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,.1);text-transform:uppercase;}
+.sb-time{font-family:'DM Mono',monospace;font-size:7px;font-weight:500;padding:1px 4px;border-radius:2px;background:rgba(0,0,0,.07);letter-spacing:.02em;}
 
-        .header-logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
+/* Colour themes */
+[data-c="c1"] {background:var(--c1b);border-color:var(--c1);color:var(--c1);}
+[data-c="c2"] {background:var(--c2b);border-color:var(--c2);color:var(--c2);}
+[data-c="c3"] {background:var(--c3b);border-color:var(--c3);color:var(--c3);}
+[data-c="c4"] {background:var(--c4b);border-color:var(--c4);color:var(--c4);}
+[data-c="c5"] {background:var(--c5b);border-color:var(--c5);color:var(--c5);}
+[data-c="c6"] {background:var(--c6b);border-color:var(--c6);color:var(--c6);}
+[data-c="c7"] {background:var(--c7b);border-color:var(--c7);color:var(--c7);}
+[data-c="c8"] {background:var(--c8b);border-color:var(--c8);color:var(--c8);}
+[data-c="c9"] {background:var(--c9b);border-color:var(--c9);color:var(--c9);}
+[data-c="c10"]{background:var(--c10b);border-color:var(--c10);color:var(--c10);}
+[data-c="c11"]{background:var(--c11b);border-color:var(--c11);color:var(--c11);}
+[data-c="c12"]{background:var(--c12b);border-color:var(--c12);color:var(--c12);}
 
-        .header-text h1 {
-            font-size: 20pt;
-            font-weight: 800;
-            color: #1a202c;
-            margin-bottom: 6px;
-            letter-spacing: 1.5px;
-        }
+/* ── Legend ── */
+.leg{margin-top:6px;}
+.leg-hd{font-size:6.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.leg-hd::after{content:'';flex:1;height:1px;background:var(--cream-border);}
+.leg-grid{display:flex;flex-wrap:wrap;gap:3px 10px;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:7px;color:var(--ink-soft);font-weight:500;}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
 
-        .header-text h2 {
-            font-size: 15pt;
-            color: #4a5568;
-            margin-bottom: 4px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
+/* ── Footer ── */
+.ftr{margin-top:10px;border-top:1.5px solid var(--forest-pale);padding-top:8px;}
+.sigs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:10px;}
+.sig{text-align:center;}
+.sig-sp{height:32px;}
+.sig-ln{border-top:1.5px solid var(--ink-mid);padding-top:4px;}
+.sig-n{font-family:'Playfair Display',serif;font-size:9px;font-weight:600;color:var(--ink);}
+.sig-t{font-size:7px;color:var(--ink-muted);letter-spacing:.05em;text-transform:uppercase;margin-top:1px;}
+.fbar{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;background:var(--cream);border:1px solid var(--cream-border);border-radius:3px;}
+.fbi{font-size:7px;color:var(--ink-muted);font-weight:500;display:flex;align-items:center;gap:3px;}
+.fbi strong{color:var(--ink-soft);font-weight:600;}
+.fdot{width:3px;height:3px;border-radius:50%;background:var(--ink-ghost);}
 
-        .header-text p {
-            font-size: 10pt;
-            color: #718096;
-            font-weight: 500;
-        }
+/* ── Watermark ── */
+.wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);width:460px;opacity:.04;pointer-events:none;z-index:0;}
+.wm img{width:100%;}
 
-        .schedule-info {
-            margin-top: 18px;
-            padding: 16px 28px;
-            background: linear-gradient(135deg, #6D9773 0%, #5a7d5f 100%);
-            border-radius: 12px;
-            box-shadow: 0 6px 20px rgba(109, 151, 115, 0.25);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .schedule-info::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%);
-            background-size: 20px 20px;
-            opacity: 0.3;
-        }
-
-        .schedule-info .schedule-type {
-            font-size: 16pt;
-            font-weight: 800;
-            color: white;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .schedule-info .academic-year {
-            font-size: 11pt;
-            color: rgba(255, 255, 255, 0.95);
-            font-weight: 600;
-            position: relative;
-        }
-
-        /* Timetable */
-        .timetable-container {
-            overflow-x: auto;
-            margin-bottom: 25px;
-            border-radius: 12px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
-            position: relative;
-            z-index: 2;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            background: white;
-            position: relative;
-            z-index: 2;
-        }
-
-        th, td {
-            border: 1px solid #e2e8f0;
-            padding: 3px;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        th {
-            background: linear-gradient(135deg, #6D9773 0%, #5a7d5f 100%);
-            color: white;
-            font-weight: 700;
-            font-size: 10pt;
-            padding: 12px 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            position: relative;
-        }
-
-        th::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #6D9773, #5a7d5f);
-        }
-
-        th:first-child {
-            border-top-left-radius: 12px;
-        }
-
-        th:last-child {
-            border-top-right-radius: 12px;
-        }
-
-        th.time-header {
-            width: 85px;
-            background: linear-gradient(135deg, #6D9773 0%, #5a7d5f 100%);
-        }
-
-        td.time-slot {
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-            font-weight: 700;
-            color: #2d3748;
-            font-size: 9pt;
-            padding: 10px 6px;
-            border-right: 2px solid #cbd5e0;
-        }
-
-        td.schedule-cell {
-            background: white;
-            padding: 0;
-            min-height: 85px;
-            height: 85px;
-            position: relative;
-        }
-
-        .schedule-block {
-            border: none;
-            border-radius: 0;
-            padding: 10px;
-            height: 100%;
-            min-height: 100%;
-            font-size: 8pt;
-            line-height: 1.5;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 3px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .schedule-block::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 5px;
-            height: 100%;
-            background: currentColor;
-            opacity: 0.8;
-        }
-
-        /* Enhanced color scheme with better contrast */
-        .schedule-block-pink { 
-            background: linear-gradient(135deg, #fff5f7 0%, #ffe4ea 100%); 
-            border-color: #e91e63;
-            color: #c2185b;
-        }
-        .schedule-block-blue { 
-            background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%); 
-            border-color: #2196f3;
-            color: #1565c0;
-        }
-        .schedule-block-green { 
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); 
-            border-color: #4caf50;
-            color: #2e7d32;
-        }
-        .schedule-block-yellow { 
-            background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%); 
-            border-color: #fbc02d;
-            color: #f57f17;
-        }
-        .schedule-block-purple { 
-            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); 
-            border-color: #9c27b0;
-            color: #7b1fa2;
-        }
-        .schedule-block-red { 
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); 
-            border-color: #f44336;
-            color: #c62828;
-        }
-        .schedule-block-indigo { 
-            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); 
-            border-color: #3f51b5;
-            color: #283593;
-        }
-        .schedule-block-teal { 
-            background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); 
-            border-color: #009688;
-            color: #00695c;
-        }
-        .schedule-block-orange { 
-            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); 
-            border-color: #ff9800;
-            color: #e65100;
-        }
-        .schedule-block-cyan { 
-            background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%); 
-            border-color: #00bcd4;
-            color: #00838f;
-        }
-        .schedule-block-lime { 
-            background: linear-gradient(135deg, #f7fee7 0%, #ecfccb 100%); 
-            border-color: #8bc34a;
-            color: #558b2f;
-        }
-        .schedule-block-fuchsia { 
-            background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%); 
-            border-color: #e91e63;
-            color: #ad1457;
-        }
-
-        .schedule-text {
-            word-wrap: break-word;
-            position: relative;
-            z-index: 1;
-        }
-
-        .exam-badge {
-            font-size: 7pt;
-            font-weight: 800;
-            background: linear-gradient(135deg, #6D9773 0%, #5a7d5f 100%);
-            color: white;
-            padding: 3px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-block;
-            margin-bottom: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .course-code {
-            font-weight: 800;
-            font-size: 9pt;
-            color: inherit;
-            border-bottom: 2px solid currentColor;
-            padding-bottom: 2px;
-            margin-bottom: 3px;
-            letter-spacing: 0.3px;
-        }
-
-        .subject-name {
-            font-size: 8pt;
-            font-weight: 700;
-            color: inherit;
-            margin-bottom: 4px;
-            opacity: 0.9;
-        }
-
-        .schedule-detail {
-            font-size: 7pt;
-            color: inherit;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            opacity: 0.85;
-        }
-
-        .detail-label {
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            font-size: 6.5pt;
-        }
-
-        .exam-date-highlight {
-            font-weight: 800;
-            color: #6D9773;
-        }
-
-        /* Footer */
-        .footer {
-            margin-top: 30px;
-            page-break-inside: avoid;
-        }
-
-        .signatures {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 25px;
-            gap: 15px;
-        }
-
-        .signature-block {
-            text-align: center;
-            flex: 1;
-            max-width: 240px;
-        }
-
-        .signature-line {
-            border-top: 2.5px solid #2d3748;
-            margin-top: 45px;
-            padding-top: 8px;
-            font-weight: 700;
-            font-size: 10pt;
-            color: #2d3748;
-        }
-
-        .signature-title {
-            font-size: 8pt;
-            color: #718096;
-            margin-top: 3px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-        }
-
-        .footer-info {
-            display: flex;
-            justify-content: space-between;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-            border-radius: 10px;
-            font-size: 8pt;
-            color: #4a5568;
-            font-weight: 600;
-            border: 1px solid #e2e8f0;
-        }
-
-        @media print {
-            body {
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-                background: white;
-                padding: 0;
-            }
-            
-            .print-button {
-                display: none !important;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            .print-container {
-                box-shadow: none;
-                border-radius: 0;
-            }
-
-            .watermark {
-                opacity: 0.05;
-            }
-        }
-
-        /* Responsive adjustments for smaller screens */
-        @media screen and (max-width: 1200px) {
-            .schedule-block {
-                font-size: 7pt;
-            }
-            
-            .course-code {
-                font-size: 8pt;
-            }
-        }
-    </style>
+/* ── Print ── */
+@media print {
+    @page { size: A4 landscape; margin: 0.4cm 0.5cm; }
+    body { background:white !important; padding:0 !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .btn-wrap,.no-print { display:none !important; }
+    .wm { opacity:.03; }
+    body > .page { max-width:none !important; margin:0 !important; padding:8px 10px 6px !important; border:none !important; border-radius:0 !important; box-shadow:none !important; zoom:var(--print-zoom,1); page-break-inside:avoid; break-inside:avoid; }
+    .tbl-wrap { overflow:visible !important; }
+    .hdr { margin-bottom:5px; }
+    .banner { margin-bottom:5px; padding:5px 12px; }
+    .leg { margin-top:4px; }
+    .ftr { margin-top:6px; padding-top:5px; }
+    .sigs { margin-bottom:6px; }
+    .sig-sp { height:22px; }
+}
+</style>
 </head>
 <body>
-    <!-- Print Button -->
-    <button class="print-button no-print" onclick="window.print()">
-        🖨️ Print Examination Schedule
-    </button>
 
-    <!-- Watermark with SLSU Logo -->
-    <div class="watermark">
-        <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Watermark">
+<div class="wm" aria-hidden="true">
+    <img src="{{ asset('slsu-logo.png') }}" alt="">
+</div>
+
+<div class="btn-wrap no-print">
+<button class="btn-print" onclick="window.print()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+    </svg>
+    Print Examination Schedule
+</button>
+</div>
+
+<div class="page" id="printPage">
+
+<div class="hdr">
+    <div class="hdr-logo"><img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo"></div>
+    <div class="hdr-center">
+        <div class="hdr-uni">Southern Luzon State University</div>
+        <div class="hdr-campus">Tiaong Campus</div>
+        <div class="hdr-addr">Tiaong, Quezon, Philippines</div>
     </div>
+    <div class="hdr-logo"><img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo"></div>
+</div>
 
-    <div class="print-container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-logo-section">
-                <div class="header-logo">
-                    <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo">
-                </div>
-                <div class="header-text">
-                    <h1>SOUTHERN LUZON STATE UNIVERSITY</h1>
-                    <h2>TIAONG CAMPUS</h2>
-                    <p>Tiaong, Quezon, Philippines</p>
-                </div>
-                <div class="header-logo">
-                    <img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo">
-                </div>
-            </div>
-            
-            <div class="schedule-info">
-                <div class="schedule-type">EXAMINATION SCHEDULE</div>
-                <div class="academic-year">
-                    @if(isset($semester))
-                        {{ $semester }} Semester, S.Y. {{ $schoolYear ?? date('Y') . '-' . (date('Y') + 1) }}
-                    @else
-                        Academic Year {{ date('Y') . '-' . (date('Y') + 1) }}
+<div class="hdr-rule"></div>
+
+<div class="banner">
+    <div class="banner-l">
+        <div class="banner-title">Examination Schedule</div>
+        <div class="banner-sub">
+            @if(isset($semester))
+                {{ $semester }} Semester
+            @else
+                First Semester
+            @endif
+            &nbsp;&#183;&nbsp; S.Y.&nbsp;{{ isset($schoolYear) ? $schoolYear : date('Y').'-'.(date('Y')+1) }}
+        </div>
+    </div>
+    <div class="banner-r">
+        <div class="banner-meta">Generated <strong>{{ date('F j, Y') }}</strong></div>
+        <div class="banner-meta">By <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong></div>
+    </div>
+</div>
+
+@php
+    $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+    $allSlots = [];
+    for ($h = 7; $h <= 19; $h++) {
+        $allSlots[] = sprintf('%02d:00', $h);
+        if ($h < 19) {
+            $allSlots[] = sprintf('%02d:30', $h);
+        }
+    }
+
+    $palette   = ['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12'];
+    $subColors = [];
+    $colorIdx  = 0;
+
+    $grid     = [];
+    $occupied = [];
+    foreach ($days as $d) {
+        $grid[$d]     = array_fill_keys($allSlots, []);
+        $occupied[$d] = [];
+    }
+
+    if (isset($examinations)) {
+        foreach ($examinations as $exam) {
+            $dayName = $exam->day_name ?? null;
+            if (!in_array($dayName, $days)) continue;
+
+            if (!isset($subColors[$exam->subject_id])) {
+                $subColors[$exam->subject_id] = $palette[$colorIdx % count($palette)];
+                $colorIdx++;
+            }
+
+            $st = is_string($exam->start_time) ? substr($exam->start_time, 0, 5) : $exam->start_time->format('H:i');
+            $et = is_string($exam->end_time)   ? substr($exam->end_time,   0, 5) : $exam->end_time->format('H:i');
+
+            $stParts = explode(':', $st);
+            $etParts = explode(':', $et);
+            $durMins = ((int)$etParts[0] * 60 + (int)$etParts[1]) - ((int)$stParts[0] * 60 + (int)$stParts[1]);
+            $rowspan = max(1, (int)ceil($durMins / 30));
+
+            $exam->_rowspan = $rowspan;
+            $exam->_color   = $subColors[$exam->subject_id];
+
+            $startMins   = (int)$stParts[0] * 60 + (int)$stParts[1];
+            $matchedSlot = null;
+            $matchedIdx  = 0;
+
+            foreach ($allSlots as $si => $ts) {
+                if ($ts === $st) { $matchedSlot = $ts; $matchedIdx = $si; break; }
+            }
+            if (!$matchedSlot) {
+                $best = PHP_INT_MAX;
+                foreach ($allSlots as $si => $ts) {
+                    $tsParts = explode(':', $ts);
+                    $tMins   = (int)$tsParts[0] * 60 + (int)$tsParts[1];
+                    if ($tMins <= $startMins && ($startMins - $tMins) < $best) {
+                        $best = $startMins - $tMins; $matchedSlot = $ts; $matchedIdx = $si;
+                    }
+                }
+            }
+
+            if ($matchedSlot && isset($grid[$dayName][$matchedSlot])) {
+                $grid[$dayName][$matchedSlot][] = $exam;
+                for ($i = 1; $i < $rowspan; $i++) {
+                    $ni = $matchedIdx + $i;
+                    if ($ni < count($allSlots)) {
+                        $occupied[$dayName][$allSlots[$ni]] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    $legendItems = [];
+    foreach ($subColors as $subId => $color) {
+        if (isset($examinations)) {
+            foreach ($examinations as $exam) {
+                if ($exam->subject_id == $subId) {
+                    $legendItems[$subId] = [
+                        'color' => $color,
+                        'code'  => optional($exam->subject)->course_code  ?? 'N/A',
+                        'name'  => optional($exam->subject)->subject_name ?? 'N/A',
+                    ];
+                    break;
+                }
+            }
+        }
+    }
+
+    $colorHex = [
+        'c1'  => '#2D4A35', 'c2'  => '#1A3A5C', 'c3'  => '#5C2D1A', 'c4'  => '#3D1A5C',
+        'c5'  => '#1A4A4A', 'c6'  => '#4A3D1A', 'c7'  => '#1A3D1A', 'c8'  => '#4A1A2D',
+        'c9'  => '#1A2D4A', 'c10' => '#2D4A1A', 'c11' => '#4A2D1A', 'c12' => '#1A4A3D',
+    ];
+
+    $timeSlots = $allSlots;
+@endphp
+
+<div class="tbl-wrap">
+<table>
+    <colgroup>
+        <col class="col-t">
+        @foreach($days as $d)
+            <col class="col-d">
+        @endforeach
+    </colgroup>
+    <thead>
+        <tr>
+            <th style="background:var(--ink);color:var(--ink-ghost);font-size:9px;letter-spacing:.1em;">TIME</th>
+            @foreach($days as $d)
+                <th>{{ strtoupper(substr($d, 0, 3)) }}</th>
+            @endforeach
+        </tr>
+    </thead>
+    <tbody>
+    @foreach($timeSlots as $time)
+        @php
+            $timeParts = explode(':', $time);
+            $isHour    = ((int)$timeParts[1] === 0);
+            $ampm      = (int)$timeParts[0] >= 12 ? 'PM' : 'AM';
+            $dHour     = (int)$timeParts[0] % 12;
+            if ($dHour === 0) $dHour = 12;
+            $dTime     = $dHour . ':' . $timeParts[1];
+        @endphp
+        <tr class="{{ $isHour ? 'h-start' : '' }}">
+            <td class="td-t">
+                <span class="tl">{{ $dTime }}</span>
+                <span class="tap">{{ $ampm }}</span>
+            </td>
+            @foreach($days as $day)
+                @php
+                    if (isset($occupied[$day][$time])) continue;
+                    $ss = $grid[$day][$time] ?? [];
+                    $rs = 1;
+                    foreach ($ss as $eItem) {
+                        if (($eItem->_rowspan ?? 1) > $rs) $rs = $eItem->_rowspan;
+                    }
+                    $ch = $rs * 28;
+                @endphp
+                <td class="td-s"
+                    @if($rs > 1) rowspan="{{ $rs }}" @endif
+                    style="height:{{ $ch }}px;">
+                    @if(count($ss) > 0)
+                    <div class="ci">
+                        @foreach($ss as $eItem)
+                        @php
+                            $dispStart = is_string($eItem->start_time)
+                                ? date('g:i', strtotime($eItem->start_time))
+                                : $eItem->start_time->format('g:i');
+                            $dispEnd = is_string($eItem->end_time)
+                                ? date('g:iA', strtotime($eItem->end_time))
+                                : $eItem->end_time->format('g:iA');
+                            $dispDate = is_string($eItem->exam_date)
+                                ? date('M d, Y', strtotime($eItem->exam_date))
+                                : $eItem->exam_date->format('M d, Y');
+                        @endphp
+                        <div class="sb" data-c="{{ $eItem->_color }}">
+                            <div class="sb-badge">Examination</div>
+                            <div class="sb-code">{{ optional($eItem->subject)->course_code ?? '—' }}</div>
+                            <div class="sb-name"><strong>{{ optional($eItem->subject)->subject_name ?? 'N/A' }}</strong></div>
+                            <div class="sb-date">
+                                <span class="sb-lbl">Date</span>
+                                <strong>{{ $dispDate }}</strong>
+                            </div>
+                            <div class="sb-row">
+                                <span class="sb-tag">
+                                    <span class="sb-lbl">Rm</span>
+                                    {{ $eItem->classroom->room_name ?? $eItem->classroom->name ?? 'N/A' }}
+                                </span>
+                                <span class="sb-tag">
+                                    <span class="sb-lbl">By</span>
+                                    <strong>{{ $eItem->faculty->name ?? 'N/A' }}</strong>
+                                </span>
+                            </div>
+                            <div class="sb-bdg">
+                                <span class="sb-tag"><span class="sb-lbl">Sec</span>{{ $eItem->year_section ?? '—' }}</span>
+                                <span class="sb-time">{{ $dispStart }}-{{ $dispEnd }}</span>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
                     @endif
-                </div>
+                </td>
+            @endforeach
+        </tr>
+    @endforeach
+    </tbody>
+</table>
+</div>
+
+@if(!empty($legendItems))
+<div class="leg">
+    <div class="leg-hd">Subject Legend</div>
+    <div class="leg-grid">
+        @foreach($legendItems as $item)
+        <div class="leg-item">
+            <div class="leg-dot" style="background:{{ $colorHex[$item['color']] ?? '#555' }};"></div>
+            <span><strong>{{ $item['code'] }}</strong> &mdash; {{ Str::limit($item['name'], 44) }}</span>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
+<div class="ftr">
+    <div class="sigs">
+        <div class="sig">
+            <div class="sig-sp"></div>
+            <div class="sig-ln">
+                <div class="sig-n">Department Head</div>
+                <div class="sig-t">Academic Affairs</div>
             </div>
         </div>
-
-        <!-- Timetable -->
-        <div class="timetable-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="time-header">TIME</th>
-                        <th>MONDAY</th>
-                        <th>TUESDAY</th>
-                        <th>WEDNESDAY</th>
-                        <th>THURSDAY</th>
-                        <th>FRIDAY</th>
-                        <th>SATURDAY</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php
-                        $timeSlots =  ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'];
-                        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                        
-                        // Group examinations
-                        $schedulesByDayAndTime = [];
-                        $occupiedCells = [];
-                        
-                        foreach($days as $day) {
-                            $schedulesByDayAndTime[$day] = [];
-                            $occupiedCells[$day] = [];
-                            foreach($timeSlots as $time) {
-                                $schedulesByDayAndTime[$day][$time] = [];
-                            }
-                        }
-                        
-                        if(isset($examinations)) {
-                            foreach($examinations as $exam) {
-                                $day = $exam->day_name;
-                                $startTime = is_string($exam->start_time) ? substr($exam->start_time, 0, 5) : $exam->start_time->format('H:i');
-                                $endTime = is_string($exam->end_time) ? substr($exam->end_time, 0, 5) : $exam->end_time->format('H:i');
-                                
-                                $startHour = (int)substr($startTime, 0, 2);
-                                $endHour = (int)substr($endTime, 0, 2);
-                                $duration = $endHour - $startHour;
-                                
-                                $exam->calculated_rowspan = max(1, $duration);
-                                
-                                if(isset($schedulesByDayAndTime[$day][$startTime])) {
-                                    $schedulesByDayAndTime[$day][$startTime][] = $exam;
-                                    
-                                    for($i = 1; $i < $duration; $i++) {
-                                        $nextTimeIndex = array_search($startTime, $timeSlots) + $i;
-                                        if($nextTimeIndex < count($timeSlots)) {
-                                            $nextTime = $timeSlots[$nextTimeIndex];
-                                            $occupiedCells[$day][$nextTime] = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        $colors = ['pink', 'blue', 'green', 'yellow', 'purple', 'red', 'indigo', 'teal', 'orange', 'cyan', 'lime', 'fuchsia'];
-                        $subjectColors = [];
-                        $colorIndex = 0;
-                    @endphp
-                    
-                    @foreach($timeSlots as $time)
-                        <tr>
-                            <td class="time-slot">
-                                @php
-                                    $hour = (int)substr($time, 0, 2);
-                                    $ampm = $hour >= 12 ? 'PM' : 'AM';
-                                    $displayHour = $hour % 12 ?: 12;
-                                @endphp
-                                {{ $displayHour }}:{{ substr($time, 3, 2) }} {{ $ampm }}
-                            </td>
-                            
-                            @foreach($days as $day)
-                                @php
-                                    if(isset($occupiedCells[$day][$time])) {
-                                        continue;
-                                    }
-                                    
-                                    $dayExams = $schedulesByDayAndTime[$day][$time];
-                                @endphp
-                                
-                                <td class="schedule-cell" 
-                                    @if(count($dayExams) > 0 && isset($dayExams[0]->calculated_rowspan))
-                                        rowspan="{{ $dayExams[0]->calculated_rowspan }}"
-                                    @endif>
-                                    @if(count($dayExams) > 0)
-                                        @foreach($dayExams as $exam)
-                                            @php
-                                                if(!isset($subjectColors[$exam->subject_id])) {
-                                                    $subjectColors[$exam->subject_id] = $colors[$colorIndex % count($colors)];
-                                                    $colorIndex++;
-                                                }
-                                                $color = $subjectColors[$exam->subject_id];
-                                                
-                                                $displayStartTime = is_string($exam->start_time) ? date('g:i A', strtotime($exam->start_time)) : $exam->start_time->format('g:i A');
-                                                $displayEndTime = is_string($exam->end_time) ? date('g:i A', strtotime($exam->end_time)) : $exam->end_time->format('g:i A');
-                                                $examDate = is_string($exam->exam_date) ? date('M d, Y', strtotime($exam->exam_date)) : $exam->exam_date->format('M d, Y');
-                                            @endphp
-                                            
-                                            <div class="schedule-block schedule-block-{{ $color }}">
-                                                <div class="exam-badge">{{ $exam->exam_type ?? 'FINAL' }} EXAM</div>
-                                                <div class="schedule-text course-code">{{ $exam->subject->course_code ?? 'N/A' }}</div>
-                                                <div class="schedule-text subject-name">{{ $exam->subject->subject_name ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Date:</span> <span class="exam-date-highlight">{{ $examDate }}</span></div>
-                                                <div class="schedule-detail"><span class="detail-label">Room:</span> {{ $exam->classroom->room_name ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Faculty:</span> {{ $exam->faculty->name ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Section:</span> {{ $exam->year_section ?? 'N/A' }}</div>
-                                                <div class="schedule-detail"><span class="detail-label">Time:</span> {{ $displayStartTime }} - {{ $displayEndTime }}</div>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                </td>
-                            @endforeach
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <div class="signatures">
-                <div class="signature-block">
-                    <div class="signature-line">Department Head</div>
-                    <div class="signature-title">Academic Affairs</div>
-                </div>
-                <div class="signature-block">
-                    <div class="signature-line">Dean</div>
-                    <div class="signature-title">College Dean</div>
-                </div>
-                <div class="signature-block">
-                    <div class="signature-line">Registrar</div>
-                    <div class="signature-title">Office of the Registrar</div>
-                </div>
+        <div class="sig">
+            <div class="sig-sp"></div>
+            <div class="sig-ln">
+                <div class="sig-n">Dean</div>
+                <div class="sig-t">College Dean</div>
             </div>
-            
-            <div class="footer-info">
-                <div>📅 Printed: {{ date('F d, Y h:i A') }}</div>
-                <div>👤 Generated by: {{ auth()->user()->name ?? 'Admin' }}</div>
+        </div>
+        <div class="sig">
+            <div class="sig-sp"></div>
+            <div class="sig-ln">
+                <div class="sig-n">Registrar</div>
+                <div class="sig-t">Office of the Registrar</div>
             </div>
         </div>
     </div>
+    <div class="fbar">
+        <div class="fbi">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Printed <strong>{{ date('F j, Y g:i A') }}</strong>
+        </div>
+        <div class="fdot"></div>
+        <div class="fbi">Southern Luzon State University &mdash; Tiaong Campus</div>
+        <div class="fdot"></div>
+        <div class="fbi">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Generated by <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong>
+        </div>
+    </div>
+</div>
+
+</div>
+
+@verbatim
+<script>
+(function() {
+    var TARGET_H = 720;
+    var TARGET_W = 1060;
+    var MIN_ZOOM = 0.45;
+    var MAX_ZOOM = 1.0;
+    var page = document.getElementById('printPage');
+    if (!page) return;
+
+    function applyZoom() {
+        page.style.zoom      = '1';
+        page.style.transform = '';
+        page.style.width     = '';
+        var h    = page.scrollHeight;
+        var w    = page.scrollWidth;
+        var zoom = Math.min(TARGET_H / h, TARGET_W / w, MAX_ZOOM);
+        zoom     = Math.max(zoom, MIN_ZOOM);
+        zoom     = Math.round(zoom * 1000) / 1000;
+        page.style.setProperty('--print-zoom', zoom);
+        page.style.zoom = zoom;
+        if (typeof page.style.zoom === 'undefined' || page.style.zoom === '') {
+            page.style.transform       = 'scale(' + zoom + ')';
+            page.style.transformOrigin = '0 0';
+            page.style.width           = (100 / zoom) + '%';
+        }
+    }
+
+    window.addEventListener('load',        applyZoom);
+    window.addEventListener('resize',      applyZoom);
+    window.addEventListener('beforeprint', applyZoom);
+    window.addEventListener('afterprint',  function() {
+        page.style.zoom      = '1';
+        page.style.transform = '';
+        page.style.width     = '';
+    });
+}());
+</script>
+@endverbatim
+
 </body>
 </html>
