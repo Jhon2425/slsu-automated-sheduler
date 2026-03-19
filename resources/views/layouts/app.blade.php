@@ -13,7 +13,7 @@
 
 
     <!-- Title -->
-    <title>Southern Luzon University</title>    
+    <title>Southern Luzon State University</title>    
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">

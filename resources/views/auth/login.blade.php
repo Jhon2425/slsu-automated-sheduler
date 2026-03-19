@@ -393,7 +393,7 @@
                     Welcome Back!
                 </h1>
                 <p class="text-sm font-light opacity-90 max-w-xs leading-relaxed">
-                    Automated Scheduling Portal for South Luzon State University Tiaong Campus. Please sign in to continue.
+                    Automated Scheduling Portal for Southern Luzon State University Tiaong Campus. Please sign in to continue.
                 </p>
             </div>
 
@@ -529,7 +529,7 @@
 
     <!-- Footer -->
     <p class="footer-text absolute bottom-4 text-center text-sm text-white/90 z-20 font-medium tracking-wide">
-        © <span id="year"></span> South Luzon State University - Tiaong Campus
+        © <span id="year"></span> Southern Luzon State University - Tiaong Campus
     </p>
 </div>
 
