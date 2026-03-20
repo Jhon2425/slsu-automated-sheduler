@@ -46,8 +46,8 @@ return new class extends Migration
             // Subject details
             $table->string('year_level')->nullable();
             $table->string('semester')->nullable();
-            $table->integer('lecture_units', 3, 1)->nullable();    // null for OJT subjects
-            $table->integer('laboratory_units', 3, 1)->nullable(); // null for OJT subjects
+            $table->decimal('lecture_units', 3, 1)->nullable();    // null for OJT subjects
+            $table->decimal('laboratory_units', 3, 1)->nullable(); // null for OJT subjects
             $table->decimal('ojt_hours', 10, 2)->nullable();       // computed: (class_size × raw_ojt / 40) / 54
 
             // Class information

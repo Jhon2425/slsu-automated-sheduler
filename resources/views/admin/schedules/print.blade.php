@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+   <!-- FAVICON -->
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">
+    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=1">
+    <link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">
 <style>
 :root {
     --forest:#2D4A35; --forest-mid:#3E6347; --forest-light:#6D9773; --forest-pale:#B8D4BC;
