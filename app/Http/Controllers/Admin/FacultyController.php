@@ -49,7 +49,6 @@ class FacultyController extends Controller
 
     /**
      * Parse a free-text appointment date string (e.g. "January 2020") into a Carbon date.
-     * Returns null if the string is empty or unparseable.
      */
     private function parseAppointmentDate(?string $value): ?Carbon
     {
@@ -65,25 +64,78 @@ class FacultyController extends Controller
     }
 
     /**
+     * Apply the OJT weekly-hours formula and return the precise decimal result.
+     *
+     * Formula:
+     *   Step 1: class_size × ojt_hours / 40
+     *   Step 2: result / 54
+     *
+     * Returns the raw float with no rounding — rounding only happens in the
+     * timetable display layer (SchedulerService / ScheduleController).
+     *
+     * @param  int $classSize
+     * @param  int $ojtHours   Raw OJT hours from the subject (e.g. 300, 700)
+     * @return float|null       null if either input is zero/missing
+     */
+    private function computeOjtWeeklyHours(int $classSize, int $ojtHours): ?float
+    {
+        if ($classSize <= 0 || $ojtHours <= 0) {
+            return null;
+        }
+
+        $step1 = ($classSize * $ojtHours) / 40;
+        $step2 = $step1 / 54;
+
+        Log::info('OJT weekly hours computed', [
+            'class_size' => $classSize,
+            'ojt_hours'  => $ojtHours,
+            'step1'      => $step1,
+            'step2_raw'  => $step2,
+        ]);
+
+        return $step2; // exact float — no rounding
+    }
+
+    /**
      * Resolve ojt_hours, lecture_units, laboratory_units for a subject row.
-     * OJT subjects: ojt_hours = actual value, lec/lab = null
-     * Regular subjects: ojt_hours = null, lec/lab = actual values
+     *
+     * OJT subjects:
+     *   ojt_hours  = formula result (class_size × ojt_hours / 40 / 54) as float
+     *   lec / lab  = null
+     *   is_ojt     = true  ← used by the save condition to always persist the row
+     *
+     * Regular subjects:
+     *   ojt_hours  = null
+     *   lec / lab  = actual values
+     *   is_ojt     = false
      */
     private function resolveSubjectUnits(array $subject): array
     {
-        $ojtHours = isset($subject['ojt_hours']) && $subject['ojt_hours'] > 0
-            ? (int) $subject['ojt_hours']
+        // Use float cast first to safely handle numeric strings, then round to int
+        $rawOjtHours = isset($subject['ojt_hours']) && (float) $subject['ojt_hours'] > 0
+            ? (int) round((float) $subject['ojt_hours'])
             : null;
 
-        if ($ojtHours !== null) {
+        if ($rawOjtHours !== null) {
+            $classSize        = isset($subject['class_size']) ? (int) $subject['class_size'] : 0;
+            $computedOjtHours = $this->computeOjtWeeklyHours($classSize, $rawOjtHours);
+
+            Log::info('resolveSubjectUnits — OJT subject', [
+                'raw_ojt_hours'      => $rawOjtHours,
+                'class_size'         => $classSize,
+                'computed_ojt_hours' => $computedOjtHours,
+            ]);
+
             return [
-                'ojt_hours'        => $ojtHours,
+                'is_ojt'           => true,
+                'ojt_hours'        => $computedOjtHours, // computed decimal or null if class_size=0
                 'lecture_units'    => null,
                 'laboratory_units' => null,
             ];
         }
 
         return [
+            'is_ojt'           => false,
             'ojt_hours'        => null,
             'lecture_units'    => $subject['lecture_units'] ?? null,
             'laboratory_units' => $subject['laboratory_units'] ?? null,
@@ -120,27 +172,27 @@ class FacultyController extends Controller
                     },
                 ],
 
-                'education'                     => 'required|array|min:1',
-                'education.*.degree_earned'     => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
-                'education.*.year_graduated'    => 'required|integer|min:1950|max:' . date('Y'),
-                'education.*.course'            => 'required|string|max:255',
-                'education.*.school_graduated'  => 'required|string|max:255',
+                'education'                    => 'required|array|min:1',
+                'education.*.degree_earned'    => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
+                'education.*.year_graduated'   => 'required|integer|min:1950|max:' . date('Y'),
+                'education.*.course'           => 'required|string|max:255',
+                'education.*.school_graduated' => 'required|string|max:255',
 
-                'subjects'                      => 'nullable|array',
-                'subjects.*.subject_id'         => 'required_with:subjects|exists:subjects,id',
-                'subjects.*.program_id'         => 'nullable|exists:programs,id',
-                'subjects.*.lecture_units'      => 'nullable|numeric|min:0',
-                'subjects.*.laboratory_units'   => 'nullable|numeric|min:0',
-                'subjects.*.ojt_hours'          => 'nullable|integer|min:0',
-                'subjects.*.year_level'         => 'nullable|integer|min:1|max:4',
-                'subjects.*.semester'           => 'nullable|string',
-                'subjects.*.class_size'         => 'nullable|integer|min:0',
+                'subjects'                    => 'nullable|array',
+                'subjects.*.subject_id'       => 'required_with:subjects|exists:subjects,id',
+                'subjects.*.program_id'       => 'nullable|exists:programs,id',
+                'subjects.*.lecture_units'    => 'nullable|numeric|min:0',
+                'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
+                'subjects.*.ojt_hours'        => 'nullable|numeric|min:0', // numeric not integer
+                'subjects.*.year_level'       => 'nullable|integer|min:1|max:4',
+                'subjects.*.semester'         => 'nullable|string',
+                'subjects.*.class_size'       => 'nullable|integer|min:0',
 
-                'unavailabilities'              => 'nullable|array',
-                'unavailabilities.*.day'        => 'required_with:unavailabilities|string',
-                'unavailabilities.*.time_from'  => 'required_with:unavailabilities|date_format:H:i',
-                'unavailabilities.*.time_to'    => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
-                'unavailabilities.*.reason'     => 'nullable|string|max:500',
+                'unavailabilities'             => 'nullable|array',
+                'unavailabilities.*.day'       => 'required_with:unavailabilities|string',
+                'unavailabilities.*.time_from' => 'required_with:unavailabilities|date_format:H:i',
+                'unavailabilities.*.time_to'   => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
+                'unavailabilities.*.reason'    => 'nullable|string|max:500',
             ]);
         } catch (ValidationException $e) {
             Log::warning('Faculty validation failed', [
@@ -197,8 +249,14 @@ class FacultyController extends Controller
                 foreach ($validated['subjects'] as $subject) {
                     $units = $this->resolveSubjectUnits($subject);
 
-                    // Only save if there is something meaningful to store
-                    if ($units['ojt_hours'] !== null || $units['lecture_units'] > 0 || $units['laboratory_units'] > 0) {
+                    // Save if:
+                    //   - it is an OJT subject (always save, even if computed hours is null due to class_size=0)
+                    //   - or it has lecture/lab units
+                    if (
+                        ($units['is_ojt']) ||
+                        (($units['lecture_units'] ?? 0) > 0) ||
+                        (($units['laboratory_units'] ?? 0) > 0)
+                    ) {
                         FacultySubject::create([
                             'faculty_id'       => $faculty->id,
                             'faculty_code'     => $faculty->faculty_code,
@@ -206,7 +264,7 @@ class FacultyController extends Controller
                             'program_id'       => $subject['program_id'] ?? $validated['program_id'],
                             'lecture_units'    => $units['lecture_units'],
                             'laboratory_units' => $units['laboratory_units'],
-                            'ojt_hours'        => $units['ojt_hours'],
+                            'ojt_hours'        => $units['ojt_hours'], // computed decimal or null
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
                             'class_size'       => $subject['class_size'] ?? 0,
@@ -377,28 +435,28 @@ class FacultyController extends Controller
                     },
                 ],
 
-                'education'                     => 'required|array|min:1',
-                'education.*.id'                => 'nullable|exists:educational_backgrounds,id',
-                'education.*.degree_earned'     => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
-                'education.*.year_graduated'    => 'required|integer|min:1950|max:' . date('Y'),
-                'education.*.course'            => 'required|string|max:255',
-                'education.*.school_graduated'  => 'required|string|max:255',
+                'education'                    => 'required|array|min:1',
+                'education.*.id'               => 'nullable|exists:educational_backgrounds,id',
+                'education.*.degree_earned'    => 'required|in:Bachelor Degree,Master Degree,Doctorate Degree,Professional Degree',
+                'education.*.year_graduated'   => 'required|integer|min:1950|max:' . date('Y'),
+                'education.*.course'           => 'required|string|max:255',
+                'education.*.school_graduated' => 'required|string|max:255',
 
-                'subjects'                      => 'nullable|array',
-                'subjects.*.subject_id'         => 'required_with:subjects|exists:subjects,id',
-                'subjects.*.program_id'         => 'nullable|exists:programs,id',
-                'subjects.*.lecture_units'      => 'nullable|numeric|min:0',
-                'subjects.*.laboratory_units'   => 'nullable|numeric|min:0',
-                'subjects.*.ojt_hours'          => 'nullable|integer|min:0',
-                'subjects.*.year_level'         => 'nullable|integer|min:1|max:4',
-                'subjects.*.semester'           => 'nullable|string',
-                'subjects.*.class_size'         => 'nullable|integer|min:0',
+                'subjects'                    => 'nullable|array',
+                'subjects.*.subject_id'       => 'required_with:subjects|exists:subjects,id',
+                'subjects.*.program_id'       => 'nullable|exists:programs,id',
+                'subjects.*.lecture_units'    => 'nullable|numeric|min:0',
+                'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
+                'subjects.*.ojt_hours'        => 'nullable|numeric|min:0', // numeric not integer
+                'subjects.*.year_level'       => 'nullable|integer|min:1|max:4',
+                'subjects.*.semester'         => 'nullable|string',
+                'subjects.*.class_size'       => 'nullable|integer|min:0',
 
-                'unavailabilities'              => 'nullable|array',
-                'unavailabilities.*.day'        => 'required_with:unavailabilities|string',
-                'unavailabilities.*.time_from'  => 'required_with:unavailabilities|date_format:H:i',
-                'unavailabilities.*.time_to'    => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
-                'unavailabilities.*.reason'     => 'nullable|string|max:500',
+                'unavailabilities'             => 'nullable|array',
+                'unavailabilities.*.day'       => 'required_with:unavailabilities|string',
+                'unavailabilities.*.time_from' => 'required_with:unavailabilities|date_format:H:i',
+                'unavailabilities.*.time_to'   => 'required_with:unavailabilities|date_format:H:i|after:unavailabilities.*.time_from',
+                'unavailabilities.*.reason'    => 'nullable|string|max:500',
             ]);
         } catch (ValidationException $e) {
             Log::warning('Faculty update validation failed', [
@@ -475,8 +533,14 @@ class FacultyController extends Controller
                 foreach ($validated['subjects'] as $subject) {
                     $units = $this->resolveSubjectUnits($subject);
 
-                    // Only save if there is something meaningful to store
-                    if ($units['ojt_hours'] !== null || $units['lecture_units'] > 0 || $units['laboratory_units'] > 0) {
+                    // Save if:
+                    //   - it is an OJT subject (always save, even if computed hours is null due to class_size=0)
+                    //   - or it has lecture/lab units
+                    if (
+                        ($units['is_ojt']) ||
+                        (($units['lecture_units'] ?? 0) > 0) ||
+                        (($units['laboratory_units'] ?? 0) > 0)
+                    ) {
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
                             'faculty_code'     => $validated['faculty_code'],
@@ -484,7 +548,7 @@ class FacultyController extends Controller
                             'program_id'       => $subject['program_id'] ?? $validated['program_id'],
                             'lecture_units'    => $units['lecture_units'],
                             'laboratory_units' => $units['laboratory_units'],
-                            'ojt_hours'        => $units['ojt_hours'],
+                            'ojt_hours'        => $units['ojt_hours'], // computed decimal or null
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
                             'class_size'       => $subject['class_size'] ?? 0,
@@ -638,7 +702,7 @@ class FacultyController extends Controller
                     'enrolled_student' => $fs->subject->enrolled_student ?? 0,
                     'lecture_units'    => $fs->lecture_units,
                     'laboratory_units' => $fs->laboratory_units,
-                    'ojt_hours'        => $fs->ojt_hours,
+                    'ojt_hours'        => $fs->ojt_hours, // stored computed decimal
                     'class_size'       => $fs->class_size,
                     'faculty_code'     => $fs->faculty_code,
                 ]);
@@ -677,8 +741,11 @@ class FacultyController extends Controller
                 foreach ($request->subjects as $subjectId) {
                     $subject = Subject::find($subjectId);
                     if ($subject) {
-                        $isOjt = $subject->ojt_hours > 0;
+                        $isOjt = $subject->ojt_hours !== null && $subject->ojt_hours > 0;
 
+                        // Cannot compute OJT hours without class_size — store null.
+                        // The computed value will be set when the faculty is edited
+                        // via the full create/edit form where class_size is provided.
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
                             'faculty_code'     => $facultyProfile->faculty_code,
@@ -686,7 +753,7 @@ class FacultyController extends Controller
                             'program_id'       => $subject->program_id ?? $facultyProfile->program_id,
                             'lecture_units'    => $isOjt ? null : ($subject->lec ?? null),
                             'laboratory_units' => $isOjt ? null : ($subject->lab ?? null),
-                            'ojt_hours'        => $isOjt ? $subject->ojt_hours : null,
+                            'ojt_hours'        => null,
                             'year_level'       => $subject->year_level ?? null,
                             'semester'         => $subject->semester ?? null,
                             'class_size'       => 0,
@@ -700,7 +767,7 @@ class FacultyController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subjects assigned successfully.',
+                'message' => 'Subjects assigned successfully. Note: OJT hours will be calculated once class size is set via the edit form.',
                 'count'   => $assignedCount,
             ]);
 

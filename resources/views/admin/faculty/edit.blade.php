@@ -119,8 +119,7 @@
                             </label>
                             <input type="text" name="appointment_date"
                                    value="{{ old('appointment_date', $faculty->appointment_date ? \Carbon\Carbon::parse($faculty->appointment_date)->format('F Y') : '') }}"
-                                   required
-                                   placeholder="e.g., January 2020"
+                                   required placeholder="e.g., January 2020"
                                    class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
                             <p class="mt-1 text-sm text-white/60">
                                 <i class="fas fa-info-circle mr-1"></i>Type the month and year of appointment (e.g., January 2020)
@@ -382,6 +381,10 @@
                 ? `${matchedSubject.subject_name} (${matchedSubject.course_code || 'N/A'})`
                 : '';
 
+            // Determine if this is an OJT subject based on existing data or matched subject
+            const existingOjtHours = existingData?.ojt_hours ?? matchedSubject?.ojt_hours ?? null;
+            const isOjt = existingOjtHours !== null && existingOjtHours > 0;
+
             row.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h4 class="text-white font-semibold"><i class="fas fa-book mr-2"></i>Subject ${rowIndex + 1}</h4>
@@ -418,16 +421,22 @@
                         <input type="text" id="${rowId}-semester" name="subjects[${rowIndex}][semester]" readonly value="${existingData?.semester || ''}"
                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
-                    <div>
+                    <div id="${rowId}-lecture-wrap" style="display:${isOjt ? 'none' : 'block'};">
                         <label class="block text-white font-medium mb-2"><i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units</label>
                         <input type="number" id="${rowId}-lecture" name="subjects[${rowIndex}][lecture_units]" step="0.5" readonly
-                               value="${existingData?.lecture_units || existingData?.lec || 0}"
+                               value="${isOjt ? '' : (existingData?.lecture_units ?? existingData?.lec ?? '')}"
                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
-                    <div>
+                    <div id="${rowId}-laboratory-wrap" style="display:${isOjt ? 'none' : 'block'};">
                         <label class="block text-white font-medium mb-2"><i class="fas fa-flask mr-2"></i>Laboratory Units</label>
                         <input type="number" id="${rowId}-laboratory" name="subjects[${rowIndex}][laboratory_units]" step="0.5" readonly
-                               value="${existingData?.laboratory_units || existingData?.lab || 0}"
+                               value="${isOjt ? '' : (existingData?.laboratory_units ?? existingData?.lab ?? '')}"
+                               class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                    </div>
+                    <div id="${rowId}-ojt-wrap" style="display:${isOjt ? 'block' : 'none'};">
+                        <label class="block text-white font-medium mb-2"><i class="fas fa-briefcase mr-2"></i>OJT Hours</label>
+                        <input type="number" id="${rowId}-ojt" name="subjects[${rowIndex}][ojt_hours]" readonly
+                               value="${isOjt ? existingOjtHours : ''}"
                                class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>
@@ -487,13 +496,37 @@
             document.getElementById(`${rowId}-subject-id`).value = subject.id;
             document.getElementById(`${rowId}-code`).value = subject.course_code || '';
             document.getElementById(`${rowId}-year`).value = subject.year_level || '';
-            document.getElementById(`${rowId}-lecture`).value = subject.lec || 0;
-            document.getElementById(`${rowId}-laboratory`).value = subject.lab || 0;
             document.getElementById(`${rowId}-program`).value = subject.program_id || '';
+
             let semester = subject.semester || '';
             if (semester === '1') semester = '1st Semester';
             else if (semester === '2') semester = '2nd Semester';
             document.getElementById(`${rowId}-semester`).value = semester;
+
+            // Use ?? null so genuine null from seeder is preserved (not coerced to 0)
+            const ojtHours = subject.ojt_hours ?? null;
+            const lectureWrap    = document.getElementById(`${rowId}-lecture-wrap`);
+            const laboratoryWrap = document.getElementById(`${rowId}-laboratory-wrap`);
+            const ojtWrap        = document.getElementById(`${rowId}-ojt-wrap`);
+
+            if (ojtHours !== null && ojtHours > 0) {
+                // OJT subject — show OJT hours, hide lecture & lab
+                lectureWrap.style.display    = 'none';
+                laboratoryWrap.style.display = 'none';
+                ojtWrap.style.display        = 'block';
+                document.getElementById(`${rowId}-ojt`).value        = ojtHours;
+                document.getElementById(`${rowId}-lecture`).value    = '';  // empty = null on server
+                document.getElementById(`${rowId}-laboratory`).value = '';  // empty = null on server
+            } else {
+                // Regular subject — show lecture & lab, hide OJT
+                lectureWrap.style.display    = 'block';
+                laboratoryWrap.style.display = 'block';
+                ojtWrap.style.display        = 'none';
+                document.getElementById(`${rowId}-lecture`).value    = subject.lec ?? 0;
+                document.getElementById(`${rowId}-laboratory`).value = subject.lab ?? 0;
+                document.getElementById(`${rowId}-ojt`).value        = '';  // empty = null on server
+            }
+
             const dd = document.getElementById(`${rowId}-dropdown`);
             if (dd) dd.classList.remove('open');
         }

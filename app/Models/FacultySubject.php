@@ -27,7 +27,7 @@ class FacultySubject extends Model
     protected $casts = [
         'lecture_units'    => 'float',
         'laboratory_units' => 'float',
-        'ojt_hours'        => 'integer',
+        'ojt_hours'        => 'decimal:2',
         'class_size'       => 'integer',
     ];
 
