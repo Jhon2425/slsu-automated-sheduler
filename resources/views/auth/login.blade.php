@@ -424,7 +424,7 @@
                     <!-- Email -->
                     <div class="input-wrapper">
                         <label for="email" class="block text-sm font-semibold text-primary-dark mb-2">
-                            Email / Username
+                            Email
                         </label>
                         <div class="input-icon-wrapper">
                             <svg class="input-icon text-primary-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
