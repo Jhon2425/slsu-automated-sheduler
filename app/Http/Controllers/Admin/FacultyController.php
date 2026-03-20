@@ -65,6 +65,32 @@ class FacultyController extends Controller
     }
 
     /**
+     * Resolve ojt_hours, lecture_units, laboratory_units for a subject row.
+     * OJT subjects: ojt_hours = actual value, lec/lab = null
+     * Regular subjects: ojt_hours = null, lec/lab = actual values
+     */
+    private function resolveSubjectUnits(array $subject): array
+    {
+        $ojtHours = isset($subject['ojt_hours']) && $subject['ojt_hours'] > 0
+            ? (int) $subject['ojt_hours']
+            : null;
+
+        if ($ojtHours !== null) {
+            return [
+                'ojt_hours'        => $ojtHours,
+                'lecture_units'    => null,
+                'laboratory_units' => null,
+            ];
+        }
+
+        return [
+            'ojt_hours'        => null,
+            'lecture_units'    => $subject['lecture_units'] ?? null,
+            'laboratory_units' => $subject['laboratory_units'] ?? null,
+        ];
+    }
+
+    /**
      * Store new faculty
      */
     public function store(Request $request)
@@ -105,6 +131,7 @@ class FacultyController extends Controller
                 'subjects.*.program_id'         => 'nullable|exists:programs,id',
                 'subjects.*.lecture_units'      => 'nullable|numeric|min:0',
                 'subjects.*.laboratory_units'   => 'nullable|numeric|min:0',
+                'subjects.*.ojt_hours'          => 'nullable|integer|min:0',
                 'subjects.*.year_level'         => 'nullable|integer|min:1|max:4',
                 'subjects.*.semester'           => 'nullable|string',
                 'subjects.*.class_size'         => 'nullable|integer|min:0',
@@ -135,17 +162,17 @@ class FacultyController extends Controller
             ]);
 
             $faculty = Faculty::create([
-                'user_id'            => $user->id,
-                'program_id'         => $validated['program_id'],
-                'faculty_code'       => $validated['faculty_code'],
-                'name'               => $validated['name'],
-                'civil_status'       => $validated['civil_status'],
-                'birthdate'          => $validated['birthdate'],
-                'employment_status'  => $validated['employment_status'],
-                'home_address'       => $validated['home_address'],
-                'years_of_service'   => $validated['years_of_service'],
-                'rank'               => $validated['rank'] ?? null,
-                'appointment_date'   => $this->parseAppointmentDate($validated['appointment_date']),
+                'user_id'           => $user->id,
+                'program_id'        => $validated['program_id'],
+                'faculty_code'      => $validated['faculty_code'],
+                'name'              => $validated['name'],
+                'civil_status'      => $validated['civil_status'],
+                'birthdate'         => $validated['birthdate'],
+                'employment_status' => $validated['employment_status'],
+                'home_address'      => $validated['home_address'],
+                'years_of_service'  => $validated['years_of_service'],
+                'rank'              => $validated['rank'] ?? null,
+                'appointment_date'  => $this->parseAppointmentDate($validated['appointment_date']),
             ]);
 
             Log::info('Faculty profile created', [
@@ -168,17 +195,18 @@ class FacultyController extends Controller
 
             if (!empty($validated['subjects'])) {
                 foreach ($validated['subjects'] as $subject) {
-                    $lectureUnits    = $subject['lecture_units'] ?? 0;
-                    $laboratoryUnits = $subject['laboratory_units'] ?? 0;
+                    $units = $this->resolveSubjectUnits($subject);
 
-                    if ($lectureUnits > 0 || $laboratoryUnits > 0) {
+                    // Only save if there is something meaningful to store
+                    if ($units['ojt_hours'] !== null || $units['lecture_units'] > 0 || $units['laboratory_units'] > 0) {
                         FacultySubject::create([
                             'faculty_id'       => $faculty->id,
                             'faculty_code'     => $faculty->faculty_code,
                             'subject_id'       => $subject['subject_id'],
                             'program_id'       => $subject['program_id'] ?? $validated['program_id'],
-                            'lecture_units'    => $lectureUnits,
-                            'laboratory_units' => $laboratoryUnits,
+                            'lecture_units'    => $units['lecture_units'],
+                            'laboratory_units' => $units['laboratory_units'],
+                            'ojt_hours'        => $units['ojt_hours'],
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
                             'class_size'       => $subject['class_size'] ?? 0,
@@ -260,10 +288,11 @@ class FacultyController extends Controller
                 'course_code'      => $facultySubject->subject->course_code,
                 'year_level'       => $facultySubject->year_level ?? $facultySubject->subject->year_level,
                 'semester'         => $facultySubject->semester ?? $facultySubject->subject->semester,
-                'lecture_units'    => $facultySubject->lecture_units ?? $facultySubject->subject->lec ?? 0,
-                'laboratory_units' => $facultySubject->laboratory_units ?? $facultySubject->subject->lab ?? 0,
-                'lec'              => $facultySubject->lecture_units ?? $facultySubject->subject->lec ?? 0,
-                'lab'              => $facultySubject->laboratory_units ?? $facultySubject->subject->lab ?? 0,
+                'lecture_units'    => $facultySubject->lecture_units ?? $facultySubject->subject->lec ?? null,
+                'laboratory_units' => $facultySubject->laboratory_units ?? $facultySubject->subject->lab ?? null,
+                'ojt_hours'        => $facultySubject->ojt_hours ?? $facultySubject->subject->ojt_hours ?? null,
+                'lec'              => $facultySubject->lecture_units ?? $facultySubject->subject->lec ?? null,
+                'lab'              => $facultySubject->laboratory_units ?? $facultySubject->subject->lab ?? null,
                 'class_size'       => $facultySubject->class_size ?? 0,
                 'pre_req'          => $facultySubject->subject->pre_req,
                 'program_id'       => $facultySubject->program_id ?? $facultySubject->subject->program_id ?? null,
@@ -360,6 +389,7 @@ class FacultyController extends Controller
                 'subjects.*.program_id'         => 'nullable|exists:programs,id',
                 'subjects.*.lecture_units'      => 'nullable|numeric|min:0',
                 'subjects.*.laboratory_units'   => 'nullable|numeric|min:0',
+                'subjects.*.ojt_hours'          => 'nullable|integer|min:0',
                 'subjects.*.year_level'         => 'nullable|integer|min:1|max:4',
                 'subjects.*.semester'           => 'nullable|string',
                 'subjects.*.class_size'         => 'nullable|integer|min:0',
@@ -395,16 +425,16 @@ class FacultyController extends Controller
             $faculty->update($userData);
 
             $facultyProfile->update([
-                'program_id'         => $validated['program_id'],
-                'faculty_code'       => $validated['faculty_code'],
-                'name'               => $validated['name'],
-                'civil_status'       => $validated['civil_status'],
-                'birthdate'          => $validated['birthdate'],
-                'employment_status'  => $validated['employment_status'],
-                'home_address'       => $validated['home_address'],
-                'years_of_service'   => $validated['years_of_service'],
-                'rank'               => $validated['rank'] ?? null,
-                'appointment_date'   => $this->parseAppointmentDate($validated['appointment_date']),
+                'program_id'        => $validated['program_id'],
+                'faculty_code'      => $validated['faculty_code'],
+                'name'              => $validated['name'],
+                'civil_status'      => $validated['civil_status'],
+                'birthdate'         => $validated['birthdate'],
+                'employment_status' => $validated['employment_status'],
+                'home_address'      => $validated['home_address'],
+                'years_of_service'  => $validated['years_of_service'],
+                'rank'              => $validated['rank'] ?? null,
+                'appointment_date'  => $this->parseAppointmentDate($validated['appointment_date']),
             ]);
 
             $existingEducationIds = [];
@@ -443,17 +473,18 @@ class FacultyController extends Controller
 
             if (!empty($validated['subjects'])) {
                 foreach ($validated['subjects'] as $subject) {
-                    $lectureUnits    = $subject['lecture_units'] ?? 0;
-                    $laboratoryUnits = $subject['laboratory_units'] ?? 0;
+                    $units = $this->resolveSubjectUnits($subject);
 
-                    if ($lectureUnits > 0 || $laboratoryUnits > 0) {
+                    // Only save if there is something meaningful to store
+                    if ($units['ojt_hours'] !== null || $units['lecture_units'] > 0 || $units['laboratory_units'] > 0) {
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
                             'faculty_code'     => $validated['faculty_code'],
                             'subject_id'       => $subject['subject_id'],
                             'program_id'       => $subject['program_id'] ?? $validated['program_id'],
-                            'lecture_units'    => $lectureUnits,
-                            'laboratory_units' => $laboratoryUnits,
+                            'lecture_units'    => $units['lecture_units'],
+                            'laboratory_units' => $units['laboratory_units'],
+                            'ojt_hours'        => $units['ojt_hours'],
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
                             'class_size'       => $subject['class_size'] ?? 0,
@@ -607,6 +638,7 @@ class FacultyController extends Controller
                     'enrolled_student' => $fs->subject->enrolled_student ?? 0,
                     'lecture_units'    => $fs->lecture_units,
                     'laboratory_units' => $fs->laboratory_units,
+                    'ojt_hours'        => $fs->ojt_hours,
                     'class_size'       => $fs->class_size,
                     'faculty_code'     => $fs->faculty_code,
                 ]);
@@ -645,13 +677,16 @@ class FacultyController extends Controller
                 foreach ($request->subjects as $subjectId) {
                     $subject = Subject::find($subjectId);
                     if ($subject) {
+                        $isOjt = $subject->ojt_hours > 0;
+
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
                             'faculty_code'     => $facultyProfile->faculty_code,
                             'subject_id'       => $subjectId,
                             'program_id'       => $subject->program_id ?? $facultyProfile->program_id,
-                            'lecture_units'    => $subject->lec ?? 0,
-                            'laboratory_units' => $subject->lab ?? 0,
+                            'lecture_units'    => $isOjt ? null : ($subject->lec ?? null),
+                            'laboratory_units' => $isOjt ? null : ($subject->lab ?? null),
+                            'ojt_hours'        => $isOjt ? $subject->ojt_hours : null,
                             'year_level'       => $subject->year_level ?? null,
                             'semester'         => $subject->semester ?? null,
                             'class_size'       => 0,

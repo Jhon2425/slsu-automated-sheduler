@@ -490,20 +490,26 @@
                         <input type="number" id="${rowId}-year" name="subjects[${rowIndex}][year_level]" readonly class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
                 </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-white font-medium mb-2"><i class="fas fa-calendar-alt mr-2"></i>Semester</label>
                         <input type="text" id="${rowId}-semester" name="subjects[${rowIndex}][semester]" readonly class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
-                    <div>
+                    <div id="${rowId}-lecture-wrap">
                         <label class="block text-white font-medium mb-2"><i class="fas fa-chalkboard-teacher mr-2"></i>Lecture Units</label>
                         <input type="number" id="${rowId}-lecture" name="subjects[${rowIndex}][lecture_units]" step="0.5" readonly class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
-                    <div>
+                    <div id="${rowId}-laboratory-wrap">
                         <label class="block text-white font-medium mb-2"><i class="fas fa-flask mr-2"></i>Laboratory Units</label>
                         <input type="number" id="${rowId}-laboratory" name="subjects[${rowIndex}][laboratory_units]" step="0.5" readonly class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
                     </div>
+                    <div id="${rowId}-ojt-wrap" style="display:none;">
+                        <label class="block text-white font-medium mb-2"><i class="fas fa-briefcase mr-2"></i>OJT Hours</label>
+                        <input type="number" id="${rowId}-ojt" name="subjects[${rowIndex}][ojt_hours]" readonly class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 cursor-not-allowed">
+                    </div>
                 </div>
+
                 <div>
                     <label class="block text-white font-medium mb-2"><i class="fas fa-users mr-2"></i>Class Size <span class="text-red-400">*</span></label>
                     <input type="number" name="subjects[${rowIndex}][class_size]" min="1" max="100" placeholder="e.g., 40" required
@@ -559,14 +565,36 @@
             document.getElementById(`${rowId}-subject-id`).value = subject.id;
             document.getElementById(`${rowId}-code`).value = subject.course_code || '';
             document.getElementById(`${rowId}-year`).value = subject.year_level || '';
-            document.getElementById(`${rowId}-lecture`).value = subject.lec || 0;
-            document.getElementById(`${rowId}-laboratory`).value = subject.lab || 0;
             document.getElementById(`${rowId}-program`).value = subject.program_id || '';
 
             let semester = subject.semester || '';
             if (semester === '1') semester = '1st Semester';
             else if (semester === '2') semester = '2nd Semester';
             document.getElementById(`${rowId}-semester`).value = semester;
+
+            // Use ?? null so that a genuine null from the seeder is preserved (not coerced to 0)
+            const ojtHours = subject.ojt_hours ?? null;
+            const lectureWrap    = document.getElementById(`${rowId}-lecture-wrap`);
+            const laboratoryWrap = document.getElementById(`${rowId}-laboratory-wrap`);
+            const ojtWrap        = document.getElementById(`${rowId}-ojt-wrap`);
+
+            if (ojtHours !== null && ojtHours > 0) {
+                // OJT subject — show OJT hours, hide lecture & lab
+                lectureWrap.style.display    = 'none';
+                laboratoryWrap.style.display = 'none';
+                ojtWrap.style.display        = 'block';
+                document.getElementById(`${rowId}-ojt`).value        = ojtHours;
+                document.getElementById(`${rowId}-lecture`).value    = '';  // empty string = null on server
+                document.getElementById(`${rowId}-laboratory`).value = '';  // empty string = null on server
+            } else {
+                // Regular subject — show lecture & lab, hide OJT
+                lectureWrap.style.display    = 'block';
+                laboratoryWrap.style.display = 'block';
+                ojtWrap.style.display        = 'none';
+                document.getElementById(`${rowId}-lecture`).value    = subject.lec ?? 0;
+                document.getElementById(`${rowId}-laboratory`).value = subject.lab ?? 0;
+                document.getElementById(`${rowId}-ojt`).value        = '';  // empty string = null on server
+            }
 
             const dd = document.getElementById(`${rowId}-dropdown`);
             if (dd) dd.classList.remove('open');

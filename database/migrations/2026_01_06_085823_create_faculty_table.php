@@ -48,6 +48,7 @@ return new class extends Migration
             $table->string('semester')->nullable();
             $table->decimal('lecture_units', 3, 1)->nullable();
             $table->decimal('laboratory_units', 3, 1)->nullable();
+            $table->integer('ojt_hours')->nullable(); // OJT hours
 
             // Class information
             $table->integer('class_size')->default(0);
