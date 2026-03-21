@@ -149,9 +149,15 @@ class FacultyController extends Controller
     {
         try {
             $validated = $request->validate([
-                'name'              => 'required|string|max:255',
-                'faculty_code'      => 'required|string|max:255|unique:faculty,faculty_code|unique:users,faculty_code',
-                'email'             => 'required|email|unique:users,email',
+                'name'         => 'required|string|max:255',
+                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code|unique:users,faculty_code',
+                'email'        => [
+                    'required',
+                    'email',
+                    'unique:users,email',
+                    'regex:/^[a-zA-Z0-9._%+\-]+@slsu\.edu\.ph$/',
+                ],
+
                 'password'          => 'required|confirmed|min:8',
 
                 'program_id'        => 'required|exists:programs,id',
@@ -183,7 +189,7 @@ class FacultyController extends Controller
                 'subjects.*.program_id'       => 'nullable|exists:programs,id',
                 'subjects.*.lecture_units'    => 'nullable|numeric|min:0',
                 'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
-                'subjects.*.ojt_hours'        => 'nullable|numeric|min:0', // numeric not integer
+                'subjects.*.ojt_hours'        => 'nullable|numeric|min:0',
                 'subjects.*.year_level'       => 'nullable|integer|min:1|max:4',
                 'subjects.*.semester'         => 'nullable|string',
                 'subjects.*.class_size'       => 'nullable|integer|min:0',
@@ -249,9 +255,6 @@ class FacultyController extends Controller
                 foreach ($validated['subjects'] as $subject) {
                     $units = $this->resolveSubjectUnits($subject);
 
-                    // Save if:
-                    //   - it is an OJT subject (always save, even if computed hours is null due to class_size=0)
-                    //   - or it has lecture/lab units
                     if (
                         ($units['is_ojt']) ||
                         (($units['lecture_units'] ?? 0) > 0) ||
@@ -264,7 +267,7 @@ class FacultyController extends Controller
                             'program_id'       => $subject['program_id'] ?? $validated['program_id'],
                             'lecture_units'    => $units['lecture_units'],
                             'laboratory_units' => $units['laboratory_units'],
-                            'ojt_hours'        => $units['ojt_hours'], // computed decimal or null
+                            'ojt_hours'        => $units['ojt_hours'],
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
                             'class_size'       => $subject['class_size'] ?? 0,
@@ -412,9 +415,15 @@ class FacultyController extends Controller
 
         try {
             $validated = $request->validate([
-                'name'              => 'required|string|max:255',
-                'faculty_code'      => 'required|string|max:255|unique:faculty,faculty_code,' . $facultyProfile->id . '|unique:users,faculty_code,' . $faculty->id,
-                'email'             => 'required|email|unique:users,email,' . $faculty->id,
+                'name'         => 'required|string|max:255',
+                'faculty_code' => 'required|string|max:255|unique:faculty,faculty_code,' . $facultyProfile->id . '|unique:users,faculty_code,' . $faculty->id,
+                'email'        => [
+                    'required',
+                    'email',
+                    'unique:users,email,' . $faculty->id,
+                    'regex:/^[a-zA-Z0-9._%+\-]+@slsu\.edu\.ph$/',
+                ],
+
                 'password'          => 'nullable|confirmed|min:8',
 
                 'program_id'        => 'required|exists:programs,id',
@@ -447,7 +456,7 @@ class FacultyController extends Controller
                 'subjects.*.program_id'       => 'nullable|exists:programs,id',
                 'subjects.*.lecture_units'    => 'nullable|numeric|min:0',
                 'subjects.*.laboratory_units' => 'nullable|numeric|min:0',
-                'subjects.*.ojt_hours'        => 'nullable|numeric|min:0', // numeric not integer
+                'subjects.*.ojt_hours'        => 'nullable|numeric|min:0',
                 'subjects.*.year_level'       => 'nullable|integer|min:1|max:4',
                 'subjects.*.semester'         => 'nullable|string',
                 'subjects.*.class_size'       => 'nullable|integer|min:0',
@@ -533,9 +542,6 @@ class FacultyController extends Controller
                 foreach ($validated['subjects'] as $subject) {
                     $units = $this->resolveSubjectUnits($subject);
 
-                    // Save if:
-                    //   - it is an OJT subject (always save, even if computed hours is null due to class_size=0)
-                    //   - or it has lecture/lab units
                     if (
                         ($units['is_ojt']) ||
                         (($units['lecture_units'] ?? 0) > 0) ||
@@ -548,7 +554,7 @@ class FacultyController extends Controller
                             'program_id'       => $subject['program_id'] ?? $validated['program_id'],
                             'lecture_units'    => $units['lecture_units'],
                             'laboratory_units' => $units['laboratory_units'],
-                            'ojt_hours'        => $units['ojt_hours'], // computed decimal or null
+                            'ojt_hours'        => $units['ojt_hours'],
                             'year_level'       => $subject['year_level'] ?? null,
                             'semester'         => $subject['semester'] ?? null,
                             'class_size'       => $subject['class_size'] ?? 0,
@@ -702,7 +708,7 @@ class FacultyController extends Controller
                     'enrolled_student' => $fs->subject->enrolled_student ?? 0,
                     'lecture_units'    => $fs->lecture_units,
                     'laboratory_units' => $fs->laboratory_units,
-                    'ojt_hours'        => $fs->ojt_hours, // stored computed decimal
+                    'ojt_hours'        => $fs->ojt_hours,
                     'class_size'       => $fs->class_size,
                     'faculty_code'     => $fs->faculty_code,
                 ]);
@@ -743,9 +749,6 @@ class FacultyController extends Controller
                     if ($subject) {
                         $isOjt = $subject->ojt_hours !== null && $subject->ojt_hours > 0;
 
-                        // Cannot compute OJT hours without class_size — store null.
-                        // The computed value will be set when the faculty is edited
-                        // via the full create/edit form where class_size is provided.
                         FacultySubject::create([
                             'faculty_id'       => $facultyProfile->id,
                             'faculty_code'     => $facultyProfile->faculty_code,
