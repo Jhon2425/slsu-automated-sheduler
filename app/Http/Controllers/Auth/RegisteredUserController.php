@@ -17,35 +17,47 @@ class RegisteredUserController extends Controller
 {
     public function create(): View
     {
-        // No role selection anymore
         return view('auth.register');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'program' => ['required', 'string', 'max:255'], // Admin only
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                'unique:users',
+                'regex:/^[a-zA-Z0-9._%+\-]+@slsu\.edu\.ph$/',
+            ],
+            'password' => [
+                'required',
+                'confirmed',
+                Rules\Password::defaults()
+                    ->min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
+            ],
+            'program'  => ['required', 'string', 'max:255'],
         ]);
 
-        // Always create/get program for admin
         $program = Program::firstOrCreate(
             ['name' => $request->program],
             [
-                'code' => strtoupper(substr($request->program, 0, 4)),
+                'code'        => strtoupper(substr($request->program, 0, 4)),
                 'description' => 'Created during admin registration',
             ]
         );
 
-        // Create ADMIN user only
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'admin',              // 🔒 forced
-            'program' => $program->name,
+            'name'       => $request->name,
+            'email'      => $request->email,
+            'password'   => Hash::make($request->password),
+            'role'       => 'admin',
+            'program'    => $program->name,
             'program_id' => $program->id,
         ]);
 
