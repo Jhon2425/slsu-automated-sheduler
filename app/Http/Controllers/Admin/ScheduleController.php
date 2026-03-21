@@ -17,6 +17,7 @@ class ScheduleController extends Controller
 {
     protected $schedulerService;
 
+    // Day number to name mapping — single source of truth for this controller
     private $dayNames = [
         1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday',
         4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'
@@ -28,26 +29,17 @@ class ScheduleController extends Controller
     }
 
     // =========================================================================
-    // OJT DISPLAY HELPER
-    // =========================================================================
-
-    /**
-     * Round the stored decimal OJT hours to nearest integer for display.
-     * < .5 rounds down, >= .5 rounds up — standard PHP round().
-     * Minimum 1 so a subject always shows at least one hour.
-     */
-    private function roundOjtForDisplay(?float $decimal): ?int
-    {
-        if ($decimal === null || $decimal <= 0) {
-            return null;
-        }
-        return max(1, (int) round($decimal));
-    }
-
-    // =========================================================================
     // INDEX
     // =========================================================================
 
+    /**
+     * Display all schedules with proper day handling.
+     *
+     * SPLIT-SESSION AWARE: Because one subject may now produce multiple rows
+     * (e.g. a 3-unit lecture becomes a 2-hour session on Monday AND a 1-hour
+     * session on Tuesday), we group by subject_id + class_type for the summary
+     * card but keep every individual row for the timetable grid.
+     */
     public function index()
     {
         $schedules = Schedule::with(['subject', 'faculty', 'classroom'])
@@ -57,37 +49,31 @@ class ScheduleController extends Controller
 
         $dayNames = $this->dayNames;
 
+        // Inject day_name onto every schedule model so Blade never has to guess
         $schedules->getCollection()->transform(function ($schedule) use ($dayNames) {
-            $schedule->day_name          = $dayNames[$schedule->day] ?? 'Monday';
-            $schedule->is_ojt            = strtolower($schedule->class_type ?? '') === 'ojt';
-            $schedule->ojt_hours_display = $schedule->is_ojt
-                ? $this->roundOjtForDisplay((float)($schedule->ojt_hours ?? 0))
-                : null;
+            $schedule->day_name = $dayNames[$schedule->day] ?? 'Monday';
             return $schedule;
         });
 
+        // Build per-subject session summary for the index summary card/table.
+        // Groups all split rows back into a single logical entry per subject+type.
         $sessionSummary = $schedules->getCollection()
             ->groupBy(fn($s) => $s->subject_id . '_' . ($s->class_type ?? 'Lecture'))
             ->map(function ($sessions) {
-                $first      = $sessions->first();
-                $totalHours = $sessions->sum('hours');
-                $days       = $sessions->pluck('day_name')->unique()->sort()->values();
-                $isOjt      = strtolower($first->class_type ?? '') === 'ojt';
+                $first       = $sessions->first();
+                $totalHours  = $sessions->sum('hours');
+                $days        = $sessions->pluck('day_name')->unique()->sort()->values();
 
                 return [
-                    'subject_name'      => optional($first->subject)->subject_name ?? 'N/A',
-                    'course_code'       => optional($first->subject)->course_code ?? 'N/A',
-                    'faculty_name'      => optional($first->faculty)->name ?? 'N/A',
-                    'class_type'        => $first->class_type ?? 'Lecture',
-                    'total_hours'       => $totalHours,
-                    'session_count'     => $sessions->count(),
-                    'days'              => $days->implode(', '),
-                    'year_level'        => $first->year_level,
-                    'section'           => $first->section,
-                    'is_ojt'            => $isOjt,
-                    'ojt_hours_display' => $isOjt
-                        ? $this->roundOjtForDisplay((float)($first->ojt_hours ?? 0))
-                        : null,
+                    'subject_name'   => optional($first->subject)->subject_name ?? 'N/A',
+                    'course_code'    => optional($first->subject)->course_code ?? 'N/A',
+                    'faculty_name'   => optional($first->faculty)->name ?? 'N/A',
+                    'class_type'     => $first->class_type ?? 'Lecture',
+                    'total_hours'    => $totalHours,
+                    'session_count'  => $sessions->count(),
+                    'days'           => $days->implode(', '),
+                    'year_level'     => $first->year_level,
+                    'section'        => $first->section,
                 ];
             })
             ->values();
@@ -99,6 +85,13 @@ class ScheduleController extends Controller
     // CREATE / GENERATE PAGE
     // =========================================================================
 
+    /**
+     * Show schedule generation page with faculty data.
+     *
+     * SPLIT-SESSION AWARE: stats now show "sessions to be generated" which
+     * will be higher than the raw assignment count because each subject may
+     * produce 2–4 sessions across different days.
+     */
     public function create()
     {
         $facultyRoleId = DB::table('roles')->where('name', 'faculty')->value('id');
@@ -108,6 +101,7 @@ class ScheduleController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Faculty unavailability summary
         $facultyUnavailability = DB::table('faculty_unavailabilities')
             ->join('users', 'faculty_unavailabilities.faculty_code', '=', 'users.faculty_code')
             ->select(
@@ -118,15 +112,12 @@ class ScheduleController extends Controller
             ->groupBy('users.faculty_code', 'users.name')
             ->get();
 
-        $estimatedRegularSessions = FacultySubject::whereNotNull('lecture_units')
-            ->orWhereNotNull('laboratory_units')
-            ->selectRaw(
-                'SUM(CEIL(COALESCE(lecture_units, 0) / 2)) + SUM(CEIL((COALESCE(laboratory_units, 0) * 3) / 2)) as estimated'
-            )->value('estimated') ?? 0;
-
-        $estimatedOjtSessions = FacultySubject::whereNotNull('ojt_hours')
-            ->where('ojt_hours', '>', 0)
-            ->count();
+        // Estimate expected session count after splitting.
+        // Each lecture unit = 1 contact hour; each lab unit = 3 contact hours.
+        // Hours > 2 get split, so we approximate: ceil(hours / 2) sessions per type.
+        $estimatedSessions = FacultySubject::selectRaw(
+            'SUM(CEIL(lecture_units / 2)) + SUM(CEIL((laboratory_units * 3) / 2)) as estimated'
+        )->value('estimated') ?? 0;
 
         $stats = [
             'total_faculty'               => $faculties->count(),
@@ -135,8 +126,8 @@ class ScheduleController extends Controller
             'programs_count'              => Program::count(),
             'faculties_with_restrictions' => $facultyUnavailability->count(),
             'total_unavailable_slots'     => $facultyUnavailability->sum('unavailable_slots'),
-            'estimated_sessions'          => (int) $estimatedRegularSessions + $estimatedOjtSessions,
-            'ojt_assignments'             => $estimatedOjtSessions,
+            // New: approximate number of schedule rows that will be generated
+            'estimated_sessions'          => (int) $estimatedSessions,
         ];
 
         return view('admin.schedules.generate', compact('faculties', 'stats', 'facultyUnavailability'));
@@ -146,16 +137,16 @@ class ScheduleController extends Controller
     // SHOW
     // =========================================================================
 
+    /**
+     * Show a single schedule (for modal view).
+     */
     public function show($id)
     {
         try {
             $schedule = Schedule::with(['subject', 'faculty', 'classroom'])->findOrFail($id);
-            $schedule->day_name          = $this->dayNames[$schedule->day] ?? 'Monday';
-            $schedule->is_ojt            = strtolower($schedule->class_type ?? '') === 'ojt';
-            $schedule->ojt_hours_display = $schedule->is_ojt
-                ? $this->roundOjtForDisplay((float)($schedule->ojt_hours ?? 0))
-                : null;
+            $schedule->day_name = $this->dayNames[$schedule->day] ?? 'Monday';
 
+            // Find sibling sessions for the same subject + class_type on other days
             $siblings = Schedule::with(['classroom'])
                 ->where('subject_id', $schedule->subject_id)
                 ->where('class_type', $schedule->class_type)
@@ -163,11 +154,7 @@ class ScheduleController extends Controller
                 ->orderByRaw("FIELD(day, 1, 2, 3, 4, 5, 6, 7)")
                 ->get()
                 ->map(function ($s) {
-                    $s->day_name          = $this->dayNames[$s->day] ?? 'Monday';
-                    $s->is_ojt            = strtolower($s->class_type ?? '') === 'ojt';
-                    $s->ojt_hours_display = $s->is_ojt
-                        ? $this->roundOjtForDisplay((float)($s->ojt_hours ?? 0))
-                        : null;
+                    $s->day_name = $this->dayNames[$s->day] ?? 'Monday';
                     return $s;
                 });
 
@@ -175,8 +162,7 @@ class ScheduleController extends Controller
                 return response()->json([
                     'success'  => true,
                     'schedule' => $schedule,
-                    'siblings' => $siblings,
-                    'is_ojt'   => $schedule->is_ojt,
+                    'siblings' => $siblings, // other split sessions for same subject
                 ]);
             }
 
@@ -194,6 +180,13 @@ class ScheduleController extends Controller
     // GENERATE PREVIEW
     // =========================================================================
 
+    /**
+     * Generate schedule preview using the SchedulerService.
+     *
+     * SPLIT-SESSION AWARE: The service now returns multiple rows per subject
+     * (one per split chunk). We store the flat list in the session as-is; the
+     * review page groups them back into a human-readable summary.
+     */
     public function generatePreview(Request $request)
     {
         try {
@@ -202,16 +195,7 @@ class ScheduleController extends Controller
                 'request_data'  => $request->all(),
             ]);
 
-            // Include OJT assignments in the count check
-            $assignmentCount = FacultySubject::where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->whereNotNull('lecture_units')
-                       ->orWhereNotNull('laboratory_units');
-                })->orWhere(function ($q2) {
-                    $q2->whereNotNull('ojt_hours')->where('ojt_hours', '>', 0);
-                });
-            })->count();
-
+            $assignmentCount = FacultySubject::count();
             if ($assignmentCount === 0) {
                 return response()->json([
                     'success'      => false,
@@ -231,32 +215,16 @@ class ScheduleController extends Controller
 
             $result = $this->schedulerService->generateSchedulePreview();
 
+            // Summarise split sessions for the response so the frontend can
+            // show "X sessions across Y days" instead of a raw row count.
             if ($result['success']) {
-                // Inject ojt_hours_rounded into every OJT schedule row
-                // so the frontend can display the rounded value directly
-                $result['schedules'] = array_map(function ($s) {
-                    $isOjt = strtolower($s['class_type'] ?? '') === 'ojt';
-                    if ($isOjt && isset($s['ojt_hours']) && $s['ojt_hours'] > 0) {
-                        $s['ojt_hours_rounded'] = $this->roundOjtForDisplay((float) $s['ojt_hours']);
-                    } else {
-                        $s['ojt_hours_rounded'] = null;
-                    }
-                    return $s;
-                }, $result['schedules']);
-
                 $result['session_summary'] = $this->buildSessionSummary($result['schedules']);
-
-                $result['ojt_summary'] = array_values(array_filter(
-                    $result['session_summary'],
-                    fn($s) => strtolower($s['class_type']) === 'ojt'
-                ));
             }
 
             Log::info('=== SCHEDULE PREVIEW GENERATED ===', [
                 'success'        => $result['success'],
                 'schedule_count' => count($result['schedules']),
                 'conflict_count' => count($result['conflicts']),
-                'ojt_count'      => count($result['ojt_summary'] ?? []),
             ]);
 
             if ($result['success']) {
@@ -287,20 +255,15 @@ class ScheduleController extends Controller
         }
     }
 
+    /**
+     * Generate examination preview separately.
+     */
     public function generateExaminationPreview(Request $request)
     {
         try {
             Log::info('=== GENERATE EXAMINATION PREVIEW START ===');
 
-            $assignmentCount = FacultySubject::where(function ($q) {
-                $q->where(function ($q2) {
-                    $q2->whereNotNull('lecture_units')
-                       ->orWhereNotNull('laboratory_units');
-                })->orWhere(function ($q2) {
-                    $q2->whereNotNull('ojt_hours')->where('ojt_hours', '>', 0);
-                });
-            })->count();
-
+            $assignmentCount = FacultySubject::count();
             if ($assignmentCount === 0) {
                 return response()->json([
                     'success'      => false,
@@ -355,6 +318,17 @@ class ScheduleController extends Controller
     // REVIEW
     // =========================================================================
 
+    /**
+     * Review generated schedule before saving.
+     *
+     * SPLIT-SESSION AWARE: Groups the flat session list into a per-subject
+     * summary so the review table shows one logical row per subject+type
+     * with all split days listed, instead of repeating the same subject
+     * on multiple rows and confusing the reviewer.
+     *
+     * The raw $schedules list is still passed through so the timetable grid
+     * can render every individual block accurately.
+     */
     public function review()
     {
         $schedules    = session('schedule_preview', []);
@@ -366,23 +340,19 @@ class ScheduleController extends Controller
                 ->with('error', 'No schedule preview available. Please generate a schedule first.');
         }
 
+        // --- Timetable grid (raw, one entry per split session) ----------------
         $schedulesByDay     = collect($schedules)->groupBy('day_name');
         $examinationsByDate = collect($examinations)->groupBy('exam_date');
 
+        // --- Human-readable summary table (one row per subject+type) ----------
         $sessionSummary = $this->buildSessionSummary($schedules);
 
+        // --- Stats banner -----------------------------------------------------
         $lectureSessionCount = collect($schedules)->where('class_type', 'Lecture')->count();
         $labSessionCount     = collect($schedules)->where('class_type', 'Laboratory')->count();
-        $ojtSessionCount     = collect($schedules)->filter(
-            fn($s) => strtolower($s['class_type'] ?? '') === 'ojt'
-        )->count();
-        $uniqueSubjects = collect($schedules)->pluck('subject_id')->unique()->count();
+        $uniqueSubjects      = collect($schedules)->pluck('subject_id')->unique()->count();
 
-        $ojtSummary = array_values(array_filter(
-            $sessionSummary,
-            fn($s) => strtolower($s['class_type']) === 'ojt'
-        ));
-
+        // --- Conflict split ---------------------------------------------------
         $unavailabilityConflicts = collect($conflicts)->filter(fn($c) =>
             isset($c['unavailability_count']) && $c['unavailability_count'] > 0
         );
@@ -397,11 +367,9 @@ class ScheduleController extends Controller
             'conflicts',
             'schedulesByDay',
             'examinationsByDate',
-            'sessionSummary',
-            'lectureSessionCount',
+            'sessionSummary',          // NEW: grouped summary for review table
+            'lectureSessionCount',     // NEW: split-session counts
             'labSessionCount',
-            'ojtSessionCount',
-            'ojtSummary',
             'uniqueSubjects',
             'unavailabilityConflicts',
             'otherConflicts'
@@ -412,6 +380,13 @@ class ScheduleController extends Controller
     // CONFIRM / SAVE
     // =========================================================================
 
+    /**
+     * Confirm and save schedules from preview/review.
+     *
+     * SPLIT-SESSION AWARE: The flat list already contains all split rows.
+     * The service's saveSchedule() persists each row individually, so no
+     * change is needed here — we just validate and pass through.
+     */
     public function confirm(Request $request)
     {
         try {
@@ -438,6 +413,7 @@ class ScheduleController extends Controller
                 ], 400);
             }
 
+            // Validate each split session row
             $validationErrors = [];
             foreach ($schedules as $index => $schedule) {
                 if (empty($schedule['faculty_code'])) {
@@ -470,18 +446,10 @@ class ScheduleController extends Controller
                     'examination_conflicts',
                 ]);
 
-                $sessionCount = count($schedules);
-                $subjectCount = count(array_unique(array_column($schedules, 'subject_id')));
-                $ojtCount     = count(array_filter(
-                    $schedules,
-                    fn($s) => strtolower($s['class_type'] ?? '') === 'ojt'
-                ));
-
-                $result['message'] .= " ({$sessionCount} sessions across {$subjectCount} subjects";
-                if ($ojtCount > 0) {
-                    $result['message'] .= ", including {$ojtCount} OJT session(s)";
-                }
-                $result['message'] .= ')';
+                // Append split-session context to success message
+                $sessionCount  = count($schedules);
+                $subjectCount  = count(array_unique(array_column($schedules, 'subject_id')));
+                $result['message'] .= " ({$sessionCount} sessions across {$subjectCount} subjects)";
             }
 
             Log::info('=== SCHEDULE SAVE RESULT ===', [
@@ -501,13 +469,16 @@ class ScheduleController extends Controller
             ]);
 
             return response()->json([
-                'success'       => false,
-                'message'       => 'Critical error: ' . $e->getMessage(),
+                'success' => false,
+                'message' => 'Critical error: ' . $e->getMessage(),
                 'error_details' => ['file' => $e->getFile(), 'line' => $e->getLine()],
             ], 500);
         }
     }
 
+    /**
+     * Confirm and save only examinations.
+     */
     public function confirmExaminations(Request $request)
     {
         try {
@@ -588,6 +559,13 @@ class ScheduleController extends Controller
     // CALENDAR DATA (FullCalendar)
     // =========================================================================
 
+    /**
+     * Get calendar data for FullCalendar.
+     *
+     * SPLIT-SESSION AWARE: Each split row is emitted as its own recurring
+     * event so Monday and Tuesday sessions for the same subject appear as
+     * two separate blocks on the calendar (which is correct behaviour).
+     */
     public function getCalendarData(Request $request)
     {
         try {
@@ -598,15 +576,10 @@ class ScheduleController extends Controller
             $events = $schedules->map(function ($schedule) {
                 $dayName   = $this->dayNames[$schedule->day] ?? 'Monday';
                 $dayNumber = $this->getDayNumber($dayName);
-                $isOjt     = strtolower($schedule->class_type ?? '') === 'ojt';
-                $ojtDisplay = $isOjt
-                    ? $this->roundOjtForDisplay((float)($schedule->ojt_hours ?? 0))
-                    : null;
 
+                // Label split sessions so users can tell them apart on the calendar
                 $sessionLabel = '';
-                if ($isOjt && $ojtDisplay) {
-                    $sessionLabel = " (OJT: {$ojtDisplay}h)";
-                } elseif ($schedule->hours) {
+                if ($schedule->hours) {
                     $sessionLabel = " ({$schedule->hours}h)";
                 }
 
@@ -619,16 +592,13 @@ class ScheduleController extends Controller
                     'startTime'   => $schedule->start_time,
                     'endTime'     => $schedule->end_time,
                     'extendedProps' => [
-                        'faculty'           => optional($schedule->faculty)->name ?? 'N/A',
-                        'classroom'         => $schedule->classroom->room_name ?? $schedule->classroom->name ?? 'N/A',
-                        'type'              => $schedule->class_type ?? 'Lecture',
-                        'year_level'        => $schedule->year_level,
-                        'section'           => $schedule->section,
-                        'hours'             => $schedule->hours,
-                        'class_type'        => $schedule->class_type,
-                        'is_ojt'            => $isOjt,
-                        'ojt_hours_raw'     => $isOjt ? $schedule->ojt_hours : null,
-                        'ojt_hours_display' => $ojtDisplay,
+                        'faculty'       => optional($schedule->faculty)->name ?? 'N/A',
+                        'classroom'     => $schedule->classroom->room_name ?? $schedule->classroom->name ?? 'N/A',
+                        'type'          => $schedule->class_type ?? 'Lecture',
+                        'year_level'    => $schedule->year_level,
+                        'section'       => $schedule->section,
+                        'hours'         => $schedule->hours,           // NEW: hours for this split
+                        'class_type'    => $schedule->class_type,
                     ],
                 ];
             });
@@ -667,6 +637,13 @@ class ScheduleController extends Controller
     // SCHEDULE DATA API (AJAX)
     // =========================================================================
 
+    /**
+     * Get schedule data as JSON for AJAX / timetable rendering.
+     *
+     * SPLIT-SESSION AWARE: Every split row is returned individually so the
+     * frontend timetable can render each block in its correct day column.
+     * The `hours` field is included so the frontend can label each block.
+     */
     public function getScheduleData(Request $request)
     {
         try {
@@ -679,16 +656,14 @@ class ScheduleController extends Controller
                 ->orderBy('start_time')
                 ->get()
                 ->map(function ($schedule) use ($dayNames) {
-                    $schedule->day_name          = $dayNames[$schedule->day] ?? 'Unknown';
-                    $schedule->is_ojt            = strtolower($schedule->class_type ?? '') === 'ojt';
-                    $schedule->ojt_hours_display = $schedule->is_ojt
-                        ? $this->roundOjtForDisplay((float)($schedule->ojt_hours ?? 0))
-                        : null;
+                    $schedule->day_name = $dayNames[$schedule->day] ?? 'Unknown';
                     return $schedule;
                 });
 
             Log::info('Schedules fetched', ['count' => $schedules->count()]);
 
+            // Assign one colour per subject (all split rows of a subject share the same colour
+            // so the timetable visually groups them even across different days)
             $colors = [
                 'pink', 'blue', 'green', 'yellow', 'purple', 'red',
                 'indigo', 'teal', 'orange', 'cyan', 'lime', 'fuchsia',
@@ -704,23 +679,18 @@ class ScheduleController extends Controller
                 }
             }
 
+            // Build a per-subject session summary for any frontend summary panels
             $sessionSummary = $schedules
                 ->groupBy(fn($s) => $s->subject_id . '_' . ($s->class_type ?? 'Lecture'))
                 ->map(function ($sessions) {
                     $first = $sessions->first();
-                    $isOjt = strtolower($first->class_type ?? '') === 'ojt';
-
                     return [
-                        'subject_id'        => $first->subject_id,
-                        'subject_name'      => optional($first->subject)->subject_name ?? 'N/A',
-                        'class_type'        => $first->class_type ?? 'Lecture',
-                        'session_count'     => $sessions->count(),
-                        'total_hours'       => $sessions->sum('hours'),
-                        'days'              => $sessions->pluck('day_name')->unique()->sort()->values(),
-                        'is_ojt'            => $isOjt,
-                        'ojt_hours_display' => $isOjt
-                            ? $this->roundOjtForDisplay((float)($first->ojt_hours ?? 0))
-                            : null,
+                        'subject_id'    => $first->subject_id,
+                        'subject_name'  => optional($first->subject)->subject_name ?? 'N/A',
+                        'class_type'    => $first->class_type ?? 'Lecture',
+                        'session_count' => $sessions->count(),
+                        'total_hours'   => $sessions->sum('hours'),
+                        'days'          => $sessions->pluck('day_name')->unique()->sort()->values(),
                     ];
                 })
                 ->values();
@@ -729,7 +699,7 @@ class ScheduleController extends Controller
                 'success'        => true,
                 'schedules'      => ['data' => $schedules],
                 'subjectColors'  => $subjectColors,
-                'sessionSummary' => $sessionSummary,
+                'sessionSummary' => $sessionSummary, // NEW
             ]);
 
         } catch (\Exception $e) {
@@ -752,6 +722,13 @@ class ScheduleController extends Controller
     // DOWNLOAD PDF
     // =========================================================================
 
+    /**
+     * Download schedules as PDF / printable timetable.
+     *
+     * SPLIT-SESSION AWARE: The timetable grid plots each split session block
+     * individually — a subject with a 2-hour Monday block AND a 1-hour Tuesday
+     * block will show as two separate cells, which is exactly what we want.
+     */
     public function downloadPDF(Request $request)
     {
         try {
@@ -761,8 +738,10 @@ class ScheduleController extends Controller
                 ->get();
 
             $dayNames = $this->dayNames;
-            $days     = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+            $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+            // 30-minute interval slots 07:00 – 19:00
             $timeSlots = [];
             for ($hour = 7; $hour <= 19; $hour++) {
                 $timeSlots[] = sprintf('%02d:00', $hour);
@@ -771,6 +750,7 @@ class ScheduleController extends Controller
                 }
             }
 
+            // Initialise the grid
             $schedulesByDayAndTime = [];
             foreach ($days as $day) {
                 $schedulesByDayAndTime[$day] = [];
@@ -780,10 +760,13 @@ class ScheduleController extends Controller
             }
 
             $occupiedCells = [];
+
+            // Colour assignment — shared across all split rows of the same subject
             $colors = [
                 'pink', 'blue', 'green', 'yellow', 'purple', 'red',
                 'indigo', 'teal', 'orange', 'cyan', 'lime', 'fuchsia',
             ];
+
             $subjectColors = [];
             $colorIndex    = 0;
 
@@ -794,10 +777,17 @@ class ScheduleController extends Controller
                 }
             }
 
+            // Plot each session (including all split rows) onto the grid
             foreach ($schedules as $schedule) {
                 $dayName = $dayNames[$schedule->day] ?? null;
 
-                if (!$dayName || !in_array($dayName, $days)) continue;
+                if (!$dayName || !in_array($dayName, $days)) {
+                    Log::warning('downloadPDF: day not in display list', [
+                        'day_number' => $schedule->day,
+                        'day_name'   => $dayName,
+                    ]);
+                    continue;
+                }
 
                 $startTime = substr($schedule->start_time, 0, 5);
                 $endTime   = substr($schedule->end_time, 0, 5);
@@ -810,9 +800,13 @@ class ScheduleController extends Controller
                 $durationMinutes = $endMinutes - $startMinutes;
                 $rowspan         = max(1, (int)ceil($durationMinutes / 30));
 
+                // Find matching slot (exact match first, then nearest-earlier)
                 $matchedSlot = null;
                 foreach ($timeSlots as $slot) {
-                    if ($slot === $startTime) { $matchedSlot = $slot; break; }
+                    if ($slot === $startTime) {
+                        $matchedSlot = $slot;
+                        break;
+                    }
                 }
 
                 if (!$matchedSlot) {
@@ -822,7 +816,10 @@ class ScheduleController extends Controller
                         $slotMinutes = (int)$slotH * 60 + (int)$slotM;
                         if ($slotMinutes <= $startMinutes) {
                             $diff = $startMinutes - $slotMinutes;
-                            if ($diff < $minDiff) { $minDiff = $diff; $matchedSlot = $slot; }
+                            if ($diff < $minDiff) {
+                                $minDiff     = $diff;
+                                $matchedSlot = $slot;
+                            }
                         }
                     }
                 }
@@ -832,20 +829,17 @@ class ScheduleController extends Controller
                 }
 
                 if ($matchedSlot && isset($schedulesByDayAndTime[$dayName][$matchedSlot])) {
-                    $isOjt = strtolower($schedule->class_type ?? '') === 'ojt';
-
                     $schedule->calculated_rowspan = $rowspan;
                     $schedule->assigned_color     = $subjectColors[$schedule->subject_id] ?? 'gray';
-                    $schedule->is_ojt             = $isOjt;
-                    $schedule->ojt_hours_display  = $isOjt
-                        ? $this->roundOjtForDisplay((float)($schedule->ojt_hours ?? 0))
-                        : null;
 
                     $schedulesByDayAndTime[$dayName][$matchedSlot][] = $schedule;
 
+                    // Mark subsequent cells as occupied (for rowspan rendering)
                     $slotIndex = array_search($matchedSlot, $timeSlots);
                     if ($slotIndex !== false) {
-                        if (!isset($occupiedCells[$dayName])) $occupiedCells[$dayName] = [];
+                        if (!isset($occupiedCells[$dayName])) {
+                            $occupiedCells[$dayName] = [];
+                        }
                         for ($i = 1; $i < $rowspan; $i++) {
                             $nextIndex = $slotIndex + $i;
                             if ($nextIndex < count($timeSlots)) {
@@ -857,8 +851,12 @@ class ScheduleController extends Controller
             }
 
             return view('admin.schedules.print', compact(
-                'schedules', 'days', 'timeSlots',
-                'schedulesByDayAndTime', 'occupiedCells', 'subjectColors'
+                'schedules',
+                'days',
+                'timeSlots',
+                'schedulesByDayAndTime',
+                'occupiedCells',
+                'subjectColors'
             ));
 
         } catch (\Exception $e) {
@@ -951,32 +949,36 @@ class ScheduleController extends Controller
     // PRIVATE HELPERS
     // =========================================================================
 
+    /**
+     * Build a per-subject+type session summary from a flat schedule array.
+     *
+     * Input: flat array of schedule rows (each row = one split session)
+     * Output: array of summary objects grouping all splits for the same
+     *         subject+classType together, listing total hours and all days.
+     *
+     * Used by generatePreview() (response payload) and review() (Blade view).
+     */
     private function buildSessionSummary(array $schedules): array
     {
         $grouped = [];
 
         foreach ($schedules as $s) {
-            $key   = ($s['subject_id'] ?? '') . '_' . ($s['class_type'] ?? 'Lecture');
-            $isOjt = strtolower($s['class_type'] ?? '') === 'ojt';
+            $key = ($s['subject_id'] ?? '') . '_' . ($s['class_type'] ?? 'Lecture');
 
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
-                    'subject_id'        => $s['subject_id']     ?? null,
-                    'subject_name'      => $s['course_subject']  ?? 'N/A',
-                    'course_code'       => $s['course_code']    ?? 'N/A',
-                    'faculty_name'      => $s['faculty_name']   ?? 'N/A',
-                    'faculty_code'      => $s['faculty_code']   ?? 'N/A',
-                    'class_type'        => $s['class_type']     ?? 'Lecture',
-                    'year_level'        => $s['year_level']     ?? null,
-                    'year_section'      => $s['year_section']   ?? null,
-                    'semester'          => $s['semester']       ?? null,
-                    'total_hours'       => 0,
-                    'session_count'     => 0,
-                    'sessions'          => [],
-                    'is_ojt'            => $isOjt,
-                    'ojt_hours_display' => $isOjt
-                        ? $this->roundOjtForDisplay((float)($s['ojt_hours'] ?? 0))
-                        : null,
+                    'subject_id'    => $s['subject_id']    ?? null,
+                    'subject_name'  => $s['course_subject'] ?? 'N/A',
+                    'course_code'   => $s['course_code']   ?? 'N/A',
+                    'faculty_name'  => $s['faculty_name']  ?? 'N/A',
+                    'faculty_code'  => $s['faculty_code']  ?? 'N/A',
+                    'class_type'    => $s['class_type']    ?? 'Lecture',
+                    'year_level'    => $s['year_level']    ?? null,
+                    'year_section'  => $s['year_section']  ?? null,
+                    'semester'      => $s['semester']      ?? null,
+                    'total_hours'   => 0,
+                    'session_count' => 0,
+                    'sessions'      => [],  // individual split details
                 ];
             }
 
@@ -984,18 +986,15 @@ class ScheduleController extends Controller
             $grouped[$key]['total_hours']   += $hours;
             $grouped[$key]['session_count'] += 1;
             $grouped[$key]['sessions'][]     = [
-                'day'               => $s['day_name']   ?? $s['day'] ?? 'N/A',
-                'start_time'        => $s['start_time'] ?? '',
-                'end_time'          => $s['end_time']   ?? '',
-                'hours'             => $hours,
-                'classroom'         => $s['classroom_name'] ?? 'N/A',
-                'is_ojt'            => $isOjt,
-                'ojt_hours_display' => $isOjt
-                    ? $this->roundOjtForDisplay((float)($s['ojt_hours'] ?? 0))
-                    : null,
+                'day'        => $s['day_name'] ?? $s['day'] ?? 'N/A',
+                'start_time' => $s['start_time'] ?? '',
+                'end_time'   => $s['end_time']   ?? '',
+                'hours'      => $hours,
+                'classroom'  => $s['classroom_name'] ?? 'N/A',
             ];
         }
 
+        // Sort sessions within each group by day order
         $dayOrder = array_flip(array_values($this->dayNames));
         foreach ($grouped as &$entry) {
             usort($entry['sessions'], fn($a, $b) =>
@@ -1007,15 +1006,21 @@ class ScheduleController extends Controller
         return array_values($grouped);
     }
 
+    /**
+     * Get FullCalendar day number (0 = Sunday … 6 = Saturday).
+     */
     private function getDayNumber($day): int
     {
         $map = [
-            'Sunday'    => 0, 'Monday' => 1, 'Tuesday'  => 2,
+            'Sunday' => 0, 'Monday' => 1, 'Tuesday' => 2,
             'Wednesday' => 3, 'Thursday' => 4, 'Friday' => 5, 'Saturday' => 6,
         ];
         return $map[$day] ?? 1;
     }
 
+    /**
+     * Get next occurrence of a weekday with a given time (for FullCalendar).
+     */
     private function getNextOccurrence($day, $time): string
     {
         $dayNumber  = $this->getDayNumber($day);

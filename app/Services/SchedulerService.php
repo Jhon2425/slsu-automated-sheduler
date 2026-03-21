@@ -259,11 +259,69 @@ class SchedulerService
     }
 
     /**
+     * Split laboratory contact hours into fixed day-chunks.
+     *
+     * Rules (1 lab unit = 3 contact hours):
+     *   3 hrs  (1 unit)  → [2, 1]          — 2 separate days
+     *   6 hrs  (2 units) → [3, 3]          — 2 separate days
+     *   9 hrs  (3 units) → [3, 3, 3]       — 3 separate days
+     *  12 hrs  (4 units) → [3, 3, 3, 3]    — 4 separate days
+     *
+     * Fallback: greedy chunks of 3, remainder appended.
+     *
+     * Each chunk is placed on a SEPARATE day automatically because
+     * scheduleAssignmentSessions() tracks $usedDays per session.
+     */
+    private function splitLabHoursAcrossDays(int $totalLabHours): array
+    {
+        switch ($totalLabHours) {
+            case 3:
+                // 1 lab unit  → 2-hr session + 1-hr session on different days
+                return [2, 1];
+
+            case 6:
+                // 2 lab units → two 3-hr sessions on different days
+                return [3, 3];
+
+            case 9:
+                // 3 lab units → three 3-hr sessions on different days
+                return [3, 3, 3];
+
+            case 12:
+                // 4 lab units → four 3-hr sessions on different days
+                return [3, 3, 3, 3];
+
+            default:
+                // Generic fallback: greedy chunks of 3, then any remainder
+                $chunks    = [];
+                $remaining = $totalLabHours;
+
+                while ($remaining >= 3) {
+                    $chunks[]  = 3;
+                    $remaining -= 3;
+                }
+
+                if ($remaining > 0) {
+                    $chunks[] = $remaining;
+                }
+
+                Log::warning("⚠️ [LAB SPLIT FALLBACK] Unusual lab hour count", [
+                    'total_lab_hours' => $totalLabHours,
+                    'chunks'          => $chunks,
+                ]);
+
+                return $chunks;
+        }
+    }
+
+    /**
      * Build the full multi-day session distribution for a faculty-subject assignment.
      *
      * 1. OJT subject  → round decimal, split into OJT-typed chunks, return early
-     * 2. Lecture units → 1 unit = 1 contact hour, split into Lecture chunks
-     * 3. Lab units     → 1 unit = 3 contact hours, split into Laboratory chunks
+     * 2. Lecture units → 1 unit = 1 contact hour, split via splitHoursAcrossDays()
+     * 3. Lab units     → 1 unit = 3 contact hours, split via splitLabHoursAcrossDays()
+     *                    3 hrs  → [2, 1]  on 2 separate days
+     *                    6 hrs  → [3, 3]  on 2 separate days
      */
     private function getClassDistributionFromFacultySubject(
         float $lectureUnits,
@@ -307,9 +365,13 @@ class SchedulerService
         }
 
         // ── Laboratory ────────────────────────────────────────────────────────────
+        // Fixed splits enforced by splitLabHoursAcrossDays():
+        //   1 unit (3 hrs) → [2, 1]   on 2 separate days
+        //   2 units (6 hrs) → [3, 3]  on 2 separate days
+        // Each chunk is placed on a different day via $usedDays tracking.
         if ($labUnits > 0) {
             $labContactHours = (int) ($labUnits * 3);
-            $labChunks       = $this->splitHoursAcrossDays($labContactHours);
+            $labChunks       = $this->splitLabHoursAcrossDays($labContactHours);
 
             foreach ($labChunks as $chunkHours) {
                 $distribution[] = ['type' => 'Laboratory', 'hours' => $chunkHours];
