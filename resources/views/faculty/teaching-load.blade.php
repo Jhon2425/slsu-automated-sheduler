@@ -78,25 +78,12 @@
                         @endforeach
 
                         {{-- ── PROGRAM/COURSE ────────────────────────────────────────────── --}}
-                        {{--
-                            Resolution priority (controller already handles this order, but we
-                            add extra blade-level fallbacks so nothing is ever blank):
-
-                            1. $linkedProgram  — resolved from faculty->program_id (Faculty FK) or
-                                                  user->program_id (User FK) in the controller
-                            2. $userPrograms   — resolved from faculty_enrollments pivot or
-                                                  subject.program eager-load
-                            3. Raw string on the user record  ($user->program)
-                            4. Raw string on the faculty record ($faculty->program)
-                        --}}
                         <div class="flex border border-gray-300">
                             <div class="bg-gray-100 px-3 py-2 font-semibold w-1/3">PROGRAM/COURSE:</div>
                             <div class="px-3 py-2 w-2/3">
                                 @php
                                     $programDisplay = null;
 
-                                    // 1. $linkedProgram — comes directly from faculty->program_id
-                                    //    or user->program_id (already resolved in controller)
                                     if (!empty($linkedProgram)) {
                                         $programDisplay = $linkedProgram->code
                                             ?? $linkedProgram->program_name
@@ -104,8 +91,6 @@
                                             ?? null;
                                     }
 
-                                    // 2. $userPrograms collection (faculty_enrollments pivot /
-                                    //    subject.program fallback — also already prioritised in controller)
                                     if (!$programDisplay && $userPrograms->isNotEmpty()) {
                                         $programDisplay = $userPrograms
                                             ->map(fn($p) => $p->code ?? $p->program_name ?? $p->name ?? null)
@@ -113,12 +98,10 @@
                                             ->implode(', ');
                                     }
 
-                                    // 3. Raw program string on the user record
                                     if (!$programDisplay && !empty($user?->program)) {
                                         $programDisplay = $user->program;
                                     }
 
-                                    // 4. Raw program string on the faculty record
                                     if (!$programDisplay && !empty($faculty->program)) {
                                         $programDisplay = $faculty->program;
                                     }
@@ -378,7 +361,7 @@
 
                 {{-- ── Footer ───────────────────────────────────────────── --}}
                 <div class="text-xs text-gray-500 mt-8 text-center">
-                    AA-INS-1.0-9/1, Rev.0 &nbsp;&nbsp;&nbsp;&nbsp; Page 1 of 3
+                    AA-INS-1.0-9/1, Rev.0 &nbsp;&nbsp;&nbsp;&nbsp; Page 1 of 1
                 </div>
 
             </div>{{-- end #teaching-load-document --}}
@@ -403,13 +386,135 @@
         .animation-delay-2000  { animation-delay: 2s; }
         .animation-delay-4000  { animation-delay: 4s; }
 
+        /* ═══════════════════════ PRINT STYLES ═══════════════════════════ */
         @media print {
-            body { background: white !important; }
-            .glass-card, nav, .no-print { display: none !important; }
+
+            /* ── Page setup: landscape + tight margins ── */
+            @page {
+                size: A4 landscape;
+                margin: 8mm 10mm;
+            }
+
+            /* ── Force accurate color rendering ── */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                box-sizing: border-box !important;
+            }
+
+            /* ── Base font shrink so everything fits ── */
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                background: white !important;
+                font-size: 8pt !important;
+            }
+
+            /* ── Hide all UI chrome ── */
+            .glass-card,
+            nav,
+            .no-print,
+            .animate-blob,
+            .absolute.inset-0,
+            .min-h-screen > .absolute {
+                display: none !important;
+            }
+
+            /* ── Remove wrappers' constraints ── */
+            .min-h-screen,
+            .max-w-7xl,
+            .relative.z-10,
+            .px-4, .sm\:px-6, .lg\:px-8 {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: none !important;
+                min-height: unset !important;
+            }
+
+            /* ── The printable document ── */
             #teaching-load-document {
                 box-shadow: none !important;
+                border-radius: 0 !important;
                 margin: 0 !important;
-                padding: 20px !important;
+                padding: 5mm !important;
+                width: 100% !important;
+
+                /* ONE PAGE: prevent any breaks inside */
+                page-break-before: avoid !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                break-before: avoid !important;
+                break-after: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            /* ── Prevent all children from breaking across pages ── */
+            #teaching-load-document *,
+            #teaching-load-document table,
+            #teaching-load-document thead,
+            #teaching-load-document tbody,
+            #teaching-load-document tr,
+            #teaching-load-document td,
+            #teaching-load-document th {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            /* ── Tighten vertical spacing ── */
+            #teaching-load-document .mb-8  { margin-bottom: 2.5mm !important; }
+            #teaching-load-document .mb-6  { margin-bottom: 2mm !important; }
+            #teaching-load-document .mb-4  { margin-bottom: 1.5mm !important; }
+            #teaching-load-document .mt-12 { margin-top: 3mm !important; }
+            #teaching-load-document .mt-16 { margin-top: 4mm !important; }
+            #teaching-load-document .mt-8  { margin-top: 2.5mm !important; }
+            #teaching-load-document .mt-2  { margin-top: 1mm !important; }
+            #teaching-load-document .p-8   { padding: 3mm !important; }
+            #teaching-load-document .p-12  { padding: 4mm !important; }
+            #teaching-load-document .py-8  { padding-top: 2mm !important; padding-bottom: 2mm !important; }
+            #teaching-load-document .pb-6  { padding-bottom: 2mm !important; }
+            #teaching-load-document .gap-4 { gap: 1.5mm !important; }
+            #teaching-load-document .gap-8 { gap: 3mm !important; }
+            #teaching-load-document .space-y-2 > * + * { margin-top: 1mm !important; }
+
+            /* ── Table cell sizing ── */
+            #teaching-load-document th,
+            #teaching-load-document td {
+                padding: 1mm 1.5mm !important;
+                font-size: 7.5pt !important;
+                line-height: 1.2 !important;
+            }
+
+            /* ── Typography ── */
+            #teaching-load-document h1      { font-size: 10pt !important; margin: 0 !important; }
+            #teaching-load-document h2      { font-size: 7.5pt !important; margin: 0 !important; }
+            #teaching-load-document h3      { font-size: 8.5pt !important; margin: 1mm 0 !important; }
+            #teaching-load-document p       { font-size: 7.5pt !important; line-height: 1.3 !important; margin: 0.5mm 0 !important; }
+            #teaching-load-document .text-sm  { font-size: 7.5pt !important; }
+            #teaching-load-document .text-xs  { font-size: 7pt !important; }
+            #teaching-load-document .text-lg  { font-size: 9pt !important; }
+            #teaching-load-document .text-xl  { font-size: 10pt !important; }
+
+            /* ── Logo ── */
+            #teaching-load-document img.h-20 {
+                height: 11mm !important;
+                width: 11mm !important;
+            }
+
+            /* ── Keep two-column and three-column grids ── */
+            #teaching-load-document .grid-cols-2 {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+            }
+            #teaching-load-document .grid-cols-3 {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr 1fr !important;
+            }
+
+            /* ── Signature line spacing ── */
+            #teaching-load-document .border-t-2.border-gray-800 {
+                margin-top: 5mm !important;
             }
         }
     </style>
