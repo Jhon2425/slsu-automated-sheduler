@@ -4,7 +4,8 @@
 
             <!-- Breadcrumb -->
             <nav class="flex items-center text-sm text-white/80 mb-6">
-                <a href="{{ route('admin.dashboard') }}" class="flex items-center hover:text-violet-400 transition-colors">
+                <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('faculty.dashboard') }}"
+                   class="flex items-center hover:text-violet-400 transition-colors">
                     <i class="fas fa-home mr-2"></i>
                     Dashboard
                 </a>

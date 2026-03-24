@@ -52,16 +52,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     // Password Update
     Route::put('/password', [\App\Http\Controllers\Auth\PasswordController::class, 'update'])->name('password.update');
-    
+
     // Email Verification
     Route::post('/email/verification-notification', function (Illuminate\Http\Request $request) {
         $request->user()->sendEmailVerificationNotification();
         return back()->with('status', 'verification-link-sent');
     })->middleware('throttle:6,1')->name('verification.send');
-    
+
     Route::get('/settings', fn () => view('settings'))->name('settings');
 
     /*
@@ -108,14 +108,14 @@ Route::middleware('auth')->group(function () {
         |---------------- EXAM SCHEDULE MANAGEMENT ----------------
         | Manual exam schedule creation and management
         */
-            Route::prefix('exam-schedules')->name('exam-schedules.')->group(function () {
-                Route::get('/', [ExaminationController::class, 'index'])->name('index');
-                Route::get('/create', [ExaminationController::class, 'create'])->name('create');
-                Route::post('/', [ExaminationController::class, 'store'])->name('store');
-                Route::get('/{examSchedule}/edit', [ExaminationController::class, 'edit'])->name('edit');
-                Route::put('/{examSchedule}', [ExaminationController::class, 'update'])->name('update');
-                Route::delete('/{examSchedule}', [ExaminationController::class, 'destroy'])->name('destroy');
-            });
+        Route::prefix('exam-schedules')->name('exam-schedules.')->group(function () {
+            Route::get('/', [ExaminationController::class, 'index'])->name('index');
+            Route::get('/create', [ExaminationController::class, 'create'])->name('create');
+            Route::post('/', [ExaminationController::class, 'store'])->name('store');
+            Route::get('/{examSchedule}/edit', [ExaminationController::class, 'edit'])->name('edit');
+            Route::put('/{examSchedule}', [ExaminationController::class, 'update'])->name('update');
+            Route::delete('/{examSchedule}', [ExaminationController::class, 'destroy'])->name('destroy');
+        });
 
         /*
         |---------------- CLASS SCHEDULE MANAGEMENT ----------------
@@ -206,8 +206,13 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     | Faculty Routes
     |--------------------------------------------------------------------------
+    | Prefix changed from 'faculty' to 'faculty-portal' to avoid conflict
+    | with the admin's /admin/faculty/* management routes.
+    | Route NAMES remain the same (faculty.dashboard, etc.) so no other
+    | files need to be changed.
+    |--------------------------------------------------------------------------
     */
-    Route::prefix('faculty')
+    Route::prefix('faculty-portal')         // ← was 'faculty' (caused the conflict)
         ->middleware('faculty')
         ->name('faculty.')
         ->group(function () {
@@ -234,15 +239,15 @@ Route::middleware('auth')->group(function () {
         | Faculty Teaching Load Document (Official Format)
         */
         Route::prefix('teaching-load')->name('teaching-load.')->group(function () {
-            
+
             // View Teaching Load
             Route::get('/', [TeachingLoadController::class, 'index'])
                 ->name('index');
-            
+
             // Download Teaching Load PDF
             Route::get('/download-pdf', [TeachingLoadController::class, 'downloadPdf'])
                 ->name('download-pdf');
-            
+
             // Filter by Academic Year and Semester (optional)
             Route::get('/filter', [TeachingLoadController::class, 'index'])
                 ->name('filter');

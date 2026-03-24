@@ -6,7 +6,8 @@
 
         <!-- Left: Logo -->
         <div class="flex items-center space-x-3">
-            <a href="{{ route('admin.dashboard') }}" class="flex items-center space-x-3 group">
+            <a href="{{ auth()->user()->role === 'admin' ? route('admin.dashboard') : route('faculty.dashboard') }}" 
+               class="flex items-center space-x-3 group">
                 <div class="relative">
                     <img src="{{ asset('slsu-logo.png') }}" alt="Logo" class="h-10 w-10 rounded-full transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
                     <div class="absolute inset-0 rounded-full bg-[#fae209] opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300"></div>

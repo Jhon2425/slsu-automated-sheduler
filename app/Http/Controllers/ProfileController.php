@@ -16,8 +16,15 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user()->load('role'); // eager load role relationship
+
+        $dashboardRoute = $user->isAdmin()
+            ? route('admin.dashboard')
+            : route('faculty.dashboard');
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user'           => $user,
+            'dashboardRoute' => $dashboardRoute,
         ]);
     }
 

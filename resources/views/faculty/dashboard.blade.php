@@ -153,14 +153,6 @@
                                 <i class="fas fa-eye text-xl"></i>
                                 <span>View My Schedule</span>
                             </a>
-                            <button onclick="window.print()" class="bg-green-500/40 backdrop-blur-md hover:bg-green-500/60 text-white px-8 py-4 rounded-xl shadow-lg font-semibold border border-white/30 transition-all inline-flex items-center gap-3 hover:scale-105">
-                                <i class="fas fa-print text-xl"></i>
-                                <span>Print Schedule</span>
-                            </button>
-                            <a href="{{ route('faculty.teaching-load.download-pdf') }}" class="bg-red-500/40 backdrop-blur-md hover:bg-red-500/60 text-white px-8 py-4 rounded-xl shadow-lg font-semibold border border-white/30 transition-all inline-flex items-center gap-3 hover:scale-105">
-                                <i class="fas fa-download text-xl"></i>
-                                <span>Download PDF</span>
-                            </a>
                         </div>
                     </div>
                 </div>
