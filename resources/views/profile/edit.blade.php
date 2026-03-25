@@ -172,4 +172,4 @@
             color: #60a5fa;
         }
     </style>
-</x-app-layout>
+</x-app-layout>   

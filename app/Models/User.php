@@ -19,19 +19,15 @@ class User extends Authenticatable
 
     protected $casts = ['email_verified_at' => 'datetime', 'password' => 'hashed'];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
     public function role()
     {
         return $this->belongsTo(Role::class);
-    }
-
-    public function isAdmin()
-    {
-        return $this->role->name === 'admin';
-    }
-
-    public function isFaculty()
-    {
-        return $this->role->name === 'faculty';
     }
 
     public function enrollments()
@@ -57,9 +53,6 @@ class User extends Authenticatable
         return $this->hasOne(Program::class, 'admin_id');
     }
 
-    /**
-     * Get the subjects assigned to this faculty member.
-     */
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'faculty_subject', 'faculty_id', 'subject_id')
@@ -67,19 +60,41 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 
-    /**
-     * Get the faculty subject assignments for this faculty member.
-     */
     public function facultySubjects()
     {
         return $this->hasMany(FacultySubject::class, 'faculty_id');
     }
 
-    /**
-     * Get the faculty profile associated with the user
-     */
     public function faculty()
     {
         return $this->hasOne(Faculty::class);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Role Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Returns the role name as a plain string.
+     * Allows blade to do: auth()->user()->role === 'admin'
+     * without breaking the belongsTo relationship internally.
+     */
+    public function getRoleAttribute(): string
+    {
+        return $this->getRelationValue('role')?->name
+            ?? Role::find($this->role_id)?->name
+            ?? '';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->getRoleAttribute() === 'admin';
+    }
+
+    public function isFaculty(): bool
+    {
+        return $this->getRoleAttribute() === 'faculty';
     }
 }

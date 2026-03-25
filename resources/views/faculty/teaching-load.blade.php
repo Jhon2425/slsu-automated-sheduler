@@ -333,30 +333,34 @@
                 </div>
 
                 {{-- ── Signatures ───────────────────────────────────────── --}}
-                <div class="grid grid-cols-2 gap-8 mt-12">
-                    <div class="text-center">
+                <div class="grid grid-cols-3 gap-8 mt-12 text-center">
+
+                    {{-- Faculty signature --}}
+                    <div class="flex flex-col justify-end">
                         <div class="border-t-2 border-gray-800 pt-2 mt-16">
                             <p class="font-bold">{{ $faculty->name }}</p>
                             <p class="text-xs text-gray-600">Signature Over Printed Name</p>
                         </div>
                     </div>
-                    <div>
-                        <p class="text-sm mb-4"><strong>Noted by:</strong></p>
-                        <div class="text-center">
-                            <div class="border-t-2 border-gray-800 pt-2 mt-12">
-                                <p class="font-bold">{{ $campusDirector }}</p>
-                                <p class="text-xs text-gray-600">Campus Director, SLSU-Tiaong</p>
-                            </div>
+
+                    {{-- Campus Director --}}
+                    <div class="flex flex-col justify-end">
+                        <p class="text-sm mb-2"><strong>Noted by:</strong></p>
+                        <div class="border-t-2 border-gray-800 pt-2 mt-12">
+                            <p class="font-bold">{{ $campusDirector }}</p>
+                            <p class="text-xs text-gray-600">Campus Director, SLSU-Tiaong</p>
                         </div>
                     </div>
-                </div>
 
-                <div class="text-center mt-12">
-                    <div class="border-t-2 border-gray-800 pt-2 inline-block min-w-[300px]">
-                        <p class="font-bold">Dhenalyn A. Dejelo, PhD</p>
-                        <p class="text-xs text-gray-600">Vice President, Academic Affairs</p>
+                    {{-- VP Academic Affairs --}}
+                    <div class="flex flex-col justify-end">
+                        <p class="text-sm mb-2"><strong>Approved:</strong></p>
+                        <div class="border-t-2 border-gray-800 pt-2 mt-12">
+                            <p class="font-bold">Dhenalyn A. Dejelo, PhD</p>
+                            <p class="text-xs text-gray-600">Vice President, Academic Affairs</p>
+                        </div>
                     </div>
-                    <p class="text-xs mt-2">Approved:</p>
+
                 </div>
 
                 {{-- ── Footer ───────────────────────────────────────────── --}}
@@ -510,6 +514,18 @@
             #teaching-load-document .grid-cols-3 {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr 1fr !important;
+            }
+
+            /* ── Signature section ── */
+            #teaching-load-document .grid-cols-3.mt-12 {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr 1fr !important;
+                text-align: center !important;
+            }
+            #teaching-load-document .grid-cols-3.mt-12 > div {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-end !important;
             }
 
             /* ── Signature line spacing ── */

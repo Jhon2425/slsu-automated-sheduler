@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
         return back()->with('status', 'verification-link-sent');
     })->middleware('throttle:6,1')->name('verification.send');
 
+    // Settings Page
     Route::get('/settings', fn () => view('settings'))->name('settings');
 
     /*
@@ -106,7 +107,6 @@ Route::middleware('auth')->group(function () {
 
         /*
         |---------------- EXAM SCHEDULE MANAGEMENT ----------------
-        | Manual exam schedule creation and management
         */
         Route::prefix('exam-schedules')->name('exam-schedules.')->group(function () {
             Route::get('/', [ExaminationController::class, 'index'])->name('index');
@@ -157,7 +157,6 @@ Route::middleware('auth')->group(function () {
 
         /*
         |---------------- EXAMINATION SCHEDULE MANAGEMENT ----------------
-        | Auto-generated examination schedules (from scheduler)
         */
         Route::prefix('examinations')->name('examinations.')->group(function () {
 
@@ -196,7 +195,6 @@ Route::middleware('auth')->group(function () {
 
         /*
         |---------------- VIEW GENERATED ARCHIVES ----------------
-        | View all previously generated schedules and examinations
         */
         Route::get('/view-generated-archives', [ArchiveController::class, 'index'])
             ->name('archives.index');
@@ -206,13 +204,8 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     | Faculty Routes
     |--------------------------------------------------------------------------
-    | Prefix changed from 'faculty' to 'faculty-portal' to avoid conflict
-    | with the admin's /admin/faculty/* management routes.
-    | Route NAMES remain the same (faculty.dashboard, etc.) so no other
-    | files need to be changed.
-    |--------------------------------------------------------------------------
     */
-    Route::prefix('faculty-portal')         // ← was 'faculty' (caused the conflict)
+    Route::prefix('faculty-portal')
         ->middleware('faculty')
         ->name('faculty.')
         ->group(function () {
@@ -236,19 +229,15 @@ Route::middleware('auth')->group(function () {
 
         /*
         |---------------- TEACHING LOAD MANAGEMENT ----------------
-        | Faculty Teaching Load Document (Official Format)
         */
         Route::prefix('teaching-load')->name('teaching-load.')->group(function () {
 
-            // View Teaching Load
             Route::get('/', [TeachingLoadController::class, 'index'])
                 ->name('index');
 
-            // Download Teaching Load PDF
             Route::get('/download-pdf', [TeachingLoadController::class, 'downloadPdf'])
                 ->name('download-pdf');
 
-            // Filter by Academic Year and Semester (optional)
             Route::get('/filter', [TeachingLoadController::class, 'index'])
                 ->name('filter');
         });
