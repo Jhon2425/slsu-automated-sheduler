@@ -276,23 +276,14 @@ class SchedulerService
     {
         switch ($totalLabHours) {
             case 3:
-                // 1 lab unit  → 2-hr session + 1-hr session on different days
                 return [2, 1];
-
             case 6:
-                // 2 lab units → two 3-hr sessions on different days
                 return [3, 3];
-
             case 9:
-                // 3 lab units → three 3-hr sessions on different days
                 return [3, 3, 3];
-
             case 12:
-                // 4 lab units → four 3-hr sessions on different days
                 return [3, 3, 3, 3];
-
             default:
-                // Generic fallback: greedy chunks of 3, then any remainder
                 $chunks    = [];
                 $remaining = $totalLabHours;
 
@@ -316,12 +307,6 @@ class SchedulerService
 
     /**
      * Build the full multi-day session distribution for a faculty-subject assignment.
-     *
-     * 1. OJT subject  → round decimal, split into OJT-typed chunks, return early
-     * 2. Lecture units → 1 unit = 1 contact hour, split via splitHoursAcrossDays()
-     * 3. Lab units     → 1 unit = 3 contact hours, split via splitLabHoursAcrossDays()
-     *                    3 hrs  → [2, 1]  on 2 separate days
-     *                    6 hrs  → [3, 3]  on 2 separate days
      */
     private function getClassDistributionFromFacultySubject(
         float $lectureUnits,
@@ -345,7 +330,7 @@ class SchedulerService
                 'chunks'            => $ojtChunks,
             ]);
 
-            return $distribution; // OJT has no lecture/lab — return early
+            return $distribution;
         }
 
         // ── Lecture ───────────────────────────────────────────────────────────────
@@ -365,10 +350,6 @@ class SchedulerService
         }
 
         // ── Laboratory ────────────────────────────────────────────────────────────
-        // Fixed splits enforced by splitLabHoursAcrossDays():
-        //   1 unit (3 hrs) → [2, 1]   on 2 separate days
-        //   2 units (6 hrs) → [3, 3]  on 2 separate days
-        // Each chunk is placed on a different day via $usedDays tracking.
         if ($labUnits > 0) {
             $labContactHours = (int) ($labUnits * 3);
             $labChunks       = $this->splitLabHoursAcrossDays($labContactHours);
@@ -418,6 +399,7 @@ class SchedulerService
                     'faculty_subject.id as assignment_id',
                     'faculty_subject.faculty_code',
                     'faculty_subject.subject_id',
+                    'faculty_subject.program_id',   // ← FIX: include program_id
                     'faculty_subject.lecture_units',
                     'faculty_subject.laboratory_units',
                     'faculty_subject.ojt_hours',
@@ -558,6 +540,7 @@ class SchedulerService
                     'faculty_subject.id as assignment_id',
                     'faculty_subject.faculty_code',
                     'faculty_subject.subject_id',
+                    'faculty_subject.program_id',   // ← FIX: include program_id
                     'faculty_subject.lecture_units',
                     'faculty_subject.laboratory_units',
                     'faculty_subject.ojt_hours',
@@ -863,13 +846,20 @@ class SchedulerService
                             ? $this->roundOjtHoursForTimetable($ojtDecimal)
                             : (float)($assignment->lecture_units ?? 0) + (float)($assignment->laboratory_units ?? 0);
 
+                        // ── FIX: resolve program_id from the assignment ────────
+                        // Priority: faculty_subject.program_id → subjects.program_id → null
+                        $programId = $assignment->program_id
+                            ?? Subject::find($assignment->subject_id)?->program_id
+                            ?? null;
+
                         Log::info("✅ [SCHEDULED] Slot confirmed", [
-                            'faculty'    => $assignment->faculty_name,
-                            'subject'    => $assignment->subject_name,
-                            'class_type' => $classType,
-                            'day'        => $day,
-                            'time'       => "{$timeSlot['start']}–{$timeSlot['end']}",
-                            'hours'      => $hours,
+                            'faculty'     => $assignment->faculty_name,
+                            'subject'     => $assignment->subject_name,
+                            'class_type'  => $classType,
+                            'day'         => $day,
+                            'time'        => "{$timeSlot['start']}–{$timeSlot['end']}",
+                            'hours'       => $hours,
+                            'program_id'  => $programId,
                         ]);
 
                         return [
@@ -877,6 +867,7 @@ class SchedulerService
                             'faculty_code'      => $assignment->faculty_code,
                             'subject_id'        => $assignment->subject_id,
                             'classroom_id'      => $classroom->id,
+                            'program_id'        => $programId,   // ← FIX: now included
                             'day'               => $day,
                             'day_name'          => $day,
                             'start_time'        => $timeSlot['start'],
@@ -1217,11 +1208,20 @@ class SchedulerService
                     $currentYear = now()->year;
                     $nextYear    = $currentYear + 1;
 
+                    // ── FIX: resolve program_id with fallback chain ────────────
+                    // 1. Directly from schedule row (set by findAvailableSlotForAssignment)
+                    // 2. Fallback: look up via the subject's program_id
+                    // 3. Fallback: null
+                    $programId = $schedule['program_id']
+                        ?? Subject::find($schedule['subject_id'])?->program_id
+                        ?? null;
+
                     Schedule::create([
                         'faculty_id'        => $schedule['faculty_id'],
                         'faculty_code'      => $schedule['faculty_code'] ?? null,
                         'subject_id'        => $schedule['subject_id'],
                         'classroom_id'      => $schedule['classroom_id'],
+                        'program_id'        => $programId,              // ← FIX: now saved
                         'day'               => $dayNumber,
                         'start_time'        => $startTime,
                         'end_time'          => $endTime,

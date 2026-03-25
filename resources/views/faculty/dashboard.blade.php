@@ -208,11 +208,11 @@
                                                                     <i class="fas fa-door-open mr-1"></i>
                                                                     {{ $schedule->classroom->room_name ?? 'Room TBA' }}
                                                                 </span>
-                                                                <span>
-                                                                    <i class="fas fa-graduation-cap mr-1"></i>
-                                                                    {{ $schedule->subject->program->code ?? 'Program TBA' }}
-                                                                    {{ $schedule->year_level ? '— Year ' . $schedule->year_level : '' }}
-                                                                </span>
+                                                              <span>
+                                                                <i class="fas fa-graduation-cap mr-1"></i>
+                                                                {{ $schedule->program->code ?? $schedule->subject->program->code ?? 'Program TBA' }}
+                                                                {{ $schedule->year_level ? '— Year ' . $schedule->year_level : '' }}
+                                                            </span>
                                                             </div>
                                                         </div>
                                                         <div class="text-right ml-4">

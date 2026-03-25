@@ -35,10 +35,6 @@
                             class="bg-blue-500/30 backdrop-blur-md hover:bg-blue-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
                             <i class="fas fa-print mr-2"></i>Print
                         </button>
-                        <a href="{{ route('faculty.teaching-load.download-pdf') }}"
-                            class="bg-red-500/30 backdrop-blur-md hover:bg-red-500/40 text-white px-6 py-3 rounded-xl shadow-lg font-semibold border border-white/30 transition-all">
-                            <i class="fas fa-file-pdf mr-2"></i>Download PDF
-                        </a>
                     </div>
                 </div>
             </div>
