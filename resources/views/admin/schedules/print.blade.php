@@ -7,10 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-   <!-- FAVICON -->
-    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">
-    <link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=1">
-    <link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">
+<!-- FAVICON -->
+<link rel="icon" type="image/png" href="{{ asset('images/slsu-logo.png') }}?v=3">
+<link rel="apple-touch-icon" href="{{ asset('images/slsu-logo.png') }}">
 <style>
 :root {
     --forest:#2D4A35; --forest-mid:#3E6347; --forest-light:#6D9773; --forest-pale:#B8D4BC;
@@ -173,313 +172,371 @@ tr.h-start td{border-top:2px solid #B8C8BA !important;}
 <body>
 
 <div class="wm" aria-hidden="true">
-    <img src="{{ asset('slsu-logo.png') }}" alt="">
+    <img src="{{ asset('images/slsu-logo.png') }}" alt="">
 </div>
 
 <div class="btn-wrap no-print">
-<button class="btn-print" onclick="window.print()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 6 2 18 2 18 9"/>
-        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-        <rect x="6" y="14" width="12" height="8"/>
-    </svg>
-    Print Schedule
-</button>
+    <button class="btn-print" onclick="window.print()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Print Schedule
+    </button>
 </div>
 
 <div class="page" id="printPage">
 
-<div class="hdr">
-    <div class="hdr-logo"><img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo"></div>
-    <div class="hdr-center">
-        <div class="hdr-uni">Southern Luzon State University</div>
-        <div class="hdr-campus">Tiaong Campus</div>
-        <div class="hdr-addr">Tiaong, Quezon, Philippines</div>
-    </div>
-    <div class="hdr-logo"><img src="{{ asset('slsu-logo.png') }}" alt="SLSU Logo"></div>
-</div>
-
-<div class="hdr-rule"></div>
-
-<div class="banner">
-    <div class="banner-l">
-        <div class="banner-title">
-            @if(isset($scheduleType) && $scheduleType === 'examination')
-                Examination Schedule
-            @else
-                Class Schedule
-            @endif
+    {{-- ═══ HEADER ═══ --}}
+    <div class="hdr">
+        <div class="hdr-logo"><img src="{{ asset('images/slsu-logo.png') }}" alt="SLSU Logo"></div>
+        <div class="hdr-center">
+            <div class="hdr-uni">Southern Luzon State University</div>
+            <div class="hdr-campus">Tiaong Campus</div>
+            <div class="hdr-addr">Tiaong, Quezon, Philippines</div>
         </div>
-        <div class="banner-sub">
-            @if(isset($semester))
-                {{ $semester }} Semester
-            @else
-                First Semester
-            @endif
-            &nbsp;&#183;&nbsp; S.Y.&nbsp;{{ isset($schoolYear) ? $schoolYear : date('Y').'-'.(date('Y')+1) }}
+        <div class="hdr-logo"><img src="{{ asset('images/slsu-logo.png') }}" alt="SLSU Logo"></div>
+    </div>
+
+    <div class="hdr-rule"></div>
+
+    {{-- ═══ BANNER ═══ --}}
+    <div class="banner">
+        <div class="banner-l">
+            <div class="banner-title">
+                @if(isset($scheduleType) && $scheduleType === 'examination')
+                    Examination Schedule
+                @else
+                    Class Schedule
+                @endif
+            </div>
+            <div class="banner-sub">
+                @if(isset($semester))
+                    {{ $semester }} Semester
+                @else
+                    First Semester
+                @endif
+                &nbsp;&#183;&nbsp; S.Y.&nbsp;{{ isset($schoolYear) ? $schoolYear : date('Y').'-'.(date('Y')+1) }}
+            </div>
+        </div>
+        <div class="banner-r">
+            <div class="banner-meta">Generated <strong>{{ date('F j, Y') }}</strong></div>
+            <div class="banner-meta">By <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong></div>
         </div>
     </div>
-    <div class="banner-r">
-        <div class="banner-meta">Generated <strong>{{ date('F j, Y') }}</strong></div>
-        <div class="banner-meta">By <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong></div>
-    </div>
-</div>
 
-@php
-    $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    {{-- ═══ PHP DATA PROCESSING (ALL BUGS FIXED) ═══ --}}
+    @php
+        $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-    $allSlots = [];
-    for ($h = 7; $h <= 19; $h++) {
-        $allSlots[] = sprintf('%02d:00', $h);
-        if ($h < 19) {
-            $allSlots[] = sprintf('%02d:30', $h);
-        }
-    }
-
-    $palette   = ['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12'];
-    $subColors = [];
-    $colorIdx  = 0;
-
-    $grid = [];
-    $occupied = [];
-    foreach ($days as $d) {
-        $grid[$d]     = array_fill_keys($allSlots, []);
-        $occupied[$d] = [];
-    }
-
-    $minSlotIdx = count($allSlots) - 1;
-    $maxSlotIdx = 0;
-
-    foreach ($schedules as $sch) {
-        $dayName = $sch->day_name ?? ($sch->day ?? null);
-        if (!in_array($dayName, $days)) continue;
-
-        if (!isset($subColors[$sch->subject_id])) {
-            $subColors[$sch->subject_id] = $palette[$colorIdx % count($palette)];
-            $colorIdx++;
+        /* Build 30-min slots 07:00 → 19:00 */
+        $allSlots = [];
+        for ($h = 7; $h <= 19; $h++) {
+            $allSlots[] = sprintf('%02d:00', $h);
+            if ($h < 19) $allSlots[] = sprintf('%02d:30', $h);
         }
 
-        $st = substr($sch->start_time, 0, 5);
-        $et = substr($sch->end_time,   0, 5);
+        $palette   = ['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12'];
+        $subColors = [];
+        $colorIdx  = 0;
 
-        $stParts = explode(':', $st);
-        $etParts = explode(':', $et);
-        $durMins  = ((int)$etParts[0] * 60 + (int)$etParts[1]) - ((int)$stParts[0] * 60 + (int)$stParts[1]);
-        $rowspan  = max(1, (int)ceil($durMins / 30));
+        /* Initialise grid and occupied maps */
+        $grid     = [];
+        $occupied = [];
+        foreach ($days as $d) {
+            $grid[$d]     = array_fill_keys($allSlots, []);
+            $occupied[$d] = [];
+        }
 
-        $sch->_rowspan = $rowspan;
-        $sch->_color   = $subColors[$sch->subject_id];
+        $usedSlotIdxMin = count($allSlots) - 1;
+        $usedSlotIdxMax = 0;
 
-        $startMins   = (int)$stParts[0] * 60 + (int)$stParts[1];
-        $matchedSlot = null;
-        $matchedIdx  = 0;
+        foreach ($schedules as $sch) {
+            /* ── Resolve day name ── */
+            $dayName = $sch->day_name ?? ($sch->day ?? null);
+            if (!in_array($dayName, $days)) continue;
 
-        foreach ($allSlots as $si => $ts) {
-            if ($ts === $st) {
-                $matchedSlot = $ts;
-                $matchedIdx  = $si;
-                break;
+            /* ── Assign colour per subject ── */
+            if (!isset($subColors[$sch->subject_id])) {
+                $subColors[$sch->subject_id] = $palette[$colorIdx % count($palette)];
+                $colorIdx++;
             }
-        }
 
-        if (!$matchedSlot) {
-            $best = PHP_INT_MAX;
+            /*
+             * FIX 1 — Normalise time strings with date('H:i', strtotime(...))
+             * This handles '7:30:00', '07:30:00', '07:30', '7:30' uniformly.
+             */
+            $st = date('H:i', strtotime($sch->start_time));
+            $et = date('H:i', strtotime($sch->end_time));
+
+            [$sh, $sm] = explode(':', $st);
+            [$eh, $em] = explode(':', $et);
+
+            $durMins = ((int)$eh * 60 + (int)$em) - ((int)$sh * 60 + (int)$sm);
+            /* Guard against midnight-crossing or zero-duration entries */
+            if ($durMins <= 0) $durMins = 60;
+            $rowspan = max(1, (int)ceil($durMins / 30));
+
+            $sch->_rowspan = $rowspan;
+            $sch->_color   = $subColors[$sch->subject_id];
+
+            $startMins = (int)$sh * 60 + (int)$sm;
+
+            /*
+             * FIX 2 — Use strict null check for matchedSlot.
+             * Previous code used `!$matchedSlot` which is falsy for '00:00'.
+             */
+            $matchedSlot = null;
+            $matchedIdx  = null;
+
+            /* Exact match first */
             foreach ($allSlots as $si => $ts) {
-                $tsParts = explode(':', $ts);
-                $tMins   = (int)$tsParts[0] * 60 + (int)$tsParts[1];
-                if ($tMins <= $startMins && ($startMins - $tMins) < $best) {
-                    $best        = $startMins - $tMins;
+                if ($ts === $st) {
                     $matchedSlot = $ts;
                     $matchedIdx  = $si;
+                    break;
                 }
             }
-        }
 
-        if ($matchedSlot && isset($grid[$dayName][$matchedSlot])) {
-            $grid[$dayName][$matchedSlot][] = $sch;
-
-            if ($matchedIdx < $minSlotIdx) $minSlotIdx = $matchedIdx;
-            $endIdx2 = $matchedIdx + $rowspan - 1;
-            if ($endIdx2 > $maxSlotIdx) $maxSlotIdx = $endIdx2;
-
-            for ($i = 1; $i < $rowspan; $i++) {
-                $ni = $matchedIdx + $i;
-                if ($ni < count($allSlots)) {
-                    $occupied[$dayName][$allSlots[$ni]] = true;
-                }
-            }
-        }
-    }
-
-    $startIdx2 = 0;
-    $endIdx3   = count($allSlots) - 1;
-
-    $timeSlots = $allSlots;
-
-    $legendItems = [];
-    foreach ($subColors as $subId => $color) {
-        foreach ($schedules as $sch) {
-            if ($sch->subject_id == $subId) {
-                $legendItems[$subId] = [
-                    'color' => $color,
-                    'code'  => optional($sch->subject)->course_code  ?? 'N/A',
-                    'name'  => optional($sch->subject)->subject_name ?? 'N/A',
-                ];
-                break;
-            }
-        }
-    }
-
-    $colorHex = [
-        'c1'  => '#2D4A35', 'c2'  => '#1A3A5C', 'c3'  => '#5C2D1A', 'c4'  => '#3D1A5C',
-        'c5'  => '#1A4A4A', 'c6'  => '#4A3D1A', 'c7'  => '#1A3D1A', 'c8'  => '#4A1A2D',
-        'c9'  => '#1A2D4A', 'c10' => '#2D4A1A', 'c11' => '#4A2D1A', 'c12' => '#1A4A3D',
-    ];
-@endphp
-
-<div class="tbl-wrap">
-<table>
-    <colgroup>
-        <col class="col-t">
-        @foreach($days as $d)
-            <col class="col-d">
-        @endforeach
-    </colgroup>
-    <thead>
-        <tr>
-            <th style="background:var(--ink);color:var(--ink-ghost);font-size:9px;letter-spacing:.1em;">TIME</th>
-            @foreach($days as $d)
-                <th>{{ strtoupper(substr($d, 0, 3)) }}</th>
-            @endforeach
-        </tr>
-    </thead>
-    <tbody>
-    @foreach($timeSlots as $time)
-        @php
-            $timeParts  = explode(':', $time);
-            $isHour     = ((int)$timeParts[1] === 0);
-            $ampm       = (int)$timeParts[0] >= 12 ? 'PM' : 'AM';
-            $dHour      = (int)$timeParts[0] % 12;
-            if ($dHour === 0) $dHour = 12;
-            $dTime      = $dHour . ':' . $timeParts[1];
-        @endphp
-        <tr class="{{ $isHour ? 'h-start' : '' }}">
-            <td class="td-t">
-                <span class="tl">{{ $dTime }}</span>
-                <span class="tap">{{ $ampm }}</span>
-            </td>
-            @foreach($days as $day)
-                @php
-                    if (isset($occupied[$day][$time])) continue;
-                    $ss = $grid[$day][$time] ?? [];
-                    $rs = 1;
-                    foreach ($ss as $sItem) {
-                        if (($sItem->_rowspan ?? 1) > $rs) $rs = $sItem->_rowspan;
+            /* Fuzzy fallback — closest slot AT or BEFORE the start time */
+            if ($matchedSlot === null) {
+                $bestDiff = PHP_INT_MAX;
+                foreach ($allSlots as $si => $ts) {
+                    [$th, $tm] = explode(':', $ts);
+                    $tMins = (int)$th * 60 + (int)$tm;
+                    if ($tMins <= $startMins && ($startMins - $tMins) < $bestDiff) {
+                        $bestDiff    = $startMins - $tMins;
+                        $matchedSlot = $ts;
+                        $matchedIdx  = $si;
                     }
-                    $ch = $rs * 28;
-                @endphp
-                <td class="td-s"
-                    @if($rs > 1) rowspan="{{ $rs }}" @endif
-                    style="height:{{ $ch }}px;">
-                    @if(count($ss) > 0)
-                    <div class="ci">
-                        @foreach($ss as $sItem)
-                        <div class="sb" data-c="{{ $sItem->_color }}">
-                            <div class="sb-code">{{ optional($sItem->subject)->course_code ?? '—' }}</div>
-                            <div class="sb-name"><strong>{{ optional($sItem->subject)->subject_name ?? 'N/A' }}</strong></div>
-                            <div class="sb-row">
-                                <span class="sb-tag">
-                                    <span class="sb-lbl">Rm</span>
-                                    {{ $sItem->classroom->room_name ?? $sItem->classroom->name ?? 'N/A' }}
-                                </span>
-                                <span class="sb-tag">
-                                    <span class="sb-lbl">By</span>
-                                    <strong>{{ $sItem->faculty->name ?? 'N/A' }}</strong>
-                                </span>
-                            </div>
-                            <div class="sb-bdg">
-                                <span class="sb-type">{{ $sItem->class_type === 'Laboratory' ? 'Lab' : 'Lec' }}</span>
-                                <span class="sb-tag">Yr&nbsp;{{ $sItem->year_level ?? '-' }}</span>
-                                <span class="sb-time">{{ date('g:i', strtotime($sItem->start_time)) }}-{{ date('g:iA', strtotime($sItem->end_time)) }}</span>
-                            </div>
-                        </div>
+                }
+            }
+
+            if ($matchedSlot !== null && isset($grid[$dayName][$matchedSlot])) {
+                $grid[$dayName][$matchedSlot][] = $sch;
+
+                /* Track visible row range for trim */
+                if ($matchedIdx < $usedSlotIdxMin) $usedSlotIdxMin = $matchedIdx;
+                $endSlotIdx = $matchedIdx + $rowspan - 1;
+                if ($endSlotIdx > $usedSlotIdxMax) $usedSlotIdxMax = $endSlotIdx;
+
+                /* Mark covered rows as occupied so they skip rendering a <td> */
+                for ($i = 1; $i < $rowspan; $i++) {
+                    $ni = $matchedIdx + $i;
+                    if ($ni < count($allSlots)) {
+                        $occupied[$dayName][$allSlots[$ni]] = true;
+                    }
+                }
+            }
+        }
+
+        /*
+         * FIX 3 — Trim $timeSlots to only rows that contain data (± 1 buffer).
+         * Original code set $timeSlots = $allSlots, rendering all 25 rows always.
+         */
+        if ($usedSlotIdxMax >= $usedSlotIdxMin) {
+            $trimMin   = max(0, $usedSlotIdxMin - 1);
+            $trimMax   = min(count($allSlots) - 1, $usedSlotIdxMax + 1);
+            $timeSlots = array_slice($allSlots, $trimMin, $trimMax - $trimMin + 1);
+        } else {
+            /* No schedules at all — show full range as fallback */
+            $timeSlots = $allSlots;
+        }
+
+        /* Build legend */
+        $legendItems = [];
+        foreach ($subColors as $subId => $color) {
+            foreach ($schedules as $sch) {
+                if ($sch->subject_id == $subId) {
+                    $legendItems[$subId] = [
+                        'color' => $color,
+                        'code'  => optional($sch->subject)->course_code  ?? 'N/A',
+                        'name'  => optional($sch->subject)->subject_name ?? 'N/A',
+                    ];
+                    break;
+                }
+            }
+        }
+
+        $colorHex = [
+            'c1'  => '#2D4A35', 'c2'  => '#1A3A5C', 'c3'  => '#5C2D1A', 'c4'  => '#3D1A5C',
+            'c5'  => '#1A4A4A', 'c6'  => '#4A3D1A', 'c7'  => '#1A3D1A', 'c8'  => '#4A1A2D',
+            'c9'  => '#1A2D4A', 'c10' => '#2D4A1A', 'c11' => '#4A2D1A', 'c12' => '#1A4A3D',
+        ];
+    @endphp
+
+    {{-- ═══ TABLE ═══ --}}
+    <div class="tbl-wrap">
+        <table>
+            <colgroup>
+                <col class="col-t">
+                @foreach($days as $d)
+                    <col class="col-d">
+                @endforeach
+            </colgroup>
+            <thead>
+                <tr>
+                    <th style="background:var(--ink);color:var(--ink-ghost);font-size:9px;letter-spacing:.1em;">TIME</th>
+                    @foreach($days as $d)
+                        <th>{{ strtoupper(substr($d, 0, 3)) }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($timeSlots as $time)
+                    @php
+                        $timeParts = explode(':', $time);
+                        $isHour    = ((int)$timeParts[1] === 0);
+                        $hour24    = (int)$timeParts[0];
+                        $ampm      = $hour24 >= 12 ? 'PM' : 'AM';
+                        $dHour     = $hour24 % 12;
+                        if ($dHour === 0) $dHour = 12;
+                        $dTime     = $dHour . ':' . $timeParts[1];
+                    @endphp
+                    <tr class="{{ $isHour ? 'h-start' : '' }}">
+                        {{-- Time label cell --}}
+                        <td class="td-t">
+                            <span class="tl">{{ $dTime }}</span>
+                            <span class="tap">{{ $ampm }}</span>
+                        </td>
+
+                        {{-- Day cells --}}
+                        @foreach($days as $day)
+                            @php
+                                /*
+                                 * If this slot is covered by a rowspan from an earlier row,
+                                 * skip rendering a <td> — the browser fills it automatically.
+                                 */
+                                if (isset($occupied[$day][$time])) continue;
+
+                                $ss = $grid[$day][$time] ?? [];
+
+                                /* Determine the largest rowspan among entries in this cell */
+                                $rs = 1;
+                                foreach ($ss as $sItem) {
+                                    if (($sItem->_rowspan ?? 1) > $rs) {
+                                        $rs = $sItem->_rowspan;
+                                    }
+                                }
+
+                                /* Cell height = rows × 28px */
+                                $ch = $rs * 28;
+                            @endphp
+                            <td class="td-s"
+                                @if($rs > 1) rowspan="{{ $rs }}" @endif
+                                style="height:{{ $ch }}px;">
+                                @if(count($ss) > 0)
+                                    <div class="ci">
+                                        @foreach($ss as $sItem)
+                                            <div class="sb" data-c="{{ $sItem->_color }}">
+                                                <div class="sb-code">
+                                                    {{ optional($sItem->subject)->course_code ?? '—' }}
+                                                </div>
+                                                <div class="sb-name">
+                                                    <strong>{{ optional($sItem->subject)->subject_name ?? 'N/A' }}</strong>
+                                                </div>
+                                                <div class="sb-row">
+                                                    <span class="sb-tag">
+                                                        <span class="sb-lbl">Rm</span>
+                                                        {{ $sItem->classroom->room_name ?? $sItem->classroom->name ?? 'N/A' }}
+                                                    </span>
+                                                    <span class="sb-tag">
+                                                        <span class="sb-lbl">By</span>
+                                                        <strong>{{ $sItem->faculty->name ?? 'N/A' }}</strong>
+                                                    </span>
+                                                </div>
+                                                <div class="sb-bdg">
+                                                    <span class="sb-type">
+                                                        {{ ($sItem->class_type ?? '') === 'Laboratory' ? 'Lab' : 'Lec' }}
+                                                    </span>
+                                                    <span class="sb-tag">
+                                                        Yr&nbsp;{{ $sItem->year_level ?? '-' }}
+                                                    </span>
+                                                    <span class="sb-time">
+                                                        {{ date('g:i', strtotime($sItem->start_time)) }}&ndash;{{ date('g:iA', strtotime($sItem->end_time)) }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
                         @endforeach
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    {{-- ═══ LEGEND ═══ --}}
+    @if(!empty($legendItems))
+        <div class="leg">
+            <div class="leg-hd">Subject Legend</div>
+            <div class="leg-grid">
+                @foreach($legendItems as $item)
+                    <div class="leg-item">
+                        <div class="leg-dot" style="background:{{ $colorHex[$item['color']] ?? '#555' }};"></div>
+                        <span><strong>{{ $item['code'] }}</strong> &mdash; {{ Str::limit($item['name'], 44) }}</span>
                     </div>
-                    @endif
-                </td>
-            @endforeach
-        </tr>
-    @endforeach
-    </tbody>
-</table>
-</div>
-
-@if(!empty($legendItems))
-<div class="leg">
-    <div class="leg-hd">Subject Legend</div>
-    <div class="leg-grid">
-        @foreach($legendItems as $item)
-        <div class="leg-item">
-            <div class="leg-dot" style="background:{{ $colorHex[$item['color']] ?? '#555' }};"></div>
-            <span><strong>{{ $item['code'] }}</strong> &mdash; {{ Str::limit($item['name'], 44) }}</span>
-        </div>
-        @endforeach
-    </div>
-</div>
-@endif
-
-<div class="ftr">
-    <div class="sigs">
-        <div class="sig">
-            <div class="sig-sp"></div>
-            <div class="sig-ln">
-                <div class="sig-n">Department Head</div>
-                <div class="sig-t">Academic Affairs</div>
+                @endforeach
             </div>
         </div>
-        <div class="sig">
-            <div class="sig-sp"></div>
-            <div class="sig-ln">
-                <div class="sig-n">Dean</div>
-                <div class="sig-t">College Dean</div>
-            </div>
-        </div>
-        <div class="sig">
-            <div class="sig-sp"></div>
-            <div class="sig-ln">
-                <div class="sig-n">Registrar</div>
-                <div class="sig-t">Office of the Registrar</div>
-            </div>
-        </div>
-    </div>
-    <div class="fbar">
-        <div class="fbi">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Printed <strong>{{ date('F j, Y g:i A') }}</strong>
-        </div>
-        <div class="fdot"></div>
-        <div class="fbi">Southern Luzon State University &mdash; Tiaong Campus</div>
-        <div class="fdot"></div>
-        <div class="fbi">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-            </svg>
-            Generated by <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong>
-        </div>
-    </div>
-</div>
+    @endif
 
-</div>
+    {{-- ═══ FOOTER ═══ --}}
+    <div class="ftr">
+        <div class="sigs">
+            <div class="sig">
+                <div class="sig-sp"></div>
+                <div class="sig-ln">
+                    <div class="sig-n">Department Head</div>
+                    <div class="sig-t">Academic Affairs</div>
+                </div>
+            </div>
+            <div class="sig">
+                <div class="sig-sp"></div>
+                <div class="sig-ln">
+                    <div class="sig-n">Dean</div>
+                    <div class="sig-t">College Dean</div>
+                </div>
+            </div>
+            <div class="sig">
+                <div class="sig-sp"></div>
+                <div class="sig-ln">
+                    <div class="sig-n">Registrar</div>
+                    <div class="sig-t">Office of the Registrar</div>
+                </div>
+            </div>
+        </div>
+        <div class="fbar">
+            <div class="fbi">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Printed <strong>{{ date('F j, Y g:i A') }}</strong>
+            </div>
+            <div class="fdot"></div>
+            <div class="fbi">Southern Luzon State University &mdash; Tiaong Campus</div>
+            <div class="fdot"></div>
+            <div class="fbi">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+                Generated by <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong>
+            </div>
+        </div>
+    </div>
+
+</div>{{-- /.page --}}
 
 @verbatim
 <script>
-(function() {
+(function () {
     var TARGET_H = 720;
     var TARGET_W = 1060;
     var MIN_ZOOM = 0.45;
@@ -498,6 +555,7 @@ tr.h-start td{border-top:2px solid #B8C8BA !important;}
         zoom     = Math.round(zoom * 1000) / 1000;
         page.style.setProperty('--print-zoom', zoom);
         page.style.zoom = zoom;
+        /* Fallback for browsers that don't support zoom */
         if (typeof page.style.zoom === 'undefined' || page.style.zoom === '') {
             page.style.transform       = 'scale(' + zoom + ')';
             page.style.transformOrigin = '0 0';
@@ -508,7 +566,7 @@ tr.h-start td{border-top:2px solid #B8C8BA !important;}
     window.addEventListener('load',        applyZoom);
     window.addEventListener('resize',      applyZoom);
     window.addEventListener('beforeprint', applyZoom);
-    window.addEventListener('afterprint',  function() {
+    window.addEventListener('afterprint',  function () {
         page.style.zoom      = '1';
         page.style.transform = '';
         page.style.width     = '';
